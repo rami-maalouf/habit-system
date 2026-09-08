@@ -234,7 +234,8 @@ describe('board coin setting commands', () => {
     const emitted = (await policies()).slice(before);
     expect(emitted.map(row => [row.boardId, row.date])).toEqual([[root, '2026-09-20']]);
     expect(await h.db.getAllAsync('SELECT * FROM check_ins')).toEqual(checks);
-    expect(economicReads.length).toBeLessThanOrEqual(5);
+    // complete check and bonus settlement uses a fixed bulk read set.
+    expect(economicReads.length).toBeLessThanOrEqual(12);
     expect(economicReads.every(([sql]) => !sql.includes('note') && !sql.includes('amount'))).toBe(true);
   });
 
@@ -286,7 +287,8 @@ describe('board coin setting commands', () => {
     const reads = jest.spyOn(h.db, 'getAllAsync');
     expect(await update(root, { requiredInStack: false })).toMatchObject({ ok: true });
     const economicReads = reads.mock.calls.filter(([sql]) => /FROM (habit_actions|coin_ledger|json_each)/.test(sql));
-    expect(economicReads.length).toBeLessThanOrEqual(5);
+    // 33 members across 20 dates use the same read budget as the small case.
+    expect(economicReads.length).toBeLessThanOrEqual(12);
     const emitted = (await policies()).slice(before);
     expect(emitted).toHaveLength(20);
     expect(new Set(emitted.map(row => row.date)).size).toBe(20);

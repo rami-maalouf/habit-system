@@ -18,7 +18,7 @@ The detailed action/adjustment protocol is `docs/ledger-reconciliation.md`. Gene
 
 ## Incorporated migration and sequence corrections
 
-- Split migrations by dependency: T2/schema 6 for board/settings/widget kind; T3/schema 7 for immutable habit actions; T15/schema 8 for ledger; T18/schema 9 for rewards; T21/schema 10 for local miss alerts. The action migration reserves a nullable policy snapshot so the later coin slice can add policy evidence without rewriting earlier history.
+- Split migrations by dependency: T2/schema 6 for board/settings/widget kind; T3/schema 7 for immutable habit actions; T15/schema 8 for ledger; T16/schema 9 for exact-date action lookup; T18/schema 10 for rewards; T21/schema 11 for local miss alerts. The action migration reserves a nullable policy snapshot so the later coin slice can add policy evidence without rewriting earlier history. The T16 index is a later measured amendment: Expo SQLite 3.50.3 scans 321,842 stress-fixture actions without statistics, versus 292 date-matching actions with the index. Host median query time drops from 37.730 ms to 0.197 ms; this does not claim device latency. Evidence: `.artifacts/t16/reverse-policy-benchmark/`.
 - Every new migration updates the Swift schema version/checksum map in the same commit. Versions 1 through 5 remain immutable.
 - Explicit Count defaults preserve legacy imports, existing boards, and compatibility callers. New board forms explicitly choose Daily.
 - Intermediate builds are development checkpoints until native, sync, and export compatibility through T20 is complete. Earlier slices are no longer described as independently release-ready for real multi-device use.

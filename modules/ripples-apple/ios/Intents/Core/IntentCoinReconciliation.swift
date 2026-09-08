@@ -2,6 +2,8 @@ import Foundation
 
 enum IntentCoinReconciliation {
   struct Result { let appendedRows: [IntentCoinLedgerRow]; let target: Int64; let balance: Int64 }
+  private typealias Replay = ([IntentHabitAction]) throws -> (ordinaryRows: [IntentCoinLedgerRow], target: Int64)
+  private typealias OrdinaryValidator = ([IntentHabitAction], [IntentCoinLedgerRow]) throws -> Void
   private struct Fact {
     let fingerprint: [String]; let action: IntentHabitAction?; let row: IntentCoinLedgerRow?
     var createdAt: Int64 { action?.createdAt ?? row!.createdAt }
@@ -12,7 +14,7 @@ enum IntentCoinReconciliation {
     try IntentCoinLedgerRow.totals(rows).balance
   }
 
-  private static func validateOrdinary(_ actions: [IntentHabitAction], _ rows: [IntentCoinLedgerRow]) throws {
+  private static func validateCheckOrdinary(_ actions: [IntentHabitAction], _ rows: [IntentCoinLedgerRow]) throws {
     let causes = Dictionary(uniqueKeysWithValues: actions.map { ($0.id, $0) })
     let awards = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
     for row in rows {
@@ -40,8 +42,8 @@ enum IntentCoinReconciliation {
     return facts.sorted { $0.fingerprint.lexicographicallyPrecedes($1.fingerprint) }
   }
 
-  private static func correction(boardId: String, date: String, actions: [IntentHabitAction], rows: [IntentCoinLedgerRow], facts: [Fact]) throws -> IntentCoinLedgerRow? {
-    let replay = try IntentCheckCoins.replay(boardId: boardId, logicalDate: date, actions: actions)
+  private static func correction(scope: String, date: String, actions: [IntentHabitAction], rows: [IntentCoinLedgerRow], facts: [Fact], replay: Replay) throws -> IntentCoinLedgerRow? {
+    let replay = try replay(actions)
     let saved = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
     guard replay.ordinaryRows.allSatisfy({ saved[$0.id] == $0 }) else { throw IntentCoinError.invalid }
     let delta = replay.target - (try sum(rows))
@@ -51,7 +53,6 @@ enum IntentCoinReconciliation {
     guard let last = facts.max(by: {
       [$0.stamp, $0.fingerprint[1], $0.fingerprint[0]].lexicographicallyPrecedes([$1.stamp, $1.fingerprint[1], $1.fingerprint[0]])
     }) else { throw IntentCoinError.invalid }
-    let scope = "check:\(boardId):\(date)"
     let row = IntentCoinLedgerRow(id: IntentHabitAction.uuidV5(name: try IntentCoinJSON.encode(["habit-ledger-v1", "adjustment", scope, digest])),
       kind: "adjustment", delta: delta, boardId: nil, checkInId: nil, runKey: nil, rewardId: nil, rewardTitleSnapshot: nil,
       reversesId: nil, scopeKey: scope, sourceActionId: nil, reconciliationKey: digest, adjustsId: nil, provenanceJson: proof,
@@ -70,18 +71,38 @@ enum IntentCoinReconciliation {
 
   static func reconcile(boardId: String, logicalDate: String, actions inputActions: [IntentHabitAction], rows inputRows: [IntentCoinLedgerRow]) throws -> Result {
     let actions = try IntentCheckCoins.ordered(boardId: boardId, logicalDate: logicalDate, actions: inputActions)
-    let replay = try IntentCheckCoins.replay(boardId: boardId, logicalDate: logicalDate, actions: actions)
-    let scope = "check:\(boardId):\(logicalDate)"
+    return try reconcile(scope: "check:\(boardId):\(logicalDate)", date: logicalDate, actions: actions, inputRows: inputRows,
+      allowedKinds: ["check", "reversal", "adjustment"], replay: { actions in
+        let value = try IntentCheckCoins.replay(boardId: boardId, logicalDate: logicalDate, actions: actions)
+        return (value.ordinaryRows, value.target)
+      }, validateOrdinary: validateCheckOrdinary)
+  }
+
+  static func reconcileBonus(rootId: String, logicalDate: String, actions inputActions: [IntentHabitAction], rows inputRows: [IntentCoinLedgerRow]) throws -> Result {
+    let actions = try IntentBonusCoins.ordered(rootId: rootId, logicalDate: logicalDate, actions: inputActions, requireScope: false)
+    return try reconcile(scope: "bonus:\(rootId):\(logicalDate)", date: logicalDate, actions: actions, inputRows: inputRows,
+      allowedKinds: ["run_bonus", "reversal", "adjustment"], replay: { actions in
+        let value = try IntentBonusCoins.replay(rootId: rootId, logicalDate: logicalDate, actions: actions)
+        return (value.ordinaryRows, value.target)
+      }, validateOrdinary: { actions, rows in
+        try IntentBonusCoinCauses.validateOrdinary(rootId: rootId, actions: actions, rows: rows)
+        _ = try IntentBonusCoins.ordered(rootId: rootId, logicalDate: logicalDate, actions: actions)
+      })
+  }
+
+  private static func reconcile(scope: String, date: String, actions: [IntentHabitAction], inputRows: [IntentCoinLedgerRow],
+                                allowedKinds: Set<String>, replay replayActions: Replay, validateOrdinary: OrdinaryValidator) throws -> Result {
     var rows: [String: IntentCoinLedgerRow] = [:]
     var appended: [IntentCoinLedgerRow] = []
     for row in inputRows {
       try row.validateShape()
-      guard row.scopeKey == scope, ["check", "reversal", "adjustment"].contains(row.kind),
+      guard row.scopeKey == scope, allowedKinds.contains(row.kind),
         rows[row.id] == nil || rows[row.id] == row else { throw IntentCoinError.invalid }
       rows[row.id] = row
     }
     func append(_ row: IntentCoinLedgerRow) { if rows[row.id] == nil { rows[row.id] = row; appended.append(row) } }
     try validateOrdinary(actions, rows.values.filter { $0.kind != "adjustment" })
+    let replay = try replayActions(actions)
     for row in replay.ordinaryRows { append(row) }
     let ordinary = rows.values.filter { $0.kind != "adjustment" }
     let facts = try evidence(actions, ordinary)
@@ -96,7 +117,7 @@ enum IntentCoinReconciliation {
       let subsetActions = subset.compactMap { $0.action }
       let subsetRows = subset.compactMap { $0.row }
       do { try validateOrdinary(subsetActions, subsetRows) } catch { throw IntentCoinError.invalid }
-      guard try correction(boardId: boardId, date: logicalDate, actions: subsetActions, rows: subsetRows, facts: subset) == row else { throw IntentCoinError.invalid }
+      guard try correction(scope: scope, date: date, actions: subsetActions, rows: subsetRows, facts: subset, replay: replayActions) == row else { throw IntentCoinError.invalid }
     }
     for row in rows.values.filter({ $0.kind == "adjustment" }).sorted(by: { $0.id < $1.id }) {
       guard let old = row.adjustsId.flatMap({ rows[$0] }) ?? (row.adjustsId == nil ? row : nil) else { throw IntentCoinError.missing }
@@ -110,7 +131,7 @@ enum IntentCoinReconciliation {
       guard row.adjustsId == nil || row == cancel else { throw IntentCoinError.invalid }
       append(cancel)
     }
-    if let current = try correction(boardId: boardId, date: logicalDate, actions: actions, rows: ordinary, facts: facts) { append(current) }
+    if let current = try correction(scope: scope, date: date, actions: actions, rows: ordinary, facts: facts, replay: replayActions) { append(current) }
     return Result(appendedRows: appended, target: replay.target, balance: try sum(Array(rows.values)))
   }
 }

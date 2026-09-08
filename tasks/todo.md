@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T15 and Checkpoint B are done; T16 same-day bonus restoration and reconciliation is next. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T16 and Checkpoint B are done; T17 Coins screens and balance pill is next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -127,7 +127,8 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: schema/ids/entities, ledger repository, pure coin rules, command helpers/queries, Swift executor, board form, and focused tests. Use bounded substeps; no schema or shared contract commit may leave native checks red.
   - Depends on: T14.
 
-- [ ] **T16: Same-day bonus restoration and reconciliation**
+- [x] **T16: Same-day bonus restoration and reconciliation**
+  - Status: done. Migration 9 indexes exact-date action discovery and updates the native gate while preserving migrations 1-8. Pure TS/Swift, historical evidence readers and all live writers pass independent review; 1,619 tests and 131 Swift tests pass, with all 70 core files at 100 percent. Actual in-place migration, app/Shortcuts bonus reversal/restoration, receipt replay and adjacent-date isolation pass on Migration QA. See `checkpoints.md` and `.artifacts/t16/qa/`. Later rewards/alerts use schemas 10/11.
   - Acceptance: each complete same-day run has one net bonus entitlement keyed by structural root and logical date. Unchecking a required member inside the approved boundary reverses it; re-completing restores it through new immutable compensation rows. Zero required eligible members earn no bonus. Reconciliation handles duplicate awards/reversals and a run completed only by merged checks, with deterministic identities and no duplicate compensation under retry or delivery reordering.
   - T16a: pure entitlement/compensation model and local command integration. T16b: matching Swift fixtures and reconciliation entry point used by T19. Topology/required/archive changes use exact stored-date eligibility and captured close boundaries. Ordered root-carried policy controls supersede stale member observations, while earlier valid awards retain their original source policies. Surviving stacks receive updated requirements; only disappearing root/date scopes retire.
   - Verify: check/uncheck/recheck, date edits, deletions, replay, two replicas, split-member completion, informational time edits, and logical-day close boundaries in both executors.
@@ -140,8 +141,8 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: routes, coin screens/history, home header, feature tests.
   - Depends on: T16.
 
-- [ ] **T18: Schema 9 and rewards**
-  - T18a acceptance: schema 9 adds rewards with branded ids, approved constraints/indexes, and matching Swift gate/checksum. Repository and commands create/update/reorder/archive/delete; ledger rows remain untouched by reward deletion.
+- [ ] **T18: Schema 10 and rewards**
+  - T18a acceptance: schema 10 adds rewards with branded ids, approved constraints/indexes, and matching Swift gate/checksum. Repository and commands create/update/reorder/archive/delete; ledger rows remain untouched by reward deletion.
   - T18b acceptance: `claimReward` checks balance inside its exclusive transaction, fails below cost, writes immutable debit plus title snapshot, and replays safely. Editing/deleting a reward preserves prior claim cost/title. Distinct offline claims remain accepted after merge even if their combined balance is negative.
   - T18c acceptance: native-style new/edit forms, reward list, empty state, and Claim confirmation showing cost and resulting balance.
   - Verify: domain/native schema/feature checks plus simulator create/claim/refuse/edit/delete with history intact.
@@ -169,15 +170,15 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
 
 ## Phase 4: alerts, sample mode, and closure
 
-- [ ] **T21: Schema 10 and never-miss-twice alerts**
-  - T21a acceptance: schema 10 adds local `miss_alerts` with board/date-pair key, native identifier, status including denied, and indexes; update Swift schema gate/checksum atomically. Table never syncs or exports.
+- [ ] **T21: Schema 11 and never-miss-twice alerts**
+  - T21a acceptance: schema 11 adds local `miss_alerts` with board/date-pair key, native identifier, status including denied, and indexes; update Swift schema gate/checksum atomically. Table never syncs or exports.
   - T21b acceptance: reconciler runs at cold start/foreground/significant time change and relevant mutation, using two most recent closed logical dates with date-based activity-period eligibility. Stacked and unstacked Daily boards use same-day checks, without usual-time windows or intraday activity-history claims. Schedule once at the next 09:00 local or immediately in foreground when applicable; denied permission records denied without prompting. Deep link opens the board; Settings shows pending count.
   - Verify: controlled clock, archived gaps/same-day restore, duplicate reconcile, permission denial, native scheduling failure/retry, notification delivery/deep link, pending count.
   - Ownership scope: schema/Swift gate, miss-alert repository/domain, notification adapter/provider/settings, tests and simulator evidence.
   - Depends on: T20.
 
 - [ ] **T22: Deterministic sample and in-memory factory**
-  - Acceptance: fixed-seed generator supplies the spec's habits, a four-habit same-day stack with preset root, Count history, three years of rhythms/gaps, immutable action evidence, append-only earnings/reversals/restorations, four rewards and claims. The in-memory factory applies all migrations through schema 10. Data is seeded only into the sample database.
+  - Acceptance: fixed-seed generator supplies the spec's habits, a four-habit same-day stack with preset root, Count history, three years of rhythms/gaps, immutable action evidence, append-only earnings/reversals/restorations, four rewards and claims. The in-memory factory applies all migrations through schema 11. Data is seeded only into the sample database.
   - Verify: determinism, counts, calendar ranges, valid graph/ledger relationships, final schema, and no real database opens.
   - Ownership scope: sample generator, platform in-memory factory, domain/platform tests.
   - Depends on: T21.

@@ -285,6 +285,14 @@ export const migrations: readonly Migration[] = [
       `UPDATE app_settings SET schema_revision = 8 WHERE id = 1`,
     ],
   },
+  {
+    version: 9,
+    name: 'exact_date_action_lookup',
+    statements: [
+      `CREATE INDEX idx_habit_actions_date_kind ON habit_actions (logical_date, kind)`,
+      `UPDATE app_settings SET schema_revision = 9 WHERE id = 1`,
+    ],
+  },
 ];
 
 export const latestSchemaVersion = migrations[migrations.length - 1].version;

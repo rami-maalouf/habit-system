@@ -104,6 +104,44 @@ plus its policy fingerprint. A fresh transition after timely uncheck can earn th
 Commands and sync mint a missing economic row for that cause before calculating corrections.
 This includes a completion visible only after merging separate devices' member actions.
 
+A held bonus retains its original required member set as well as its close. Adding a
+new required member does not confiscate or replace it. Removing a check from that new
+member cannot reverse the old bonus; removing the last check on an original required
+member before the old close can. Multiple surviving tokens keep that member checked,
+even when the removed token was the final genuine check that originally earned the bonus.
+Policy, baseline and move-in facts never mint or reverse a bonus by themselves.
+
+Delayed removal evidence must preserve this rule after a late clear has already changed
+visible state. Each held award tracks token witnesses active at earning or subsequently
+added on its original required boards. A timely targeted removal consumes its witness
+even if another live token keeps the board checked. Late removals leave witnesses intact.
+A timely removal can revoke the bonus only when its original required board is left
+unchecked and it either clears the date or consumes a known witness. Unknown targets,
+tokens removed before earning and repeated already-consumed targets cannot fabricate
+revocation. For example, with B1 and B2 checked, timely removal of B1 retains the bonus;
+a late clear of B2 also retains it. Repeating the timely B1 removal still retains it,
+while a later-ordered timely B2 removal or date clear can revoke it.
+
+Bonus UUID names are `["habit-ledger-v1","run_bonus",scopeKey,finalGenuineCheckId,bonusPolicyFingerprint]`.
+The fingerprint is SHA-256 of `["habit-bonus-policy-v1",rootId,requiredBoardIds,bonusClosesAtUtc,bonusEnabled]`
+using the effective ordered root control, or the genuine check's matching-root observation
+when no control applies. The genuine check supplies source action, timestamp and stamp.
+Validate an existing ordinary award against candidate controls ordered no later than its
+source check, plus that check's matching-root observation. This intrinsic validation is
+separate from the final union's entitlement: a valid offline award may require correction.
+An unmatched cause remains unresolved until its immutable policy evidence arrives. A
+subset correction must carry its own necessary policy evidence; it cannot borrow missing
+facts from the enclosing union. Exact-date reverse membership discovery must retain
+former-root and rootless state without consulting today's graph or filtering closed history.
+An ordinary bonus reversal is intrinsically admissible when its matched award supplies
+the original required board/close, its uncheck or move-out orders after the genuine earning
+cause and occurs before that close, and a targeted removal has earlier same-board/date
+add evidence for its token. Canonical baselines, checks and move-ins can supply that state
+witness; a missing witness remains unresolved. Whole-date clears have no token target.
+This validation preserves conflicting but admissible offline rows. Full replay determines
+whether another live token or an already-consumed witness prevents the reversal, then
+corrects the union without rewriting any ordinary row.
+
 T15 migration 8 adds the ledger fields in the spec, including `scope_key`, `source_action_id`,
 `reconciliation_key`, `adjusts_id`, `provenance_json`, and `reward_title_snapshot`.
 Derived ids use UUIDv5 under one fixed fork namespace. Check-award ids derive from scope/source action;

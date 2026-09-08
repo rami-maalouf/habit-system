@@ -275,6 +275,110 @@ final class IntentExecutorTests: XCTestCase {
     XCTAssertFalse(String(describing: action).contains("private note"))
   }
 
+  func testPublicBonusCompletionSeedsOtherMemberLegacyStateAndReplaysWithoutEffects() throws {
+    let harness = try harness()
+    let root = "00000000-0000-4000-8000-00000000a001"
+    let member = "00000000-0000-4000-8000-00000000a002"
+    try harness.database.run("UPDATE boards SET kind = 'daily', tracks_amount = 0, tracks_time = 0, start_of_day_minute = 0, required_in_stack = 1 WHERE id IN (?, ?)", [.text(root), .text(member)])
+    try harness.database.run("UPDATE boards SET anchor_kind = 'board', anchor_relation = 'after', anchor_board_id = ? WHERE id = ?", [.text(root), .text(member)])
+    let date = try IntentCalendar.logicalDate(utcMs: harness.instant, zone: harness.timeZone, startMinute: 0)
+    let legacy = try harness.legacyCheck(boardId: root, date: date)
+    let beforeCheck = try harness.database.rows("SELECT * FROM check_ins WHERE id = ?", [.text(legacy)])
+    let command = harness.id()
+    let result = try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: member)).get()
+    XCTAssertTrue(result.created)
+    let rows = try IntentCoinStore.entries(scopeKey: "bonus:\(root):\(date)", database: harness.database)
+    XCTAssertEqual(rows.map(\.kind), ["run_bonus"])
+    XCTAssertEqual(rows.map(\.delta), [1])
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions WHERE kind = 'baseline'").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT a.created_at AS source_time, a.mutation_stamp AS source_stamp, o.created_at AS enqueue_time FROM habit_actions a JOIN mutation_outbox o ON o.entity_id = a.id AND o.entity_type = 'habit_action' WHERE a.kind = 'baseline'"),
+      [["source_time": .integer(0), "source_stamp": .text(IntentHabitAction.baselineStamp), "enqueue_time": .integer(Int64(harness.instant))]])
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE id = ?", [.text(legacy)]), beforeCheck)
+    let tables = ["check_ins", "habit_actions", "coin_ledger", "mutation_outbox", "app_settings", "widget_board_rows", "command_receipts"]
+    let before = try tables.map { try harness.database.rows("SELECT * FROM \($0)") }
+    XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: member)).get(), result)
+    for (index, table) in tables.enumerated() { XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table)"), before[index], table) }
+    _ = try harness.executor.removeLatest(commandId: harness.id(), boardId: member).get()
+    XCTAssertEqual(try IntentCoinStore.entries(scopeKey: "bonus:\(root):\(date)", database: harness.database).map(\.delta), [1, -1])
+  }
+
+  func testPublicBonusFailureRollsBackCheckCoinsAndAllSourceEffectsThenRetries() throws {
+    let harness = try harness()
+    let root = "00000000-0000-4000-8000-00000000a001"
+    let member = "00000000-0000-4000-8000-00000000a002"
+    try harness.database.run("UPDATE boards SET kind = 'daily', earns_coins = 1, tracks_amount = 0, tracks_time = 0, start_of_day_minute = 0, required_in_stack = 1 WHERE id IN (?, ?)", [.text(root), .text(member)])
+    try harness.database.run("UPDATE boards SET anchor_kind = 'board', anchor_relation = 'after', anchor_board_id = ? WHERE id = ?", [.text(root), .text(member)])
+    _ = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: root)).get()
+    let tables = ["check_ins", "habit_actions", "coin_ledger", "mutation_outbox", "app_settings", "widget_board_rows", "command_receipts"]
+    let before = try tables.map { try harness.database.rows("SELECT * FROM \($0)") }
+    try harness.database.run("CREATE TRIGGER reject_bonus BEFORE INSERT ON coin_ledger WHEN NEW.kind = 'run_bonus' BEGIN SELECT RAISE(ABORT, 'test'); END")
+    let command = harness.id()
+    XCTAssertThrowsError(try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: member)).get())
+    for (index, table) in tables.enumerated() { XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table)"), before[index], table) }
+    try harness.database.run("DROP TRIGGER reject_bonus")
+    XCTAssertTrue(try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: member)).get().created)
+    XCTAssertEqual(try harness.database.rows("SELECT SUM(delta) AS balance FROM coin_ledger").first?["balance"], .integer(3))
+  }
+
+  func testPublicBonusDailyNoOpAndReplayBypassMissingEvidenceBeforeRemovalRollsBack() throws {
+    let harness = try harness()
+    let root = "00000000-0000-4000-8000-00000000a001"
+    let member = "00000000-0000-4000-8000-00000000a002"
+    try harness.database.run("UPDATE boards SET kind = 'daily', tracks_amount = 0, tracks_time = 0, start_of_day_minute = 0 WHERE id IN (?, ?)", [.text(root), .text(member)])
+    try harness.database.run("UPDATE boards SET anchor_kind = 'board', anchor_relation = 'after', anchor_board_id = ? WHERE id = ?", [.text(root), .text(member)])
+    _ = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: root)).get()
+    let command = harness.id()
+    let created = try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: member)).get()
+    let json = try XCTUnwrap(harness.database.rows("SELECT policy_json FROM habit_actions WHERE board_id = ?", [.text(member)]).first?["policy_json"]?.string)
+    let missing = IntentHabitAction(id: harness.id(), commandId: harness.id(), boardId: member, logicalDate: created.logicalDate,
+      checkInId: harness.id(), kind: "check", createdAt: Int64(harness.instant), mutationStamp: "01788105600000-00099-native", policyJson: json)
+    let award = try IntentBonusCoins.award(missing, policy: IntentCoinPolicy.parse(json))
+    try IntentCoinStore.append(award, to: harness.database, enqueueAt: Int64(harness.instant))
+    let tables = ["check_ins", "habit_actions", "coin_ledger", "mutation_outbox", "app_settings", "widget_board_rows"]
+    let before = try tables.map { try harness.database.rows("SELECT * FROM \($0)") }
+    XCTAssertFalse(try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: member)).get().created)
+    XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: "missing")).get(), created)
+    XCTAssertThrowsError(try harness.executor.removeLatest(commandId: harness.id(), boardId: member).get())
+    for (index, table) in tables.enumerated() { XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table)"), before[index], table) }
+  }
+
+  func testPublicBonusCapturedDateRemovalKeepsClosedAwardAndSecondConnectionNextDate() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let h = try Harness(seed: XCTUnwrap(fixture()["seed"] as? [String: Any]), migrations: migrations(), path: directory.appendingPathComponent("bonus.sqlite").path)
+    h.timeZone = "UTC"
+    let root = "00000000-0000-4000-8000-00000000a001", member = "00000000-0000-4000-8000-00000000a002"
+    try h.database.run("UPDATE boards SET kind = 'daily', tracks_amount = 0, tracks_time = 0, start_of_day_minute = 240 WHERE id IN (?, ?)", [.text(root), .text(member)])
+    try h.database.run("UPDATE boards SET anchor_kind = 'board', anchor_relation = 'after', anchor_board_id = ? WHERE id = ?", [.text(root), .text(member)])
+    _ = try h.executor.checkIn(IntentCheckInInput(commandId: h.id(), boardId: root)).get()
+    let old = try h.executor.checkIn(IntentCheckInInput(commandId: h.id(), boardId: member, note: "captured note")).get()
+    let candidate = try h.executor.removalCandidate(boardId: member, logicalDate: nil).get()
+    let policy = try IntentCoinPolicy.parse(XCTUnwrap(h.database.rows("SELECT policy_json FROM habit_actions WHERE board_id = ?", [.text(member)]).first?["policy_json"]?.string))
+    h.instant = Double(try XCTUnwrap(policy.bonusClosesAtUtc))
+    let secondDB = try IntentDatabase(path: directory.appendingPathComponent("bonus.sqlite").path)
+    let second = IntentExecutor(database: secondDB, now: { h.instant }, zone: { "UTC" }, uuid: { h.id() })
+    _ = try second.checkIn(IntentCheckInInput(commandId: h.id(), boardId: root)).get()
+    let next = try second.checkIn(IntentCheckInInput(commandId: h.id(), boardId: member)).get()
+    XCTAssertNotEqual(next.logicalDate, old.logicalDate)
+    let nextRows = try h.database.rows("SELECT * FROM check_ins WHERE logical_date = ?", [.text(next.logicalDate)])
+    let nextActions = try h.database.rows("SELECT * FROM habit_actions WHERE logical_date = ?", [.text(next.logicalDate)])
+    let nextLedger = try IntentCoinStore.entries(scopeKey: "bonus:\(root):\(next.logicalDate)", database: h.database)
+    XCTAssertEqual(nextLedger.map(\.delta), [1])
+    let command = h.id()
+    let removed = try h.executor.removeLatest(commandId: command, boardId: member, logicalDate: candidate.logicalDate,
+      expectedCheckInIds: candidate.checkInIds, expectedSnapshot: candidate.snapshot).get()
+    XCTAssertEqual(removed.logicalDate, old.logicalDate)
+    XCTAssertEqual(try IntentCoinStore.entries(scopeKey: "bonus:\(root):\(old.logicalDate)", database: h.database).map(\.delta), [1])
+    XCTAssertEqual(try h.database.rows("SELECT * FROM check_ins WHERE logical_date = ?", [.text(next.logicalDate)]), nextRows)
+    XCTAssertEqual(try h.database.rows("SELECT * FROM habit_actions WHERE logical_date = ?", [.text(next.logicalDate)]), nextActions)
+    XCTAssertEqual(try IntentCoinStore.entries(scopeKey: "bonus:\(root):\(next.logicalDate)", database: h.database), nextLedger)
+    let tables = ["check_ins", "habit_actions", "coin_ledger", "mutation_outbox", "app_settings", "widget_board_rows", "command_receipts"]
+    let before = try tables.map { try h.database.rows("SELECT * FROM \($0)") }
+    XCTAssertEqual(try h.executor.removeLatest(commandId: command, boardId: member).get(), removed)
+    for (index, table) in tables.enumerated() { XCTAssertEqual(try h.database.rows("SELECT * FROM \(table)"), before[index], table) }
+  }
+
   func testPublicCoinWritersCapturePolicyEnforceCapAndSettleTargetedAndDailyRemoval() throws {
     let harness = try harness()
     let board = "00000000-0000-4000-8000-00000000a001"
@@ -543,6 +647,7 @@ final class IntentExecutorTests: XCTestCase {
       XCTAssertEqual(row["created_at"]?.number, 0)
       XCTAssertEqual(row["mutation_stamp"]?.string, IntentHabitAction.baselineStamp)
       XCTAssertEqual(row["command_id"], .null)
+      XCTAssertEqual(try harness.database.rows("SELECT created_at FROM mutation_outbox WHERE entity_type = 'habit_action' AND entity_id = ?", [.text(try XCTUnwrap(row["id"]?.string))]).first?["created_at"], .integer(Int64(harness.instant)))
     }
     XCTAssertEqual(try harness.database.rows("SELECT check_in_id FROM habit_actions WHERE kind = 'uncheck'").first?["check_in_id"]?.string, first)
     let baseline = try IntentHabitAction.baseline(checkInId: second, boardId: board, date: date)

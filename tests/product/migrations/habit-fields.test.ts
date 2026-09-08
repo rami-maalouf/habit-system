@@ -231,4 +231,55 @@ describe('habit fields migration', () => {
       expect(await db.getAllAsync('SELECT * FROM coin_ledger')).toEqual([]);
     } finally { await db.closeAsync(); }
   });
+
+  it('adds exact-date policy discovery without rewriting schema 8 history', async () => {
+    const db = await priorDatabase(8);
+    try {
+      await db.runAsync(`INSERT INTO habit_actions VALUES (
+        '00000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000003',
+        'legacy-board', '2026-09-08', '00000000-0000-4000-8000-000000000002',
+        'check', 100, '00000000000100-00000-legacy', NULL)`);
+      await db.runAsync(`INSERT INTO coin_ledger
+        (id, kind, delta, board_id, check_in_id, scope_key, source_action_id, logical_date, created_at, mutation_stamp)
+        VALUES ('00000000-0000-5000-8000-000000000005', 'check', 1, 'legacy-board',
+        '00000000-0000-4000-8000-000000000002', 'check:legacy-board:2026-09-08',
+        '00000000-0000-4000-8000-000000000004', '2026-09-08', 100, '00000000000100-00000-legacy')`);
+      const tables = ['boards', 'check_ins', 'habit_actions', 'coin_ledger', 'command_receipts',
+        'mutation_outbox', 'widget_board_rows', 'sync_state'];
+      const before = await Promise.all(tables.map(table => db.getAllAsync(`SELECT * FROM ${table}`)));
+      expect(migrations.find(({ version }) => version === 9)?.name).toBe('exact_date_action_lookup');
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
+      for (const [index, table] of tables.entries()) expect(await db.getAllAsync(`SELECT * FROM ${table}`)).toEqual(before[index]);
+      expect(migrations.slice(0, 8).map(migrationChecksum)).toEqual([
+        'c459cef6', '34363ca0', 'bac085e2', 'dcbb9394', '633f8fb7', '0191110b', 'a901fb95', '14ff0dae',
+      ]);
+      const plan = await db.getAllAsync<{ detail: string }>(`EXPLAIN QUERY PLAN
+        SELECT * FROM habit_actions WHERE logical_date IN (SELECT value FROM json_each(?))
+        AND kind IN ('check', 'uncheck', 'move_out', 'move_in', 'policy') AND policy_json IS NOT NULL`, ['["2026-09-08"]']);
+      expect(plan.some(row => row.detail.includes('idx_habit_actions_date_kind (logical_date=? AND kind=?)'))).toBe(true);
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: latestSchemaVersion });
+      expect(await db.getFirstAsync('SELECT schema_revision FROM app_settings')).toEqual({ schema_revision: latestSchemaVersion });
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
+    } finally { await db.closeAsync(); }
+  });
+
+  it.each(['CREATE INDEX idx_habit_actions_date_kind', 'UPDATE app_settings SET schema_revision = 9',
+    'PRAGMA user_version = 9'])('rolls back the exact-date index migration when %s fails', async failure => {
+    const db = await priorDatabase(8);
+    try {
+      const tables = ['app_settings', 'schema_migrations', 'boards', 'habit_actions', 'coin_ledger'];
+      const before = await Promise.all(tables.map(table => db.getAllAsync(`SELECT * FROM ${table}`)));
+      const run = db.runAsync.bind(db);
+      const spy = jest.spyOn(db, 'runAsync').mockImplementation((sql, params) => {
+        if (sql.includes(failure)) return Promise.reject(new Error('simulated disk failure'));
+        return run(sql, params);
+      });
+      expect(await migrateDatabase(db)).toMatchObject({ ok: false, error: { code: 'migration' } });
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 8 });
+      expect(await db.getAllAsync("SELECT name FROM sqlite_master WHERE name = 'idx_habit_actions_date_kind'")).toEqual([]);
+      for (const [index, table] of tables.entries()) expect(await db.getAllAsync(`SELECT * FROM ${table}`)).toEqual(before[index]);
+      spy.mockRestore();
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
+    } finally { await db.closeAsync(); }
+  });
 });

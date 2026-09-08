@@ -1,11 +1,16 @@
 import type { SqlExecutor } from '../persistence/database';
-import { listHabitActions } from '../persistence/repositories/habit-actions';
-import { appendLedgerEntry, listLedgerEntriesForScope } from '../persistence/repositories/ledger';
+import { appendHabitAction } from '../persistence/repositories/habit-actions';
+import { readBoardPolicyScopes } from '../persistence/repositories/board-policy-evidence';
+import { readAffectedBonusEvidence } from '../persistence/repositories/bonus-evidence';
+import { appendLedgerEntry } from '../persistence/repositories/ledger';
 import { appendOutbox } from '../persistence/repositories/support';
 import type { CoinLedgerRow } from './coin-ledger';
 import { reconcileCheckCoins } from './coin-reconciliation';
 import type { CheckCoinScope } from './coins';
 import type { CommandContext, CommandDeps } from './command-context';
+import { reconcileBonusCoins } from './bonus-reconciliation';
+import type { BonusCoinScope } from './bonus-coin-causes';
+import { baselineAction, type HabitAction } from './habit-actions';
 
 // callers own the transaction and validate the economic cause before appending.
 export async function appendLocalLedgerEntry(tx: SqlExecutor, row: CoinLedgerRow, now: number): Promise<boolean> {
@@ -14,15 +19,47 @@ export async function appendLocalLedgerEntry(tx: SqlExecutor, row: CoinLedgerRow
   return inserted;
 }
 
-// settlement shares the writer's exclusive transaction; any failure rolls it back.
-export async function settleCheckCoinScope(
+// every source fact is present before settlement; all effects share the caller's transaction.
+export async function settleAffectedCoinScopes(
   deps: Pick<CommandDeps, 'hashing'>,
   context: Pick<CommandContext, 'tx' | 'now'>,
-  scope: CheckCoinScope,
-) {
-  const actions = await listHabitActions(context.tx, scope.boardId, scope.logicalDate);
-  const rows = await listLedgerEntriesForScope(context.tx, `check:${scope.boardId}:${scope.logicalDate}`);
-  const result = await reconcileCheckCoins(scope, actions, rows, deps.hashing);
-  for (const row of result.appendedRows) await appendLocalLedgerEntry(context.tx, row, context.now);
-  return result;
+  input: { checkScopes: readonly CheckCoinScope[]; rootScopes?: readonly BonusCoinScope[] },
+): Promise<void> {
+  const scopes = new Map(input.checkScopes.map(({ boardId, logicalDate }) =>
+    [`check:${boardId}:${logicalDate}`, { boardId, logicalDate }]));
+  const groups = await readAffectedBonusEvidence(context.tx, deps.hashing, { checkScopes: [...scopes.values()], rootScopes: input.rootScopes });
+  const baselines = new Map<string, HabitAction>();
+  for (const group of groups) {
+    for (const check of group.legacyChecks) {
+      const key = `${check.boardId}:${check.logicalDate}:${check.id}`;
+      let action = baselines.get(key);
+      if (!action) {
+        action = await baselineAction(check, deps.hashing);
+        await appendHabitAction(context.tx, action);
+        await appendOutbox(context.tx, 'habit_action', action.id, action.mutationStamp, context.now);
+        baselines.set(key, action);
+      }
+      group.actions.push(action);
+    }
+  }
+  if (scopes.size > 0) {
+    const evidence = await readBoardPolicyScopes(context.tx, [...scopes.values()]);
+    const actions = new Map<string, HabitAction[]>();
+    const rows = new Map<string, CoinLedgerRow[]>();
+    for (const action of evidence.actions) {
+      const key = `check:${action.boardId}:${action.logicalDate}`;
+      const group = actions.get(key) ?? []; group.push(action); actions.set(key, group);
+    }
+    for (const row of evidence.rows) {
+      const group = rows.get(row.scopeKey!) ?? []; group.push(row); rows.set(row.scopeKey!, group);
+    }
+    for (const [key, scope] of scopes) {
+      const result = await reconcileCheckCoins(scope, actions.get(key) ?? [], rows.get(key) ?? [], deps.hashing);
+      for (const row of result.appendedRows) await appendLocalLedgerEntry(context.tx, row, context.now);
+    }
+  }
+  for (const group of groups) {
+    const result = await reconcileBonusCoins(group.scope, group.actions, group.rows, deps.hashing);
+    for (const row of result.appendedRows) await appendLocalLedgerEntry(context.tx, row, context.now);
+  }
 }

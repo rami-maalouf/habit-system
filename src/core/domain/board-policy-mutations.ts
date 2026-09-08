@@ -1,13 +1,12 @@
 import { createEconomicDayCloseResolver } from '../calendar/economic-day-close';
 import { currentLogicalDate } from '../calendar/logical-date';
 import { listUndeletedBoards } from '../persistence/repositories/boards';
-import { readBoardPolicyPeriods, readBoardPolicyScopes, readOpenBoardPolicyDates } from '../persistence/repositories/board-policy-evidence';
+import { readBoardPolicyPeriods, readOpenBoardPolicyDates } from '../persistence/repositories/board-policy-evidence';
 import { appendHabitAction } from '../persistence/repositories/habit-actions';
 import { appendOutbox } from '../persistence/repositories/support';
 import { planCoinPolicyEmission, type CoinPolicyDraft } from './coin-policy-emission';
 import type { CoinPolicyBoard } from './coin-policy-capture';
-import { reconcileCheckCoins } from './coin-reconciliation';
-import { appendLocalLedgerEntry } from './coin-settlement';
+import { settleAffectedCoinScopes } from './coin-settlement';
 import type { CommandContext, CommandDeps } from './command-context';
 import type { HabitAction } from './habit-actions';
 import type { BoardId, CommandId, HabitActionId, LogicalDate } from './ids';
@@ -94,18 +93,5 @@ export async function appendBoardPolicies(
   }
   for (const scope of additionalScopes) scopes.set(`check:${scope.boardId}:${scope.logicalDate}`, scope);
   if (scopes.size === 0) return;
-  const evidence = await readBoardPolicyScopes(context.tx, [...scopes.values()]);
-  const actions = new Map<string, HabitAction[]>();
-  const rows = new Map<string, typeof evidence.rows>();
-  for (const action of evidence.actions) {
-    const key = `check:${action.boardId}:${action.logicalDate}`;
-    const group = actions.get(key) ?? []; group.push(action); actions.set(key, group);
-  }
-  for (const row of evidence.rows) {
-    const group = rows.get(row.scopeKey!) ?? []; group.push(row); rows.set(row.scopeKey!, group);
-  }
-  for (const [key, scope] of scopes) {
-    const result = await reconcileCheckCoins(scope, actions.get(key)!, rows.get(key) ?? [], deps.hashing);
-    for (const row of result.appendedRows) await appendLocalLedgerEntry(context.tx, row, context.now);
-  }
+  await settleAffectedCoinScopes(deps, context, { checkScopes: [...scopes.values()] });
 }

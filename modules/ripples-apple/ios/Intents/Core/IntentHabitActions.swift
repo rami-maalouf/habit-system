@@ -56,7 +56,7 @@ struct IntentHabitAction: Codable, Equatable, Sendable {
     return active.max { $0.value < $1.value }?.key
   }
 
-  @discardableResult func append(to database: IntentDatabase) throws -> Bool {
+  @discardableResult func append(to database: IntentDatabase, enqueueAt: Int64? = nil) throws -> Bool {
     try validate()
     let row: [String: IntentSQLValue] = ["id": .text(id), "command_id": .string(commandId),
       "board_id": .text(boardId), "logical_date": .text(logicalDate), "check_in_id": .string(checkInId),
@@ -71,7 +71,7 @@ struct IntentHabitAction: Codable, Equatable, Sendable {
       """, [.text(id), .string(commandId), .text(boardId), .text(logicalDate), .string(checkInId), .text(kind),
              .integer(createdAt), .text(mutationStamp), .string(policyJson)])
     try database.run("INSERT INTO mutation_outbox (entity_type, entity_id, mutation_stamp, created_at) VALUES ('habit_action', ?, ?, ?)",
-      [.text(id), .text(mutationStamp), .integer(createdAt)])
+      [.text(id), .text(mutationStamp), .integer(enqueueAt ?? createdAt)])
     return true
   }
 

@@ -34,7 +34,31 @@ enum IntentCoinStore {
     return result
   }
 
-  private static func action(_ row: [String: IntentSQLValue]) throws -> IntentHabitAction {
+  static func settleAffected(checkScopes: [IntentBonusEvidence.CheckScope], rootScopes: [IntentBonusEvidence.Scope] = [],
+    database: IntentDatabase, enqueueAt: Int64) throws {
+    var groups = try IntentBonusEvidence.read(database: database, checkScopes: checkScopes, rootScopes: rootScopes)
+    var baselines: [IntentBonusEvidence.LegacyCheck: IntentHabitAction] = [:]
+    for index in groups.indices {
+      for check in groups[index].legacyChecks {
+        if baselines[check] == nil {
+          let baseline = try IntentHabitAction.baseline(checkInId: check.id, boardId: check.boardId, date: check.logicalDate)
+          try baseline.append(to: database, enqueueAt: enqueueAt)
+          baselines[check] = baseline
+        }
+        groups[index].actions.append(baselines[check]!)
+      }
+    }
+    for scope in Set(checkScopes).sorted(by: { [$0.boardId, $0.logicalDate].lexicographicallyPrecedes([$1.boardId, $1.logicalDate]) }) {
+      _ = try settleCheck(boardId: scope.boardId, logicalDate: scope.logicalDate, database: database, enqueueAt: enqueueAt)
+    }
+    for group in groups {
+      let result = try IntentCoinReconciliation.reconcileBonus(rootId: group.scope.rootId, logicalDate: group.scope.logicalDate,
+        actions: group.actions, rows: group.rows)
+      for row in result.appendedRows { try append(row, to: database, enqueueAt: enqueueAt) }
+    }
+  }
+
+  static func action(_ row: [String: IntentSQLValue]) throws -> IntentHabitAction {
     let row = IntentCoinSQL(row)
     let action = try IntentHabitAction(id: row.string("id"), commandId: row.optionalString("command_id"),
       boardId: row.string("board_id"), logicalDate: row.string("logical_date"), checkInId: row.optionalString("check_in_id"),
@@ -44,7 +68,7 @@ enum IntentCoinStore {
     return action
   }
 
-  private static func ledger(_ row: [String: IntentSQLValue]) throws -> IntentCoinLedgerRow {
+  static func ledger(_ row: [String: IntentSQLValue]) throws -> IntentCoinLedgerRow {
     let row = IntentCoinSQL(row)
     let entry = try IntentCoinLedgerRow(id: row.string("id"), kind: row.string("kind"), delta: row.integer("delta"),
       boardId: row.optionalString("board_id"), checkInId: row.optionalString("check_in_id"), runKey: row.optionalString("run_key"),

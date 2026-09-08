@@ -2,6 +2,78 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T16 - same-day bonus settlement and restoration (2026-09-08)
+
+1. Pure TS and Swift replay award one net bonus for an exact structural-root/date
+   scope. A genuine incomplete-to-complete transition earns; timely removal of
+   the last check on an original required board reverses; fresh completion
+   restores through another immutable row. Adjacent dates never combine.
+   Policy changes, baselines and date moves do not mint rewards. Held bonuses
+   retain their original required set and close, including consumed-token
+   witnesses across delayed, repeated and late removals.
+2. Existing bonus rows are validated against their own source and candidate
+   root policy before final-union entitlement is evaluated. Missing causes defer;
+   known disabled, mismatched or malformed causes fail. Each correction proof
+   carries its own complete evidence. A narrow reconciliation core now serves
+   check and bonus wrappers without changing existing check identities.
+   Literal shared fixtures pin one encoding, 38 replay, 12 reconciliation and
+   28 failure cases; independent probes cover 164 valid prefixes and fixed points.
+3. Both persistence readers discover historical scopes from exact stored dates,
+   root observers and reverse membership, including former and rootless members.
+   They expand immutable dependencies in bounded visited batches and retain
+   missing-policy source evidence. The 4,096-fact limit applies per scope,
+   including pending legacy baselines; multiple small scopes are not rejected
+   by an aggregate command limit. Private check notes and amounts never enter
+   economic query parameters or baseline payloads.
+4. Schema 9 adds the exact-date/kind action index, checksum `421ece28`, with the
+   matching Swift gate. Migrations 1-8 remain unchanged. Real schema-8 fixtures
+   and three injected failures prove complete preservation, rollback and retry.
+   Exact Expo SQLite 3.50.3 host measurements reduce a stress query from 321,842
+   scanned actions to 292 date matches, median 37.730 ms to 0.197 ms. These are
+   host query measurements, not claimed device latency. Rewards and alerts are
+   now planned as schemas 10 and 11.
+5. All live app and native writers settle check and affected bonus scopes in
+   their acquired transaction after source facts and before receipts/widgets.
+   Shared legacy tokens seed once without earning. Baseline source time remains
+   zero while local outbox time uses the acquired command time in both runtimes.
+   App scope reads remain bounded at 12 for both two-member/one-date and
+   33-member/20-date policy mutations. Receipt/no-op paths bypass settlement;
+   source, ledger, outbox and receipt failures roll back together.
+6. Non-author reviews approve migration, readers, pure logic and all writer
+   changes. Review found and fixed known-invalid cause classification, repeated
+   candidate hashing and private structural-typing metadata transport, with
+   reproduced regression tests. Candidate caches are confined to each evidence
+   set, including proof subsets. A 300-award native host probe improves from
+   8.360 s to 0.145 s without changing canonical output.
+7. Final `bun run validate` exits 0: 103 suites / 1,619 tests, global coverage
+   97.68/96.43/95.78/97.95 and all 70 core files at 100 percent. Native gates pass
+   9 plugin and 131 Swift tests. `git diff --check` passes. Evidence lives under
+   `.artifacts/t16/`, including main gate logs and independent review reports.
+8. UTF-8 CocoaPods regeneration includes all three new native sources. The
+   generic simulator build succeeds; inherited Expo dev-launcher dependency
+   and duplicate `-lc++` warnings remain recorded for final closure. A separate
+   development-signed copy preserves executable sections, entitlements and
+   App Intents metadata and passes deep-strict/team verification.
+
+9. Non-author actual Migration QA proves schema 8-to-9 in-place preservation,
+   normal-form linked Daily creation, app-first/native-final completion,
+   actual Shortcuts removal and recheck, read-only Today, and app off/on with
+   note confirmation. Cancel preserves the entire database; confirming removal
+   reverses the individual coin and bonus, and genuine recheck restores both.
+   Public controlled-date commands prove Sep 6 plus Sep 7 earns no bonus, while
+   completing Sep 7 earns exactly one. Native receipt replay through the app
+   returns the identical result without changing the database hash.
+10. Final QA retains every original 27 boards / 65 checks / 85 actions / 10
+   ledger rows exactly. Four synthetic boards and their acceptance actions
+   leave 31 boards / 72 checks / 98 actions / 22 ledger rows / 308 receipts /
+   314 outbox rows. The cold console has zero entries; all 16 installed native
+   executable copies match the signed candidate. Final backup SHA-256 is
+   `b69ee761028303937690d5a850e5cf37720e1efbc9c48a6bbacf32ceef2756e2`.
+   Relevant screenshots pass visual review. Fork/Shortcuts and scoped Argent
+   services are stopped and all owned QA simulators are shut down. Evidence:
+   `.artifacts/t16/qa/`. This is simulator/Shortcuts proof; real CloudKit peer
+   convergence remains the explicit T19 gate.
+
 ### T15 - coin evidence foundations and writer integration (2026-09-08)
 
 1. The first bounded foundation adds schema 8, immutable ledger storage and

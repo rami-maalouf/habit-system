@@ -8,8 +8,8 @@ final class IntentExecutor {
 
   // native code never migrates. the fixture test compares these checksums
   // with the authoritative typescript migrations before executing cases.
-  static let schemaVersion = 8
-  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b", 7: "a901fb95", 8: "14ff0dae"]
+  static let schemaVersion = 9
+  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b", 7: "a901fb95", 8: "14ff0dae", 9: "421ece28"]
 
   init(database: IntentDatabase, now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
        zone: @escaping () -> String = { TimeZone.current.identifier },
@@ -98,7 +98,7 @@ final class IntentExecutor {
         Double(try IntentCalendar.calendar(zone: zone).timeZone.secondsFromGMT(for: Date(timeIntervalSince1970: date / 1000))) / 60
       }
       let policy = try self.captureCoinPolicy(boardId: board.id, date: date, zone: zone)
-      try self.ensureBaselines(boardId: board.id, date: date)
+      try self.ensureBaselines(boardId: board.id, date: date, enqueueAt: Int64(instant))
       let stamp = clock.advance(now: Int64(instant))
       let id = self.uuid()
       try self.database.run("""
@@ -111,7 +111,7 @@ final class IntentExecutor {
       try self.appendOutbox(id: id, stamp: stamp, instant: instant)
       try self.appendAction(commandId: input.commandId, boardId: board.id, date: date, checkInId: id,
                             kind: "check", stamp: stamp, instant: instant, policyJson: policy)
-      _ = try IntentCoinStore.settleCheck(boardId: board.id, logicalDate: date, database: self.database, enqueueAt: Int64(instant))
+      try IntentCoinStore.settleAffected(checkScopes: [.init(boardId: board.id, logicalDate: date)], database: self.database, enqueueAt: Int64(instant))
       try self.rebuildWidgets(instant: instant, zone: zone)
       return .success(IntentCreatedCheckIn(checkInId: id, logicalDate: date))
     }
@@ -165,7 +165,7 @@ final class IntentExecutor {
         return .failure(IntentFailure(code: "conflict", message: "The check-ins changed. Run the shortcut again to review them."))
       }
       let policy = try self.captureCoinPolicy(boardId: board.id, date: date, zone: zone)
-      try self.ensureBaselines(boardId: board.id, date: date)
+      try self.ensureBaselines(boardId: board.id, date: date, enqueueAt: Int64(instant))
       let stamp = clock.advance(now: Int64(instant))
       for id in ids {
         try self.database.run("UPDATE check_ins SET deleted_at = ?, updated_at = ?, mutation_stamp = ? WHERE id = ?",
@@ -174,7 +174,7 @@ final class IntentExecutor {
       }
       try self.appendAction(commandId: commandId, boardId: board.id, date: date,
         checkInId: board.kind == .daily ? nil : id, kind: "uncheck", stamp: stamp, instant: instant, policyJson: policy)
-      _ = try IntentCoinStore.settleCheck(boardId: board.id, logicalDate: date, database: self.database, enqueueAt: Int64(instant))
+      try IntentCoinStore.settleAffected(checkScopes: [.init(boardId: board.id, logicalDate: date)], database: self.database, enqueueAt: Int64(instant))
       try self.rebuildWidgets(instant: instant, zone: zone)
       return .success(IntentRemovedCheckIn(removedCheckInId: id, logicalDate: date, removedCheckInIds: ids))
     }
@@ -319,7 +319,7 @@ final class IntentExecutor {
     return try capture.capture(boardId: boardId, logicalDate: date).canonical()
   }
 
-  private func ensureBaselines(boardId: String, date: String) throws {
+  private func ensureBaselines(boardId: String, date: String, enqueueAt: Int64) throws {
     let evidence = try database.rows("SELECT check_in_id FROM habit_actions WHERE board_id = ? AND logical_date = ?",
       [.text(boardId), .text(date)])
     let known = Set(evidence.compactMap { $0["check_in_id"]?.string })
@@ -330,7 +330,7 @@ final class IntentExecutor {
     for row in rows {
       guard let id = row["id"]?.string else { throw IntentStorageError.unavailable }
       if known.contains(id) { continue }
-      try IntentHabitAction.baseline(checkInId: id, boardId: boardId, date: date).append(to: database)
+      try IntentHabitAction.baseline(checkInId: id, boardId: boardId, date: date).append(to: database, enqueueAt: enqueueAt)
     }
   }
 

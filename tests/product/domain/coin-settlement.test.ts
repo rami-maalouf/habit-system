@@ -1,6 +1,6 @@
 import fixture from '@/core/automations/fixtures/check-coins.json';
 import type { CoinLedgerRow } from '@/core/domain/coin-ledger';
-import { appendLocalLedgerEntry, settleCheckCoinScope } from '@/core/domain/coin-settlement';
+import { appendLocalLedgerEntry, settleAffectedCoinScopes } from '@/core/domain/coin-settlement';
 import type { CheckCoinScope } from '@/core/domain/coins';
 import type { HabitAction } from '@/core/domain/habit-actions';
 import { appendHabitAction } from '@/core/persistence/repositories/habit-actions';
@@ -39,10 +39,14 @@ describe('transactional coin settlement', () => {
     jest.spyOn(h.clock, 'nowUtcMs').mockImplementation(() => { throw new Error('unexpected clock capture'); });
     jest.spyOn(h.clock, 'timeZoneId').mockImplementation(() => { throw new Error('unexpected zone capture'); });
     await h.db.withExclusiveTransactionAsync(async tx => {
-      expect(await settleCheckCoinScope(h.deps, { tx, now }, scope)).toEqual({
-        appendedRows: vector.expectedAppend, target: vector.target, balance: vector.balance,
-      });
-      expect(await settleCheckCoinScope(h.deps, { tx, now }, scope)).toEqual({ appendedRows: [], target: 1, balance: 1 });
+      await settleAffectedCoinScopes(h.deps, { tx, now }, { checkScopes: [scope] });
+      const settled = await snapshot(h);
+      const rows = await listLedgerEntriesForScope(tx, `check:${scope.boardId}:${scope.logicalDate}`);
+      expect(rows).toEqual(expect.arrayContaining([...vector.existingRows, ...vector.expectedAppend]));
+      expect(rows).toHaveLength(vector.existingRows.length + vector.expectedAppend.length);
+      expect(rows.reduce((balance, row) => balance + row.delta, 0)).toBe(vector.balance);
+      await settleAffectedCoinScopes(h.deps, { tx, now }, { checkScopes: [scope] });
+      expect(await snapshot(h)).toEqual(settled);
     });
     expect(await h.db.getAllAsync('SELECT entity_id, mutation_stamp, created_at FROM mutation_outbox')).toEqual(
       vector.expectedAppend.map(row => ({ entity_id: row.id, mutation_stamp: row.mutationStamp, created_at: now })),
@@ -56,8 +60,7 @@ describe('transactional coin settlement', () => {
     await appendHabitAction(h.db, action);
     const before = await snapshot(h);
     await h.db.withExclusiveTransactionAsync(async tx => {
-      expect(await settleCheckCoinScope(h.deps, { tx, now }, { ...scope, logicalDate: '2026-09-07' as never }))
-        .toEqual({ appendedRows: [], target: 0, balance: 0 });
+      await settleAffectedCoinScopes(h.deps, { tx, now }, { checkScopes: [{ ...scope, logicalDate: '2026-09-07' as never }] });
     });
     expect(await snapshot(h)).toEqual(before);
   });
@@ -72,13 +75,16 @@ describe('transactional coin settlement', () => {
     });
     const write = () => h.db.withExclusiveTransactionAsync(async tx => {
       await appendHabitAction(tx, action);
-      return settleCheckCoinScope(h.deps, { tx, now }, scope);
+      return settleAffectedCoinScopes(h.deps, { tx, now }, { checkScopes: [scope] });
     });
     await expect(write()).rejects.toThrow('simulated disk failure');
     expect(await snapshot(h)).toEqual(before);
     failure.mockRestore();
-    expect(await write()).toMatchObject({ target: 1, balance: 1, appendedRows: fixture.cases[0].ordinaryRows });
-    expect(await write()).toEqual({ appendedRows: [], target: 1, balance: 1 });
+    await write();
+    expect(await listLedgerEntriesForScope(h.db, `check:${scope.boardId}:${scope.logicalDate}`)).toEqual(fixture.cases[0].ordinaryRows);
+    const settled = await snapshot(h);
+    await write();
+    expect(await snapshot(h)).toEqual(settled);
     expect(await h.db.getFirstAsync('SELECT COUNT(*) AS count FROM mutation_outbox')).toEqual({ count: 1 });
   });
 });
