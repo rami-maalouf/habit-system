@@ -33,6 +33,6 @@ the local native module directory `modules/ripples-apple` and its swift type nam
 - the development fixture `src/testing/fixtures/reference-august-2026.ts`
 - the test suites and coverage gates
 
-## what this fork adds (see the product spec, once written)
+## what this fork adds
 
-a flexible habit list, daily binary habits alongside count habits, and a fully digital earned-reward economy. ripples' spec bans gamification; this fork's spec replaces that rule.
+see `SPEC-habit-system.md`: daily toggle habits beside count habits, atomic-habits stacking through anchors, an append-only coin ledger with a full-stack bonus, user-defined rewards, one never-miss-twice alert, a sample mode, and a one-tap starter stack. ripples' spec bans gamification; the new spec replaces that rule.
