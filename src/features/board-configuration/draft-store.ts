@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-import type { Board } from '@/core/domain/entities';
+import type { Board, BoardKind } from '@/core/domain/entities';
 import { boardPalette, boardSymbolAllowlist } from '@/core/domain/entities';
 import type { BoardId } from '@/core/domain/ids';
 
@@ -18,6 +18,7 @@ export type DraftReminder = {
 export type BoardDraft = {
   boardId: BoardId | null;
   expectedMutationStamp: string | null;
+  kind: BoardKind;
   title: string;
   symbol: string;
   accentHex: string;
@@ -47,6 +48,7 @@ export function newBoardDraft(): BoardDraft {
   return {
     boardId: null,
     expectedMutationStamp: null,
+    kind: 'daily',
     title: '',
     symbol: boardSymbolAllowlist[1],
     accentHex: boardPalette[2].hex,
@@ -66,6 +68,7 @@ export function draftFromBoard(board: Board): BoardDraft {
   return {
     boardId: board.id,
     expectedMutationStamp: board.mutationStamp,
+    kind: board.kind,
     title: board.title,
     symbol: board.symbol,
     accentHex: board.accentHex,

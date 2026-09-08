@@ -2,7 +2,7 @@
 // real package needs native ObservableState). it preserves labels, disabled
 // semantics, and change callbacks so host composition tests stay meaningful.
 // native rendering truth comes from argent on the simulator.
-import type { ReactNode } from 'react';
+import { Children as ReactChildren, isValidElement, type ReactNode } from 'react';
 import {
   Pressable,
   Switch as RNSwitch,
@@ -121,13 +121,19 @@ type PickerProps = Children & {
   testID?: string;
 };
 
-export function Picker({ selectedValue, children, testID }: PickerProps) {
+export function Picker({ selectedValue, onValueChange, enabled = true, children, testID }: PickerProps) {
+  const selected = ReactChildren.toArray(children).find((child) =>
+    isValidElement<PickerItemProps>(child) && child.props.value === selectedValue,
+  );
+  const label = isValidElement<PickerItemProps>(selected) ? selected.props.label : String(selectedValue);
   return (
     <View
       accessible
       accessibilityRole="combobox"
-      accessibilityValue={{ text: String(selectedValue) }}
+      accessibilityValue={{ text: label }}
+      accessibilityState={{ disabled: !enabled }}
       testID={testID}
+      {...{ onValueChange: enabled ? onValueChange : undefined }}
     >
       {children}
     </View>

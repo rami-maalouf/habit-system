@@ -152,11 +152,11 @@ describe('daily commands and action evidence', () => {
   it('replays successful check and edit receipts before validating changed retry notes', async () => {
     const boardId = await makeBoard(h);
     const created = await check(h, boardId);
-    expect(await createCheckIn(h.deps, { commandId: created.commandId, boardId, source: 'app', note: 'x'.repeat(2001) })).toMatchObject({ ok: true, value: { checkInId: created.checkInId, created: true } });
+    expect(await createCheckIn(h.deps, { commandId: created.commandId, boardId, source: 'app', note: 'x'.repeat(10001) })).toMatchObject({ ok: true, value: { checkInId: created.checkInId, created: true } });
     const row = (await getCheckInById(h.db, created.checkInId))!;
     const input = { commandId: h.ids.nextCommandId(), checkInId: row.id, logicalDate: today, expectedMutationStamp: row.mutationStamp, note: 'saved' };
     const edited = await updateCheckIn(h.deps, input);
-    expect(await updateCheckIn(h.deps, { ...input, note: 'x'.repeat(2001) })).toEqual(edited);
+    expect(await updateCheckIn(h.deps, { ...input, note: 'x'.repeat(10001) })).toEqual(edited);
     expect(await listHabitActions(h.db, boardId, today)).toHaveLength(1);
   });
 

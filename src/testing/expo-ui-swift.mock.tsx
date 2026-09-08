@@ -36,6 +36,35 @@ export function Spacer() {
   return <View />;
 }
 
+export function Picker({ label, selection, onSelectionChange, children, testID }: AnyProps & {
+  label?: string;
+  selection?: string | number;
+  onSelectionChange?: (value: string | number) => void;
+}) {
+  const selected = React.Children.toArray(children).find((child) =>
+    React.isValidElement<{ modifiers?: { __tag?: unknown }[] }>(child) &&
+    child.props.modifiers?.some((modifier) => modifier.__tag === selection),
+  );
+  const selectedLabel = React.isValidElement<{ children?: ReactNode }>(selected)
+    ? String(selected.props.children) : String(selection);
+  return (
+    <View
+      accessible
+      accessibilityRole="combobox"
+      accessibilityLabel={label}
+      accessibilityValue={{ text: selectedLabel }}
+      testID={testID}
+      {...{ onSelectionChange }}
+    >
+      {children}
+    </View>
+  );
+}
+
+export function pickerStyle() { return {}; }
+export function frame() { return {}; }
+export function tag(value: string | number) { return { __tag: value }; }
+
 export function Section({ title, children }: AnyProps & { title?: string }) {
   return (
     <View>

@@ -43,6 +43,8 @@ describe('board configuration states', () => {
     await press('create-board');
     await screen.findByTestId('board-title-input');
     fireEvent.changeText(screen.getByTestId('board-title-input'), 'water intake');
+    fireEvent(screen.getByTestId('board-kind-picker'), 'selectionChange', 'count');
+    await settle();
 
     // symbol picker with search narrows the grid and selection closes it
     await press('open-symbol-picker');
@@ -89,6 +91,8 @@ describe('board configuration states', () => {
     await press('create-board');
     await screen.findByTestId('board-title-input');
     fireEvent.changeText(screen.getByTestId('board-title-input'), 'sleep early');
+    fireEvent(screen.getByTestId('board-kind-picker'), 'selectionChange', 'count');
+    await settle();
 
     await press('open-options');
     await screen.findByTestId('track-time-toggle');
@@ -186,6 +190,8 @@ describe('amount and time boards through the ui', () => {
     await press('create-board');
     await screen.findByTestId('board-title-input');
     fireEvent.changeText(screen.getByTestId('board-title-input'), 'run');
+    fireEvent(screen.getByTestId('board-kind-picker'), 'selectionChange', 'count');
+    await settle();
     fireEvent(screen.getByTestId('amounts-toggle'), 'valueChange', true);
     await settle();
     fireEvent.changeText(await screen.findByTestId('unit-input'), 'km');

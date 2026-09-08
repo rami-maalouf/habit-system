@@ -64,7 +64,7 @@ export function BoardOptionsScreen({ expectedBoardId }: { expectedBoardId: Board
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
       >
-        <View
+        {draft.kind === 'count' ? <View
           style={{
             backgroundColor: semanticColor('secondaryGroupedBackground', scheme),
             borderRadius: radius.lg,
@@ -85,7 +85,7 @@ export function BoardOptionsScreen({ expectedBoardId }: { expectedBoardId: Board
           <AppText variant="footnote">
             When disabled, you will not need to enter an exact time for each check-in, only the date.
           </AppText>
-        </View>
+        </View> : null}
 
         <AppText variant="title3" accessibilityRole="header">
           Start of day shift

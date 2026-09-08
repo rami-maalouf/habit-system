@@ -501,6 +501,8 @@ describe('self-review fixes', () => {
     await press('empty-create-board');
     await screen.findByTestId('board-title-input');
     fireEvent.changeText(screen.getByTestId('board-title-input'), 'toggled');
+    fireEvent(screen.getByTestId('board-kind-picker'), 'selectionChange', 'count');
+    await settle();
 
     // enter garbage while amounts are on, then turn amounts off
     fireEvent(screen.getByTestId('amounts-toggle'), 'valueChange', true);

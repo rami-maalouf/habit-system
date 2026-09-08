@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T3 done; T4 next. Revised planning documents were pushed; implementation continues through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T4 done; T5 next. Revised planning documents were pushed; implementation continues through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -34,7 +34,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: schema/entities/ids/action repository, domain validation/commands, check-in repository, Swift executor/gate, domain/native tests. Import/sync integration closes at T19/T20 using the same action/state rules.
   - Depends on: T2.
 
-- [ ] **T4: Board form Kind control**
+- [x] **T4: Board form Kind control**
   - Acceptance: Create/Edit offers Daily and Count; new forms default Daily. Daily hides Track Amounts, Unit, Quick Amount, and Track Time; preview and saved state reflect kind. Editing an existing Count board preserves its kind.
   - Verify: accessible form tests, save/reopen, both simulator states.
   - Ownership scope: board form/state and feature tests.

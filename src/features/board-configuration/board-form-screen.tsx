@@ -21,6 +21,7 @@ import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import { getBoardIcon } from '../boards/board-icon-catalog';
 import { BoardIconPicker } from './board-icon-picker';
+import { BoardKindPicker } from './board-kind-picker';
 import type { BoardDraft } from './draft-store';
 import {
   draftFromBoard,
@@ -39,20 +40,21 @@ function parseQuickAmount(text: string): number | null {
 
 function draftToCommandFields(draft: BoardDraft) {
   return {
+    kind: draft.kind,
     title: draft.title,
     symbol: draft.symbol,
     accentHex: draft.accentHex,
     usesTintedBackground: draft.usesTintedBackground,
-    tracksAmount: draft.tracksAmount,
+    tracksAmount: draft.kind === 'count' && draft.tracksAmount,
     // with amounts off the fields are omitted entirely: stale hidden text
     // neither blocks the save nor overwrites the retained configuration
-    ...(draft.tracksAmount
+    ...(draft.kind === 'count' && draft.tracksAmount
       ? {
           amountUnit: draft.amountUnit.trim().length > 0 ? draft.amountUnit : null,
           quickAmount: parseQuickAmount(draft.quickAmountText) ?? -1,
         }
       : {}),
-    tracksTime: draft.tracksTime,
+    tracksTime: draft.kind === 'count' && draft.tracksTime,
     startOfDayMinute: draft.startOfDayMinute,
     metricsEnabled: draft.metricsEnabled,
   };
@@ -413,11 +415,16 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         <FormRow>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <BoardSymbol symbol={draft.symbol} color={colors.accent} testID="board-symbol-preview" />
-            <AppText variant="headline" numberOfLines={1} style={{ flexShrink: 1 }} selectable={false}>
-              {draft.title.trim().length === 0 ? 'New board' : draft.title}
-            </AppText>
+            <View style={{ flexShrink: 1 }}>
+              <AppText variant="headline" numberOfLines={1} selectable={false}>
+                {draft.title.trim().length === 0 ? 'New board' : draft.title}
+              </AppText>
+              <AppText variant="footnote" testID="board-kind-preview">
+                {draft.kind === 'daily' ? 'Daily habit' : 'Count board'}
+              </AppText>
+            </View>
             <View style={{ flex: 1 }} />
-            <SevenDayStrip strip={[0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1]} colors={colors} barHeight={22} barWidth={4} barGap={3} />
+            <SevenDayStrip strip={draft.kind === 'daily' ? [0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1] : [0, 1, 0, 2, 3, 0, 1, 2, 0, 1, 4, 2, 0, 3]} colors={colors} barHeight={22} barWidth={4} barGap={3} />
           </View>
         </FormRow>
 
@@ -511,6 +518,13 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         </FormRow>
 
         <FormRow>
+          <BoardKindPicker kind={draft.kind} onChange={(kind) => updateDraft({ kind })} />
+          <AppText variant="footnote">
+            {draft.kind === 'daily' ? 'Mark each day complete once.' : 'Record each check-in, with optional amounts and times.'}
+          </AppText>
+        </FormRow>
+
+        {draft.kind === 'count' ? <FormRow>
           <ToggleRow
             label="Track Amounts"
             value={draft.tracksAmount}
@@ -544,7 +558,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
               />
             </View>
           ) : null}
-        </FormRow>
+        </FormRow> : null}
 
         <FormRow>
           {editing && boardId ? (

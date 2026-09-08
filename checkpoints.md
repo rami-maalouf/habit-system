@@ -2,6 +2,34 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T4 - Daily and Count board forms (2026-09-08)
+
+1. New forms default to Daily; edit forms retain the stored kind. Daily hides amount,
+   unit, quick-amount, and time controls. Switching kinds before saving retains unsaved
+   Count settings. Hidden invalid values cannot block a Daily save. Preview reflects kind.
+2. The iOS form uses the installed SDK 57 SwiftUI picker with its native Kind label.
+   Simulator accessibility reports "Kind, Daily". The generic picker remains compatible
+   with other platform exports; iOS is the product acceptance platform for this task.
+3. Four routed feature tests cover defaults, both saved kinds, conversion with preserved
+   history, and reversible draft changes through Options. Existing amount/time tests now
+   explicitly select Count. A prior receipt test now uses a note beyond the actual
+   10,000-character limit, so it proves replay precedes invalid retry input validation.
+4. Final gates: `bun run validate` exit 0, 51 suites and 660 tests, global coverage
+   97.59/95.8/95.61/97.67, all 40 core files at 100 percent on all four metrics. Native:
+   9 plugin and 64 Swift tests pass. Lint, typecheck, and diff hygiene are clean.
+   Independent source/test review approved; its mock import warning was corrected.
+5. Simulator QA independently created and reopened a Daily board, verified hidden controls,
+   converted the original two-check Count board to Daily and back, and compared both
+   complete historical records byte-for-byte after each save. Conversion created the two
+   deterministic baseline actions. Light/dark forms and native picker menu are clean.
+6. Evidence under `.artifacts/t4/`: `validate.log`, `native.log`, `daily-form-light.png`,
+   `daily-form-dark.png`, `daily-options-light.png`, `kind-menu-dark.png`,
+   `converted-history-dark.png`, `cold-history-dark.png`, and `final-db.jsonl`.
+   Three transient native animation cleanup warnings did not recur on a cold repeat;
+   `cold-history-log.json` contains zero entries. Logs were not suppressed. Resetting only
+   this fork's Watchman watch cleared a stale recrawl warning; the focused form suite then
+   passed without it. Ripples Metro and user devices remained untouched.
+
 ### T3 - immutable action evidence and atomic Daily commands (2026-09-08)
 
 1. Migration 7 adds immutable `habit_actions`, scope indexing, and guards against update,
