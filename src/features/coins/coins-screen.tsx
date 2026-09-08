@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { Icon } from '@/components/foundation/icon';
@@ -10,6 +10,7 @@ import { radius, radiusCurve, semanticColor, semanticFallbacks, spacing } from '
 import { useProductQuery } from '../product-store';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { coinAmountLabel } from './history-presentation';
+import { RewardsList } from '../rewards/rewards-list';
 
 export function CoinsScreen() {
   const router = useRouter();
@@ -25,8 +26,7 @@ export function CoinsScreen() {
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: semanticColor('groupedBackground', scheme) }}>
       <Stack.Screen options={{ title: 'Coins', scrollEdgeEffects: { top: scrollReady ? 'soft' : 'automatic' } }} />
-      <ScrollView testID="coins-screen" onLayout={() => setScrollReady(true)} contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, flexGrow: 1 }}>
+      <RewardsList onLayout={() => setScrollReady(true)} header={<View style={{ gap: spacing.lg }}>
         {totals.status === 'loading' ? <AppText testID="coins-loading">Loading coins...</AppText>
           : totals.status === 'error' ? <View style={{ gap: spacing.md }}>
             <InlineError message={totals.error.message} testID="coins-error" />
@@ -60,11 +60,7 @@ export function CoinsScreen() {
           <AppText variant="headline" style={{ flexShrink: 1 }}>Coin History</AppText>
           <Icon name="chevronRight" color={semanticFallbacks.secondaryLabel[scheme]} />
         </ProductPressable>
-        <View testID="coins-rewards-placeholder" style={card}>
-          <AppText variant="title2" accessibilityRole="header">Rewards</AppText>
-          <AppText style={secondary}>Reward creation and claiming are coming next.</AppText>
-        </View>
-      </ScrollView>
+      </View>} />
     </View>
   );
 }

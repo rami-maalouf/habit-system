@@ -2276,7 +2276,7 @@ none can be built or verified without a signed Apple Developer team:
    A separately disclosed picker-selection mistake checked the prior synthetic
    T17 board; targeted public Undo reversed only that new check and retained
    its award/reversal pair. Both pairs net to zero and all older rows stay exact.
-7. Final cold Home shows balance 8 with zero captured runtime entries. Owned
+7. T18a/b final cold Home shows balance 8 with zero captured runtime entries. Owned
    apps/services are stopped and QA is shut down. The final database is schema
    10 with 33 boards, 75 checks, 105 actions, 28 ledger rows, 337 receipts and
    338 outbox rows. Its SHA256 is
@@ -2284,6 +2284,51 @@ none can be built or verified without a signed Apple Developer team:
    Evidence: `.artifacts/t18/qa/qa-proof.md`, `verification.json`, `verify.py`,
    `after-shutdown.db`; source, schema and independent core acceptance plus
    aggregate/native/build logs are in `.artifacts/t18/`.
-8. T18a/b is complete. T18c will replace the temporary Rewards placeholder with
-   normal forms, active/archived lists and the guarded confirmation/retry flow,
-   then verify the complete user path before marking T18 done.
+8. T18c replaces the placeholder with one virtualized active/archived reward
+   list, accessible separate Edit/Claim targets, ordering controls and native
+   new/edit routes. Forms preserve Unicode titles, integer cost drafts and
+   custom colors, with dirty-discard and conflict/reload handling. Metadata
+   attempts retain their exact command and inputs across uncertain results.
+   A transient read failure preserves unsaved fields; a terminal source read
+   still permits replay of an already submitted update/delete receipt.
+9. Claim state belongs to the product core, so duplicate taps, other rows and
+   route changes cannot submit a competing attempt. Blur retires unsubmitted
+   previews/confirmations; a submitted or uncertain claim retains its original
+   command and reward stamp. Replay does not create a fresh preview or debit,
+   including after reward deletion. Settlement invalidates current totals even
+   when the originating view has left. Twenty-nine new routed cases exercise
+   normal flows, conflicting edits, query freshness, cancellation, actual lost
+   committed responses and exact receipt/table equality.
+10. Native testing reproduced White row/form contrast, keyboard-covered custom
+    color entry and invalid draft colors reaching native glyphs. Bounded fixes
+    use semantic Claim text, saved-accent tiles with readable glyphs, validated
+    display colors while preserving raw drafts, and documented keyboard insets.
+    Each failure is retained beside its regression and native passing evidence.
+    Full validation passes 116 suites / 1,769 tests, global coverage
+    97.30/95.73/95.85/97.93, all 77 core files at 100 percent, and the separate
+    noncore branch gate at 90.06 percent. Native sources remain unchanged from
+    the passing 9-plugin/131-Swift gate. Independent reviews cover source,
+    failure/retry oracles and actual visual corrections.
+11. T18c actual form/claim/archive/restore/delete flows pass on the signed
+    simulator. Cancel and invalid draft discard preserve every table. One
+    confirmed cost-three claim produces the only new ledger row, -3; Home and
+    Coins show earned 18, spent 13, balance 5. A saved cost of 100000 refuses an
+    unaffordable claim and remains fully readable with large text/keyboard.
+    Deletion preserves the original claim title/cost; exact public replay after
+    deletion returns the original receipt without any database change. All
+    prior 28 ledger rows and prior boards/checks/actions/periods remain exact.
+    Final schema 10 has 33 boards, 75 checks, 105 actions, 29 ledger rows, one
+    tombstoned reward, 356 receipts and 345 outbox rows. The stopped backup SHA256
+    is `cb0bc70d2833b358ab6d3355719d9373df9c995e074e893333ef8e4fd2b1907b`.
+    All 16 source hashes and 20 installed Mach-O hashes match; deep strict signing
+    verification passes. Evidence and reproducible verifier are packaged under
+    `.artifacts/t18/ui-qa/`; root reran the packaged verifier successfully.
+12. The final cold Home/Coins/Home run has zero runtime entries and all owned QA
+    devices are shut down. The full interactive log retains four
+    `onAnimatedValueUpdate` listener warnings during archived-form navigation.
+    Source review finds no app-owned Animated values/listeners and identifies
+    a compatible React Native/native-stack listener-removal race, but the logs
+    do not prove the exact native producer. No actionable T18 source defect or
+    justified suppression was found. T24 retains this specific diagnostic
+    investigation and final-runtime follow-up. T18 is complete; sync/export
+    integration and release compatibility remain T19/T20 and Checkpoint C.

@@ -58,6 +58,8 @@ export default function RootLayout() {
           <Stack.Screen name="stacks/[rootId]" options={scrollingHeader} />
           <Stack.Screen name="coins/index" options={scrollingHeader} />
           <Stack.Screen name="coins/history" options={scrollingHeader} />
+          <Stack.Screen name="coins/rewards/new" options={sheet} />
+          <Stack.Screen name="coins/rewards/[rewardId]" options={sheet} />
           <Stack.Screen name="boards/[boardId]/index" options={scrollingHeader} />
           <Stack.Screen name="boards/new" options={sheet} />
           <Stack.Screen name="boards/[boardId]/edit" options={sheet} />

@@ -37,7 +37,8 @@ describe('Coins routes', () => {
     expect(await screen.findByTestId('coins-balance')).toHaveTextContent('0');
     expect(screen.getByTestId('coins-earned')).toHaveTextContent('0');
     expect(screen.getByTestId('coins-spent')).toHaveTextContent('0');
-    expect(screen.getByTestId('coins-rewards-placeholder')).toBeOnTheScreen();
+    expect(await screen.findByTestId('rewards-empty')).toBeOnTheScreen();
+    expect(screen.getByTestId('create-reward')).toBeOnTheScreen();
     await press('coins-history-link');
     expect(screen).toHavePathname('/coins/history');
     expect(await screen.findByTestId('coin-history-empty')).toHaveTextContent('Your coin activity will appear here.', { exact: false });

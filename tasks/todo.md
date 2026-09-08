@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T17 and Checkpoint B are done; T18a/b reward storage and claims is complete; T18c reward screens is next. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T18 and Checkpoint B are done; T19 sync and visibility is next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -142,8 +142,8 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: routes, coin screens/history, home header, feature tests.
   - Depends on: T16.
 
-- [ ] **T18: Schema 10 and rewards**
-  - Status: T18a/b done. Schema 10 and atomic reward commands pass 1,740 tests with all 77 core files at 100 percent, 9 plugin and 131 Swift tests, independent review and preserved in-place migration/native-action QA. T18c forms/list/confirmation is next; reward sync/export remains T19/T20.
+- [x] **T18: Schema 10 and rewards**
+  - Status: done. Storage, atomic claims and routed forms/list/confirmation pass 1,769 tests with all 77 core files at 100 percent, 9 plugin and 131 Swift tests, independent review and preserved signed-simulator evidence. Actual create/claim/refuse/edit/archive/restore/delete and post-delete receipt replay preserve history. Final QA balance is 5 after one -3 claim; reward sync/export remains T19/T20. Four framework animation-listener diagnostics remain an explicit T24 follow-up; no actionable T18 source defect was identified.
   - T18a acceptance: schema 10 adds rewards with branded ids, approved constraints/indexes, and matching Swift gate/checksum. Repository and commands create/update/reorder/archive/delete; ledger rows remain untouched by reward deletion.
   - T18b acceptance: `claimReward` checks balance inside its exclusive transaction, fails below cost, writes immutable debit plus title snapshot, and replays safely. Editing/deleting a reward preserves prior claim cost/title. Distinct offline claims remain accepted after merge even if their combined balance is negative.
   - T18c acceptance: native-style new/edit forms, reward list, empty state, and Claim confirmation showing cost and resulting balance.
@@ -197,6 +197,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
 
 - [ ] **T24: Cosmetic rename and final closure**
   - Acceptance: README describes Habit System; remaining user-visible native/module/widget strings use the new name; internal `ripples` identifiers may remain. No starter stack is introduced. Every current success criterion has honest recorded evidence.
+  - Recorded diagnostics: investigate the React Native `onAnimatedValueUpdate` listener warnings seen during T4 history and T18 archived-form navigation using the retained logs/source review; the exact native producer remains unproven. Resolve actionable causes without blanket suppression and record the final runtime result. Also retain the existing ExpoDevLauncher ambiguous-script build warning until its disposition is verified.
   - Verify: full validation/native gates, doctor, iOS/Android exports, diff hygiene, signed-device and multi-device requirements, and independent final review. Fix discovered regressions rather than weakening gates.
   - Ownership scope: README, app/module display strings, final regression fixes as independently assigned, checkpoints.
   - Depends on: T23.
