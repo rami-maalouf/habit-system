@@ -44,10 +44,18 @@ export function parseLogicalDate(value: LogicalDate | string): {
   return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
 }
 
+// full-year setters preserve years 0-99, which date.utc remaps to 1900-1999.
+function utcInstant(year: number, month: number, day: number, hour: number, minute: number): number {
+  const instant = new Date(0);
+  instant.setUTCFullYear(year, month - 1, day);
+  instant.setUTCHours(hour, minute, 0, 0);
+  return instant.getTime();
+}
+
 // epoch day arithmetic through utc keeps the math pure and dst-free
 function toEpochDay(date: LogicalDate | string): number {
   const { year, month, day } = parseLogicalDate(date);
-  return Date.UTC(year, month - 1, day) / 86400000;
+  return utcInstant(year, month, day, 0, 0) / 86400000;
 }
 
 function fromEpochDay(epochDay: number): LogicalDate {
@@ -108,7 +116,7 @@ export function currentLogicalDate(
 // signed utc offset in minutes observed in a zone at an instant
 export function offsetMinutesAt(utcMs: number, timeZoneId: string): number {
   const local = localWallClock(utcMs, timeZoneId);
-  const asUtc = Date.UTC(local.year, local.month - 1, local.day, local.hour, local.minute);
+  const asUtc = utcInstant(local.year, local.month, local.day, local.hour, local.minute);
   return Math.round((asUtc - truncateToMinute(utcMs)) / 60000);
 }
 

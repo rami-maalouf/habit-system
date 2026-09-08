@@ -2,6 +2,56 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T13 - stack analytics and consistent query snapshots (2026-09-08)
+
+1. Pure stack analytics compute the current run, complete runs in the root's ISO
+   week, current/longest consecutive streaks, exactly 365 stored-date heatmap cells
+   and per-member weekly totals. Empty required sets are unavailable. Daily totals
+   are binary by date; Count totals use live counts. Historical evaluation uses
+   checked-date candidates, not every empty day since an old activity period.
+2. Leaf `stack-queries.ts` exports compact list and detailed root snapshots through
+   the existing read-transaction envelope. Captured now/zone are shared by every
+   read and root horizon. Active members carry raw checked state and eligibility
+   separately, and a nullable time-hint union distinguishes missing configuration
+   from midnight. Archived structural roots retain their shift. Missing/non-root
+   or all-archived detail is unavailable, without silently aliasing its identity.
+3. Relevant components' periods and grouped counts use two scoped bulk reads with
+   one parameterized JSON id array. Empty lists and missing details skip history.
+   A 41-member query still makes four reads, and a 40,001-id parameter case avoids
+   SQLite variable limits. Queries preserve recoverable database failures versus
+   domain validation and make no product writes. UI refresh metadata includes the
+   actual stack root shifts separately from unchanged widget/native deadlines.
+4. The first 16 tests and independent review pass. A separate ordinal-day oracle
+   matches 240 histories, 87,600 heatmap cells and 2,400 member-week comparisons.
+   Tests include a real two-connection WAL snapshot, transaction-queued clock,
+   exact component scope, unavailable-but-checked history, Daily duplicates,
+   multiple root shifts, query recovery and absent-versus-midnight hints.
+5. Actual signed Migration QA confirms SQLite 3.50.3 and `json_each(?)` with 1,600
+   synthetic ids bound as one string. This was a read-only capability probe using
+   the already-ready database: no habit data, startup, commands or app/device
+   changes. Scoped debugger logs are empty. Evidence:
+   `.artifacts/t13/qa/sqlite-json-proof.md` and `sqlite-json-proof.json`.
+6. Initial full validation passed: 73 suites / 969 tests, all 49 core files at
+   100 percent, native 9 plugin / 74 Swift tests. Before commit, the author found
+   an inherited early-year arithmetic defect: valid years 0000 through 0099 are
+   remapped by Date.UTC, corrupting historical streaks. Independent review also
+   reproduced an invalid UTC offset through an accepted AD-year-1 timed input.
+   Five public-path/calendar regressions reproduced these failures before the fix.
+7. One private UTC constructor now uses full-year setters in both day arithmetic
+   and offset calculation. It preserves the existing accepted date range and Intl
+   formatting. Import -> anchor -> stack-detail cases for early AD years now retain
+   consecutive streaks, and a public timed check retains offset zero in UTC.
+   Independent integer-Gregorian verification passes 24,846 arithmetic pairs,
+   5,116 weekday dates and 15 offset comparisons, including leap year zero and
+   year 99 to 100. The existing analytics oracle also stays green.
+8. Final non-author data_contract_review approval covers source, tests, scoped SQL,
+   native JSON capability and the calendar correction. Final `bun run validate`
+   exits 0: 73 suites / 974 tests, global coverage 97.15/95.64/95.45/97.60, all
+   49 core files at 100 percent. Lint/typecheck pass. The unchanged native gate
+   passes 9 plugin and 74 Swift tests. T13 is complete. Evidence:
+   `.artifacts/t13/validate-final.log`, `native.log`, `red-early-year.log`,
+   `early-year.log` and `independent-acceptance.md`. Screen acceptance follows in T14.
+
 ### T12 - same-day stack derivation (2026-09-08)
 
 1. T12a adds pure `deriveStacks` with stable structural roots and root shifts,

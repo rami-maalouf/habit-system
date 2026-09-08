@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T12 are done; T13 analytics is next. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T13 are done; T14 screens are next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -99,7 +99,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: `src/core/domain/stacks.ts`, domain tests, queries/repository inputs needed for activity periods.
   - Depends on: T11.
 
-- [ ] **T13: Stack analytics**
+- [x] **T13: Stack analytics**
   - Acceptance: complete runs by ISO week, current and longest consecutive-date streaks, per-member weekly checks, rolling 365-date heatmap with none/some/most/all and text alternatives. Unavailable/empty-required dates do not become free completions.
   - Verify: domain coverage including unfinished today, historical changes, archived gaps, and informational time edits leaving date membership unchanged.
   - Ownership scope: stack analytics, domain queries, tests.

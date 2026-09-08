@@ -7,8 +7,10 @@ import {
   isValidLogicalDate,
   monthOf,
   parseLogicalDate,
+  startOfIsoWeek,
   toLogicalDate,
 } from '@/core/calendar/logical-date';
+import type { LogicalDate } from '@/core/domain/ids';
 
 describe('logical dates', () => {
   it('formats and validates iso dates', () => {
@@ -34,6 +36,19 @@ describe('logical dates', () => {
     // 2026-08-30 is a sunday, 2026-08-31 a monday
     expect(isoWeekday('2026-08-30' as never)).toBe(7);
     expect(isoWeekday('2026-08-31' as never)).toBe(1);
+  });
+
+  it('preserves accepted years zero through 99 in arithmetic, leap days and ISO weeks', () => {
+    const date = (value: string) => value as LogicalDate;
+    expect(isValidLogicalDate('0000-02-29')).toBe(true);
+    expect(addDays(date('0000-02-28'), 1)).toBe('0000-02-29');
+    expect(addDays(date('0000-02-29'), 1)).toBe('0000-03-01');
+    expect(addDays(date('0001-01-01'), -1)).toBe('0000-12-31');
+    expect(addDays(date('0099-12-31'), 1)).toBe('0100-01-01');
+    expect(daysBetween(date('0000-02-28'), date('0000-03-01'))).toBe(2);
+    expect(daysBetween(date('0099-12-31'), date('0100-01-01'))).toBe(1);
+    expect(isoWeekday(date('0001-01-01'))).toBe(1);
+    expect(startOfIsoWeek(date('0001-01-03'))).toBe('0001-01-01');
   });
 
   it('derives the logical date from the start-of-day shift', () => {

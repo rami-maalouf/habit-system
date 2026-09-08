@@ -63,7 +63,7 @@ export type QueryDeps = {
   clock: Clock;
 };
 
-async function runQuery<Value>(
+export async function runQuery<Value>(
   deps: QueryDeps,
   work: (tx: SqlExecutor, now: number, timeZoneId: string) => Promise<Value>,
 ): Promise<DomainResult<Value>> {
