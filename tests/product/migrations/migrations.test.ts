@@ -125,7 +125,7 @@ describe('migrations', () => {
 describe('cloudkit account binding migration', () => {
   it('keeps the local binding through sync toggles and board deletion without exporting or enqueuing it', async () => {
     const { db, deps, ids } = await createTestHarness();
-    const binding = { provider: 'iCloud.studio.orbitlabs.habittracker', account_digest: 'private-account-digest' };
+    const binding = { provider: 'iCloud.studio.orbitlabs.habitsystem', account_digest: 'private-account-digest' };
     await db.runAsync('INSERT INTO sync_account_bindings VALUES (?, ?)', [binding.provider, binding.account_digest]);
     const created = await createBoard(deps, {
       commandId: ids.nextCommandId(), title: 'test board', symbol: 'star.fill', accentHex: '#78D98B',
@@ -176,13 +176,13 @@ describe('cloudkit account binding migration', () => {
     expect(columns.map(({ name }) => name)).toEqual(['provider', 'account_digest']);
     expect(columns[0].pk).toBe(1);
     expect(columns[1].notnull).toBe(1);
-    await db.runAsync('INSERT INTO sync_account_bindings VALUES (?, ?)', ['iCloud.studio.orbitlabs.habittracker', 'digest-a']);
+    await db.runAsync('INSERT INTO sync_account_bindings VALUES (?, ?)', ['iCloud.studio.orbitlabs.habitsystem', 'digest-a']);
     await expect(db.runAsync('INSERT INTO sync_account_bindings VALUES (?, ?)', [
-      'iCloud.studio.orbitlabs.habittracker', 'digest-b',
+      'iCloud.studio.orbitlabs.habitsystem', 'digest-b',
     ])).rejects.toThrow();
     await migrateDatabase(db);
     expect(await db.getAllAsync('SELECT * FROM sync_account_bindings')).toEqual([
-      { provider: 'iCloud.studio.orbitlabs.habittracker', account_digest: 'digest-a' },
+      { provider: 'iCloud.studio.orbitlabs.habitsystem', account_digest: 'digest-a' },
     ]);
     expect(await db.getAllAsync('SELECT * FROM mutation_outbox')).toEqual([]);
     await db.closeAsync();

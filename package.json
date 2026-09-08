@@ -1,5 +1,5 @@
 {
-  "name": "habit-tracker",
+  "name": "habit-system",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {

@@ -1,5 +1,64 @@
 # Checkpoints
 
+## Habit System (SPEC-habit-system.md) - task checkpoints
+
+### T1 - fork identity and EAS project (2026-09-08)
+
+1. Task id: T1. Acceptance: `app.json` name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`,
+   scheme `habitsystem`, widget kind and display name renamed; CloudKit zone `habit-system`; podspec URLs
+   at `rami-maalouf/habit-system`; new EAS project id in `extra.eas.projectId` and `updates.url`;
+   `package.json` name `habit-system`; FORK.md table marked applied.
+2. Author: Fable 5.1. Independent verifier: Sonnet (two passes, separate instances).
+3. Red first: a new plugin test `app configuration carries the fork identity and never the ripples identity`
+   in `modules/ripples-apple/tests/plugin/config.test.cjs` and a Swift test `testZoneNameIsTheForkZone`
+   in `CloudKitMappingTests.swift` both failed against the Ripples identity before any change.
+4. Files changed: `app.json` (name, slug, scheme, bundle id, `CFBundleDisplayName`, widget group, widget
+   kind `HabitSystemBoards`, widget display name `Habit System`, new EAS project id and updates url;
+   `owner` and `extra.eas.build.experimental.ios.appExtensions` written by `eas init` and prebuild),
+   `package.json`, `modules/ripples-apple/ios/CloudKitTransport.swift` (zone `habit-system`),
+   `modules/ripples-apple/ios/Intents/RipplesAppIntents.swift` (widget kind in UserDefaults keys and
+   `reloadTimelines(ofKind:)`), `modules/ripples-apple/ios/RipplesApple.podspec`,
+   `src/platform/database/index.ts` (`appGroupId`), `src/platform/widgets/ripples-boards-widget.tsx`
+   (`createWidget('HabitSystemBoards')`, `habitsystem://` deep links), Swift and migration test literals,
+   `.agents/prompts/fix-prompt.md`, `.eas/workflows/agent-fix.yml`, `.argent/flows/*`, `e2e/argent/**`,
+   `SPEC-native-foundation.md` (identifier strings only), `SIMULATOR-DEMO-RUNBOOK.md` (only the two
+   current-source lines; the pinned historical dry-run keeps `com.ramimaalouf.habittracker`), `MEMORY.md`,
+   `FORK.md` (table marked applied, `ExpoWidgetsTarget` explained, scope additions recorded).
+5. EAS: `eas init` created `@ramimaalouf/habit-system`, id `07481ea0-9f44-4f24-ad3c-fd889569cade`.
+   The Ripples project `1e477943-...` is no longer referenced anywhere functional.
+6. Gates: plugin config test 9/9; Swift 51/51 (`swift test --package-path modules/ripples-apple`);
+   `bun run validate` exit 0, 45 suites, 570 tests, coverage 97.5/95.5/95.58/97.6, every `src/core` file at
+   100 percent; `bunx expo-doctor` 21/21; lint and typecheck clean.
+7. Build evidence: `bunx expo prebuild --platform ios --clean` then `bunx expo run:ios --device "iPhone 17 Pro"
+   --no-bundler` succeeded on simulator `B47A3DF3-056A-4531-B9FA-8327C7C8A485`. `xcrun simctl listapps` shows
+   `CFBundleIdentifier = studio.orbitlabs.habitsystem`, `CFBundleDisplayName = Habit System`,
+   `CFBundleName = habitsystem`, with Ripples (`studio.orbitlabs.habittracker`, `Ripples`) still installed
+   separately. Generated `ios/ExpoWidgetsTarget/HabitSystemBoards.swift` exists and contains no
+   `RipplesBoards`. Private evidence: `.artifacts/t1/installed-app.txt`, `.artifacts/t1/build.log`,
+   `.artifacts/t1/simulator-after-install.png` (ignored).
+8. First CocoaPods run failed with `Unicode Normalization not appropriate for ASCII-8BIT`: the background
+   shell had `LANG=""`. Re-running with `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` fixed it. Not a project defect.
+9. Independent review, pass 1: FAIL. Blocker: the widget kind `RipplesBoards` was not renamed and the
+   author had narrowed the FORK.md acceptance row to match. Majors: test too weak to catch it; the widget
+   description copy was changed out of scope. Minors: `CFBundleDisplayName` still `Ripples`; `owner` and
+   `appExtensions` undocumented; `ExpoWidgetsTarget` not explained. All six remediated: kind renamed in
+   app.json, TypeScript, and Swift; FORK.md row restored and `ExpoWidgetsTarget` documented as an
+   expo-widgets plugin constant that cannot be renamed without patching the dependency; test now pins the
+   widget kind in all three places, the app-group constant, the zone constant, the podspec URLs, the exact
+   EAS id, both display names, and the exact original widget description; copy reverted; display name set
+   to `Habit System` as a recorded T1 scope addition (two apps labeled Ripples on one phone would make
+   device testing ambiguous).
+10. Independent review, pass 2: PASS WITH NOTES. Verified all six fixes at file:line and confirmed from
+    `node_modules/expo-widgets` that the WidgetKit kind and UserDefaults keys derive from the app.json
+    widget name, so Swift and app.json agree. Notes remediated: the runbook's pinned historical bundle id
+    was restored from HEAD; the test pins the exact EAS id and podspec URLs; a vacuous regex alternative
+    was removed; the MEMORY.md link fix is recorded in FORK.md.
+11. Operational finding: the fork's dev client connected to the user's Metro on 8081, which serves Ripples,
+    and loaded Ripples' JavaScript (dev menu banner read `habit-tracker`). The native shell was correct.
+    Rule recorded in `MEMORY.md`: run the fork's Metro on another port; never point the fork at 8081;
+    never stop 8081.
+12. Checkpoint 0 (fork identity) is met. Next: T2, migration version 6 and entity types.
+
 ## Pre-fork work - 2026-09-07
 
 ### Pre-fork closure - 2026-09-07 (final)

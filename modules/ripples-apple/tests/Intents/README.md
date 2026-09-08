@@ -13,7 +13,7 @@ The tests cover all shared cases plus transaction rollback, separate-connection 
 The iOS wrappers import ExpoSQLite, so their compile check uses the generated CocoaPods workspace. After Expo prebuild and pod install:
 
 ```sh
-xcodebuild -workspace ios/habittracker.xcworkspace -scheme habittracker \
+xcodebuild -workspace ios/habitsystem.xcworkspace -scheme habitsystem \
   -configuration Debug -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .artifacts/native-intents-build CODE_SIGNING_ALLOWED=NO build
 ```

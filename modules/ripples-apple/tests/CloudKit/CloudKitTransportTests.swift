@@ -103,7 +103,7 @@ private actor FakeCloudKitClient: CloudKitClient {
 }
 
 private func transport(_ client: FakeCloudKitClient) -> CloudKitTransport {
-  CloudKitTransport(client: client, containerIdentifier: "iCloud.studio.orbitlabs.habittracker", accountBinding: client.binding)
+  CloudKitTransport(client: client, containerIdentifier: "iCloud.studio.orbitlabs.habitsystem", accountBinding: client.binding)
 }
 
 private func renamed(_ record: CloudKitWireRecord, _ id: String) -> CloudKitWireRecord {

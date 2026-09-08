@@ -1,19 +1,19 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: awaiting approval; no task started.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami 2026-09-08. T1 done; T2 next.
 
 Definition of done for every task: tests first, `bun run validate` exit 0, `src/core` at 100 percent, Argent evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry, lowercase conventional commit without co-author lines.
 
 ## Phase 0: fork identity
 
-- [ ] **T1: Apply fork identifiers and create the EAS project**
+- [x] **T1: Apply fork identifiers and create the EAS project** (done 2026-09-08, see checkpoints.md)
   - Acceptance: `app.json` name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, scheme `habitsystem`, widget name and display name renamed; `CloudKitTransport.swift` zone `habit-system`; podspec URLs point at `rami-maalouf/habit-system`; `extra.eas.projectId` and `updates.url` come from a new `eas init`; `package.json` name `habit-system`; FORK.md table marked applied.
   - Verify: `bun run test:native:config`; `bunx expo-doctor`; `bunx expo prebuild --platform ios --clean` then `bunx expo run:ios`; the built app's bundle id is the new one; `git status` shows no generated `ios/`.
   - Files: `app.json`, `package.json`, `modules/ripples-apple/ios/CloudKitTransport.swift`, `modules/ripples-apple/ios/RipplesApple.podspec`, `modules/ripples-apple/tests/plugin/config.test.cjs`, `FORK.md`.
   - Depends on: none. Size: M.
 
 ### Checkpoint 0
-- [ ] Simulator build runs under the new identifiers; plugin tests and doctor pass; entry in `checkpoints.md`.
+- [x] Simulator build runs under the new identifiers; plugin tests and doctor pass; entry in `checkpoints.md`.
 
 ## Phase 1: daily habits
 

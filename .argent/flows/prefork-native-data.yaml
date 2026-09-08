@@ -1,7 +1,7 @@
 steps:
   - echo: Relaunch the populated Ripples development app; expect the reference
       boards.
-  - launch: studio.orbitlabs.habittracker
+  - launch: studio.orbitlabs.habitsystem
   - await:
       visible:
         text: plan your day
@@ -109,7 +109,7 @@ steps:
       hidden:
         id: icloud-sync-now
       timeout: 10000
-  - launch: studio.orbitlabs.habittracker
+  - launch: studio.orbitlabs.habitsystem
   - await:
       visible:
         text: plan your day

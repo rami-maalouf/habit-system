@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "habit-tracker",
-    "slug": "habit-tracker",
+    "name": "habit-system",
+    "slug": "habit-system",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "habittracker",
+    "scheme": "habitsystem",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "deploymentTarget": "18.6",
-      "bundleIdentifier": "studio.orbitlabs.habittracker",
+      "bundleIdentifier": "studio.orbitlabs.habitsystem",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "Ripples"
+        "CFBundleDisplayName": "Habit System"
       },
       "appleTeamId": "3V2UU7RRK9"
     },
@@ -48,11 +48,11 @@
       [
         "expo-widgets",
         {
-          "groupIdentifier": "group.studio.orbitlabs.habittracker",
+          "groupIdentifier": "group.studio.orbitlabs.habitsystem",
           "widgets": [
             {
-              "name": "RipplesBoards",
-              "displayName": "Ripples",
+              "name": "HabitSystemBoards",
+              "displayName": "Habit System",
               "description": "Your boards with seven-day strips and quick check-in.",
               "supportedFamilies": [
                 "systemSmall",
@@ -73,14 +73,32 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1e477943-ecf0-4d66-8967-c77e0ec0019c"
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "studio.orbitlabs.habitsystem.ExpoWidgetsTarget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.studio.orbitlabs.habitsystem"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "07481ea0-9f44-4f24-ad3c-fd889569cade"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
+    "owner": "ramimaalouf",
     "updates": {
-      "url": "https://u.expo.dev/1e477943-ecf0-4d66-8967-c77e0ec0019c"
+      "url": "https://u.expo.dev/07481ea0-9f44-4f24-ad3c-fd889569cade"
     }
   }
 }

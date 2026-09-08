@@ -1,6 +1,6 @@
 steps:
   - echo: Restart the new native simulator build; expect Boards.
-  - launch: studio.orbitlabs.habittracker
+  - launch: studio.orbitlabs.habitsystem
   - await:
       visible:
         identifier: open-settings
@@ -58,7 +58,7 @@ steps:
   - await:
       idle: true
   - echo: Relaunch after changing to Paper; its selection must persist.
-  - launch: studio.orbitlabs.habittracker
+  - launch: studio.orbitlabs.habitsystem
   - await:
       visible:
         identifier: open-settings

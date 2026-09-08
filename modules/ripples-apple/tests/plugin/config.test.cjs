@@ -26,7 +26,7 @@ class AppDelegate: ExpoAppDelegate {
 `;
 
 async function applyAppDelegateMod(contents, language = 'swift') {
-  const config = withRipplesApple({ ios: { bundleIdentifier: 'studio.orbitlabs.habittracker' } });
+  const config = withRipplesApple({ ios: { bundleIdentifier: 'studio.orbitlabs.habitsystem' } });
   return config.mods.ios.appDelegate({
     ...config,
     modRequest: { platform: 'ios', modName: 'appDelegate' },
@@ -73,7 +73,7 @@ test('generated shortcut provider uses the statically linked intents without an 
   const projectRoot = path.resolve(__dirname, '../../../..');
   const platformProjectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ripples-native-config-'));
   try {
-    const config = withRipplesApple({ ios: { bundleIdentifier: 'studio.orbitlabs.habittracker' } });
+    const config = withRipplesApple({ ios: { bundleIdentifier: 'studio.orbitlabs.habitsystem' } });
     await config.mods.ios.dangerous({
       ...config,
       modRequest: { platform: 'ios', modName: 'dangerous', projectRoot, platformProjectRoot, projectName: 'fixture' },
@@ -90,7 +90,7 @@ test('generated shortcut provider uses the statically linked intents without an 
 });
 
 test('one bundle identifier drives app group, cloudkit and native lookup keys idempotently', () => {
-  const bundle = 'studio.orbitlabs.habittracker';
+  const bundle = 'studio.orbitlabs.habitsystem';
   const entitlements = configureEntitlements({ 'aps-environment': 'development' }, bundle);
   assert.deepEqual(configureEntitlements(entitlements, bundle), entitlements);
   assert.equal(entitlements['aps-environment'], 'development');
@@ -106,7 +106,7 @@ test('one bundle identifier drives app group, cloudkit and native lookup keys id
 });
 
 test('cloudkit release environment is explicit and rejects unknown values', () => {
-  const bundle = 'studio.orbitlabs.habittracker';
+  const bundle = 'studio.orbitlabs.habitsystem';
   const environmentKey = 'com.apple.developer.icloud-container-environment';
   assert.equal(configureEntitlements({}, bundle, 'Production')[environmentKey], 'Production');
   assert.throws(() => configureEntitlements({}, bundle, 'production'), /cloudkit environment/);
@@ -133,4 +133,39 @@ test('alternate artwork produces opaque universal 1024px app icon sets on repeat
   } finally {
     await fs.rm(output, { recursive: true, force: true });
   }
+});
+
+test('app configuration carries the fork identity and never the ripples identity', () => {
+  const root = path.resolve(__dirname, '../../../..');
+  const app = require(path.join(root, 'app.json')).expo;
+  const pkg = require(path.join(root, 'package.json'));
+  assert.equal(pkg.name, 'habit-system');
+  assert.equal(app.name, 'habit-system');
+  assert.equal(app.slug, 'habit-system');
+  assert.equal(app.scheme, 'habitsystem');
+  assert.equal(app.ios.bundleIdentifier, 'studio.orbitlabs.habitsystem');
+  assert.equal(app.ios.infoPlist.CFBundleDisplayName, 'Habit System');
+  const widgets = app.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-widgets')[1];
+  assert.equal(widgets.groupIdentifier, 'group.studio.orbitlabs.habitsystem');
+  assert.equal(widgets.widgets[0].displayName, 'Habit System');
+  assert.equal(widgets.widgets[0].name, 'HabitSystemBoards');
+  assert.equal(widgets.widgets[0].description, 'Your boards with seven-day strips and quick check-in.');
+  // the app group is duplicated as a typescript constant; it must not drift from the plugin-derived value
+  const databaseSource = require('node:fs').readFileSync(path.join(root, 'src/platform/database/index.ts'), 'utf8');
+  assert.match(databaseSource, /appGroupId = 'group\.studio\.orbitlabs\.habitsystem'/);
+  const transportSource = require('node:fs').readFileSync(path.join(root, 'modules/ripples-apple/ios/CloudKitTransport.swift'), 'utf8');
+  assert.match(transportSource, /static let zoneName = "habit-system"/);
+  const podspec = require('node:fs').readFileSync(path.join(root, 'modules/ripples-apple/ios/RipplesApple.podspec'), 'utf8');
+  assert.match(podspec, /s\.homepage\s*=\s*'https:\/\/github\.com\/rami-maalouf\/habit-system'/);
+  assert.match(podspec, /git: 'https:\/\/github\.com\/rami-maalouf\/habit-system\.git'/);
+  const widgetSource = require('node:fs').readFileSync(path.join(root, 'src/platform/widgets/ripples-boards-widget.tsx'), 'utf8');
+  assert.match(widgetSource, /createWidget\('HabitSystemBoards'/);
+  assert.doesNotMatch(widgetSource, /habittracker:\/\//);
+  const intentsSource = require('node:fs').readFileSync(path.join(root, 'modules/ripples-apple/ios/Intents/RipplesAppIntents.swift'), 'utf8');
+  assert.doesNotMatch(intentsSource, /RipplesBoards/);
+  assert.match(intentsSource, /reloadTimelines\(ofKind: "HabitSystemBoards"\)/);
+  assert.equal(app.extra.eas.projectId, '07481ea0-9f44-4f24-ad3c-fd889569cade');
+  assert.equal(app.updates.url, `https://u.expo.dev/${app.extra.eas.projectId}`);
+  const serialized = JSON.stringify(app) + JSON.stringify(pkg);
+  assert.doesNotMatch(serialized, /habittracker|habit-tracker|1e477943/);
 });

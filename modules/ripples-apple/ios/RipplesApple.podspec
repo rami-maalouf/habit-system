@@ -4,11 +4,11 @@ Pod::Spec.new do |s|
   s.summary        = 'Native Apple capabilities for Ripples'
   s.description    = 'The local Apple module for Ripples platform adapters.'
   s.author         = 'Rami Maalouf'
-  s.homepage       = 'https://github.com/rami-maalouf/habit-tracker'
+  s.homepage       = 'https://github.com/rami-maalouf/habit-system'
   s.platforms      = {
     :ios => '18.6'
   }
-  s.source         = { git: 'https://github.com/rami-maalouf/habit-tracker.git' }
+  s.source         = { git: 'https://github.com/rami-maalouf/habit-system.git' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

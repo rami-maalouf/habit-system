@@ -2,12 +2,12 @@
 
 Semantic flow definition for the `native-foundation` module. Steps use semantic targets discovered at run time; coordinates are never stored.
 
-Target: the approved simulator recorded in `checkpoints.md` (iPhone 17 Pro, iOS 27.0). App: `studio.orbitlabs.habittracker` development client with Metro running.
+Target: the approved simulator recorded in `checkpoints.md` (iPhone 17 Pro, iOS 27.0). App: `studio.orbitlabs.habitsystem` development client with Metro running.
 
 ## Flow: preview structural and interaction checkpoint
 
 1. `launch-app` (or `restart-app`) with the bundle id. Expect the root route: header `Ripples`, selectable text `Native foundation ready`.
-2. `open-url habittracker://foundation-preview`. Expect header `Foundation preview` and the `Typography` section header.
+2. `open-url habitsystem://foundation-preview`. Expect header `Foundation preview` and the `Typography` section header.
 3. Scroll until `Primary action` is visible (settle swipes plus `await-ui-element`).
 4. `describe`. Expected semantic states:
    - `Material: liquid glass` (or `Material: blur` when forced or unsupported)
@@ -26,11 +26,11 @@ Target: the approved simulator recorded in `checkpoints.md` (iPhone 17 Pro, iOS 
 
 ## Flow: forced fallback comparison
 
-1. `open-url habittracker://foundation-preview?material=fallback`.
+1. `open-url habitsystem://foundation-preview?material=fallback`.
 2. Expect `Material: blur` with the same surface bounds, radius, padding, and content order as the primary flow, and `Material mode: fallback forced` in the accessibility section.
 
 ## Flow: unmatched route recovery
 
-1. `open-url habittracker://this-route-does-not-exist`.
+1. `open-url habitsystem://this-route-does-not-exist`.
 2. Expect `Not found` title, `This screen does not exist.`, and link `Go to the home screen`.
 3. Tap the link (discovered coordinates). Expect the root route with no stale back entry.

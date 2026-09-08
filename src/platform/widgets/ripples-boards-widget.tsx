@@ -53,7 +53,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
       <HStack key={row.boardId}>
         <Image systemName={row.symbol as never} color={row.accentHex} size={14} />
         <Link
-          destination={`habittracker://boards/${row.boardId}`}
+          destination={`habitsystem://boards/${row.boardId}`}
           modifiers={[accessibilityLabel(titleLabel)]}
         >
           <Text modifiers={[lineLimit(1)]}>{row.title}</Text>
@@ -75,7 +75,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
           ))}
         </HStack>
         <Link
-          destination={`habittracker://boards/${row.boardId}/check-ins/new`}
+          destination={`habitsystem://boards/${row.boardId}/check-ins/new`}
           modifiers={[accessibilityLabel(`Check in to ${row.title}`)]}
         >
           <Image systemName="circle" color={row.accentHex} size={16} />
@@ -86,7 +86,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
 
   if (rows.length === 0) {
     return (
-      <VStack modifiers={[widgetURL('habittracker://boards/new'), padding({ all: 12 })]}>
+      <VStack modifiers={[widgetURL('habitsystem://boards/new'), padding({ all: 12 })]}>
         <Text>Open Ripples to create your first board</Text>
       </VStack>
     );
@@ -110,4 +110,4 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
   );
 };
 
-export default createWidget('RipplesBoards', RipplesBoards);
+export default createWidget('HabitSystemBoards', RipplesBoards);

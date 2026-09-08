@@ -26,7 +26,7 @@
 #                             precedence and bills the API instead.
 #   GITHUB_TOKEN            - fine-grained PAT: Issues, Contents,
 #                             Pull requests (read/write) on
-#                             rami-maalouf/habit-tracker
+#                             rami-maalouf/habit-system
 #   EXPO_TOKEN              - auths eas-cli for simulator sessions and the
 #                             verification build
 

@@ -4,7 +4,7 @@ import XCTest
 @testable import RipplesCloudKit
 
 final class CloudKitAccountBindingTests: XCTestCase {
-  private let provider = "iCloud.studio.orbitlabs.habittracker"
+  private let provider = "iCloud.studio.orbitlabs.habitsystem"
 
   private func store(schema: Bool = true) throws -> URL {
     let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".db")

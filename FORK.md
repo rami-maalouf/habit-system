@@ -7,22 +7,27 @@ this repository is a full-history fork of ripples.
 - fork method: clone with full git history, no github fork link. ripples fixes are cherry-picked by hand if ever needed.
 - what ripples proved before the fork: the first section of `checkpoints.md` ("pre-fork closure").
 
-## identifiers that must change before the first build
+## identifiers (applied 2026-09-08, task T1)
 
-the tree still carries ripples' identity. a build from this tree as-is would upload to ripples' eas project and write into ripples' cloudkit container and app-group database. change every one of these before running `eas build`, `expo run:ios`, or `eas update`:
+every row below was changed on 2026-09-08. the eas project is `@ramimaalouf/habit-system` (id `07481ea0-9f44-4f24-ad3c-fd889569cade`). the plugin test `app configuration carries the fork identity` pins the new values and fails if any ripples identifier returns.
+
+also in `app.json` after `eas init` and prebuild: `owner: ramimaalouf` and `extra.eas.build.experimental.ios.appExtensions` declaring the widget extension's bundle id and app group. that block is eas credentials plumbing for the extension target under the new eas project; it is not a product change. t1 also fixed one broken link in `MEMORY.md` (`tasks/pre-fork.md` -> `tasks/ripples/pre-fork.md`) left by the task-file archive.
 
 | where | ripples value | must become |
 | --- | --- | --- |
-| `app.json` `expo.name` / `expo.slug` | `habit-tracker` | the fork's name and slug |
-| `app.json` `ios.bundleIdentifier` | `studio.orbitlabs.habittracker` | a new bundle id |
-| `app.json` expo-widgets `groupIdentifier` and the `ios.entitlements` app group | `group.studio.orbitlabs.habittracker` | a new app group |
-| cloudkit container (module plugin + entitlements) | `iCloud.studio.orbitlabs.habittracker` | a new container |
-| cloudkit zone (module plugin) | `habit-tracker` | a new zone name |
-| widget extension name and bundle suffix | `RipplesBoards` / `ExpoWidgetsTarget` | rename |
-| `app.json` `extra.eas.projectId` and `updates.url` | ripples' eas project `1e477943-...` | a new eas project (`eas init`) |
-| `app.json` `scheme` | `habittracker` | a new url scheme |
-| `package.json` `name` | `habit-tracker` | the fork's name |
-| signing team | `3V2UU7RRK9` | same team is fine; new provisioning profiles are required for the new ids |
+| `app.json` `expo.name` / `expo.slug` | `habit-tracker` | `habit-system` |
+| `app.json` `ios.bundleIdentifier` | `studio.orbitlabs.habittracker` | `studio.orbitlabs.habitsystem` |
+| `app.json` expo-widgets `groupIdentifier` and the `ios.entitlements` app group | `group.studio.orbitlabs.habittracker` | `group.studio.orbitlabs.habitsystem` (derived from the bundle id by the plugin; also `src/platform/database/index.ts`) |
+| cloudkit container (module plugin + entitlements) | `iCloud.studio.orbitlabs.habittracker` | `iCloud.studio.orbitlabs.habitsystem` (derived by the plugin) |
+| cloudkit zone (`CloudKitTransport.swift`) | `habit-tracker` | `habit-system` |
+| widget kind (`app.json` widgets[0].name, `createWidget`, swift `UserDefaults` keys and `WidgetCenter` kind) | `RipplesBoards` | `HabitSystemBoards` |
+| widget display name | `Ripples` | `Habit System` |
+| app display name (`ios.infoPlist.CFBundleDisplayName`) | `Ripples` | `Habit System` |
+| widget extension target name | `ExpoWidgetsTarget` | unchanged. it is a constant inside the `expo-widgets` plugin (`plugin/build/ios/withIosWidgets.js`), not configurable without patching the dependency. only its bundle id suffix follows the app bundle id: `studio.orbitlabs.habitsystem.ExpoWidgetsTarget`. |
+| `app.json` `extra.eas.projectId` and `updates.url` | ripples' eas project `1e477943-...` | `07481ea0-9f44-4f24-ad3c-fd889569cade` |
+| `app.json` `scheme` | `habittracker` | `habitsystem` (also the widget deep links) |
+| `package.json` `name` | `habit-tracker` | `habit-system` |
+| signing team | `3V2UU7RRK9` | unchanged; new provisioning profiles are created by eas on the first signed build |
 
 the local native module directory `modules/ripples-apple` and its swift type names can be renamed later; they are not shared state.
 

@@ -3,7 +3,7 @@ steps:
       seeds an empty store and never changes the clock.
   - tool: open-url
     args:
-      url: studio.orbitlabs.habittracker:///reference-august-2026
+      url: studio.orbitlabs.habitsystem:///reference-august-2026
   - await:
       visible:
         id: reference-seed-action

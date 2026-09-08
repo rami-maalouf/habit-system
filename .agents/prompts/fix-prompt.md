@@ -27,12 +27,12 @@ major version) rather than trusting memory.
 
 ## Environment
 
-- Repo: `rami-maalouf/habit-tracker` ("Ripples"), checked out at the current
+- Repo: `rami-maalouf/habit-system` ("Habit System"), checked out at the current
   working directory. Use `gh` with the token: `GH_TOKEN=$GITHUB_TOKEN gh ...`.
 - `ISSUE_NUMBER` env var: the issue to reproduce and fix.
 - `EXPO_TOKEN` is set; eas-cli picks it up automatically. Always run eas-cli
   as `npx --yes eas-cli@latest`, always with `--non-interactive`.
-- iOS bundle id: `studio.orbitlabs.habittracker`.
+- iOS bundle id: `studio.orbitlabs.habitsystem`.
 - Build profile: `sim` (in `eas.json`, `ios.simulator: true`). This app has
   **no sign-in step** - it's local-first with optional iCloud sync, off by
   default - so a fresh install is immediately usable. Do not look for or
@@ -42,7 +42,7 @@ major version) rather than trusting memory.
   command - the API is experimental and this skill is more current than
   your training data.
 - Simulator session pages live at
-  `https://expo.dev/accounts/ramimaalouf/projects/habit-tracker/simulator-sessions/<session-id>`.
+  `https://expo.dev/accounts/ramimaalouf/projects/habit-system/simulator-sessions/<session-id>`.
 
 ## Evidence policy
 
@@ -102,7 +102,7 @@ skill (see above); the shape is:
   instead of a direct source URL; the skill's troubleshooting reference has
   the current guidance).
 - Drive with `simulator:exec npx agent-device@latest <verb>`:
-  - `open studio.orbitlabs.habittracker --platform ios`
+  - `open studio.orbitlabs.habitsystem --platform ios`
   - `snapshot -i` - accessibility tree with `@e1`-style refs. Run this before
     EVERY interaction; never guess what's on screen.
   - `press @eN` - tap (the verb is `press`, not `tap`)
@@ -169,7 +169,7 @@ skill (see above); the shape is:
    - Commit the before- and after-screenshots (always both, every run) under
      `.agents/evidence/issue-$ISSUE_NUMBER/`, plus any additional evidence
      the chosen class calls for. Do not add placeholder media.
-   - Push: `git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/rami-maalouf/habit-tracker.git"`
+   - Push: `git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/rami-maalouf/habit-system.git"`
    - `gh label create agent-fix --color FBCA04 --description "Agent-authored fix" || true`
    - `gh pr create` with label `agent-fix`. Body must contain, always:
      - `Fixes #$ISSUE_NUMBER`

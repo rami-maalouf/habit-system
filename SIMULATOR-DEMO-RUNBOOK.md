@@ -1,8 +1,8 @@
 # EAS Simulator teaser runbook
 
-Current-source update, 2026-09-07: new builds use `studio.orbitlabs.habittracker`.
+Current-source update, 2026-09-07: new builds use `studio.orbitlabs.habitsystem`.
 For a populated demo, an empty development build can open
-`studio.orbitlabs.habittracker:///reference-august-2026` and explicitly add seven boards
+`studio.orbitlabs.habitsystem:///reference-august-2026` and explicitly add seven boards
 with August activity. The action refuses an existing database and never changes the
 clock. The private acceptance evidence and reusable Argent flows are recorded in
 `checkpoints.md`. The older dry run below remains pinned to its original binary and
