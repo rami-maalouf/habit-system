@@ -22,6 +22,7 @@ import { useProduct, useProductQuery } from '../product-store';
 import { getBoardIcon } from '../boards/board-icon-catalog';
 import { BoardIconPicker } from './board-icon-picker';
 import { BoardKindPicker } from './board-kind-picker';
+import { DailyStrip } from '../boards/daily-strip';
 import type { BoardDraft } from './draft-store';
 import {
   draftFromBoard,
@@ -424,8 +425,9 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
               </AppText>
             </View>
             <View style={{ flex: 1 }} />
-            <SevenDayStrip strip={draft.kind === 'daily' ? [0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1] : [0, 1, 0, 2, 3, 0, 1, 2, 0, 1, 4, 2, 0, 3]} colors={colors} barHeight={22} barWidth={4} barGap={3} />
+            {draft.kind === 'count' ? <SevenDayStrip strip={[0, 1, 0, 2, 3, 0, 1, 2, 0, 1, 4, 2, 0, 3]} colors={colors} barHeight={22} barWidth={4} barGap={3} /> : null}
           </View>
+          {draft.kind === 'daily' ? <DailyStrip strip={[0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1]} colors={colors} /> : null}
         </FormRow>
 
         <FormRow>

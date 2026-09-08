@@ -1,14 +1,14 @@
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, ScrollView, View } from 'react-native';
+import { Alert, FlatList, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/foundation/app-text';
 import { Icon } from '@/components/foundation/icon';
-import { createCheckIn, reorderBoard, undoCreatedCheckIn } from '@/core/domain/commands';
+import { createCheckIn, reorderBoard, toggleDailyCheckIn, undoCreatedCheckIn } from '@/core/domain/commands';
 import type { BoardId, CheckInId, CommandId } from '@/core/domain/ids';
-import type { HomeBoardCard } from '@/core/domain/queries';
-import { getHomeBoardProjection } from '@/core/domain/queries';
+import type { DailyToggleSnapshot, HomeBoardCard } from '@/core/domain/queries';
+import { getDailyToggleSnapshot, getHomeBoardProjection } from '@/core/domain/queries';
 import { triggerActionHaptic } from '@/foundation/haptics';
 import { semanticColor, semanticFallbacks, spacing } from '@/theme';
 
@@ -17,12 +17,29 @@ import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 
 type UndoState = {
+  boardId: BoardId;
   boardTitle: string;
   checkInId: CheckInId;
   createdByCommandId: CommandId;
 };
 
 const UNDO_WINDOW_MS = 5000;
+
+function confirmDailyUncheck(snapshot: DailyToggleSnapshot): Promise<boolean> {
+  return new Promise((resolve) => {
+    const checks = `${snapshot.checkInCount} ${snapshot.checkInCount === 1 ? 'check-in' : 'check-ins'}`;
+    const notes = `${snapshot.noteCount} ${snapshot.noteCount === 1 ? 'note' : 'notes'}`;
+    Alert.alert(
+      `Uncheck ${snapshot.boardTitle}?`,
+      `For ${snapshot.logicalDate}, this removes ${checks} and ${notes}.`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Uncheck', style: 'destructive', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
+}
 
 export function BoardsHomeScreen() {
   const router = useRouter();
@@ -34,8 +51,11 @@ export function BoardsHomeScreen() {
   // pending is a set: concurrent quick check-ins on different boards must
   // not re-enable or clear each other
   const [pendingBoardIds, setPendingBoardIds] = useState<ReadonlySet<BoardId>>(new Set());
+  const pendingBoards = useRef(new Set<BoardId>());
   const [quickError, setQuickError] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
+  const undoTarget = useRef<UndoState | null>(null);
+  const undoPending = useRef(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [scrollHeaderReady, setScrollHeaderReady] = useState(false);
   const resetScrollHeader = useCallback((view: FlatList<HomeBoardCard> | null) => {
@@ -50,60 +70,108 @@ export function BoardsHomeScreen() {
     };
   }, []);
 
-  const quickCheckIn = useCallback(
-    async (card: HomeBoardCard) => {
-      setPendingBoardIds((current) => new Set(current).add(card.board.id));
-      setQuickError(null);
+  const clearUndo = useCallback(() => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = null;
+    undoTarget.current = null;
+    setUndo(null);
+  }, []);
+
+  const offerUndo = useCallback((target: UndoState) => {
+    clearUndo();
+    undoTarget.current = target;
+    setUndo(target);
+    undoTimer.current = setTimeout(clearUndo, UNDO_WINDOW_MS);
+  }, [clearUndo]);
+
+  const releaseBoard = useCallback((boardId: BoardId) => {
+    pendingBoards.current.delete(boardId);
+    setPendingBoardIds(new Set(pendingBoards.current));
+  }, []);
+
+  const quickCheckIn = useCallback(async (card: HomeBoardCard) => {
+    const boardId = card.board.id;
+    // claim before the first await; rendered disabled state cannot guard queued taps.
+    if (pendingBoards.current.has(boardId)) return;
+    pendingBoards.current.add(boardId);
+    setPendingBoardIds(new Set(pendingBoards.current));
+    setQuickError(null);
+    try {
       const commandId = nextCommandId();
-      const result = await createCheckIn(core, {
-        commandId,
-        boardId: card.board.id,
-        source: 'app',
-      });
-      setPendingBoardIds((current) => {
-        const next = new Set(current);
-        next.delete(card.board.id);
-        return next;
-      });
-      if (!result.ok) {
-        setQuickError(result.error.message);
-        return;
+      if (card.daily) {
+        const snapshot = await getDailyToggleSnapshot(core, boardId);
+        if (!snapshot.ok) {
+          setQuickError(snapshot.error.message);
+          invalidate();
+          return;
+        }
+        if (snapshot.value.logicalDate !== card.today || snapshot.value.checked !== card.daily.checkedToday) {
+          setQuickError('This habit changed since it was displayed. Review its current state and try again.');
+          invalidate();
+          return;
+        }
+        if (snapshot.value.checked && snapshot.value.noteCount > 0 && !await confirmDailyUncheck(snapshot.value)) return;
+        const result = await toggleDailyCheckIn(core, {
+          commandId, boardId, logicalDate: snapshot.value.logicalDate,
+          expectedCheckIns: snapshot.value.expectedCheckIns,
+        });
+        if (!result.ok) {
+          setQuickError(result.error.message);
+          invalidate();
+          return;
+        }
+        invalidate();
+        if (result.value.created && result.value.checkInId) {
+          void triggerActionHaptic();
+          offerUndo({ boardId, boardTitle: snapshot.value.boardTitle, checkInId: result.value.checkInId, createdByCommandId: commandId });
+        } else if (!result.value.checked) {
+          void triggerActionHaptic();
+          if (undoTarget.current && result.value.removedCheckInIds.includes(undoTarget.current.checkInId)) clearUndo();
+        }
+      } else {
+        const result = await createCheckIn(core, { commandId, boardId, source: 'app' });
+        if (!result.ok) {
+          setQuickError(result.error.message);
+          invalidate();
+          return;
+        }
+        invalidate();
+        if (result.value.created) {
+          void triggerActionHaptic();
+          offerUndo({ boardId, boardTitle: card.board.title, checkInId: result.value.checkInId, createdByCommandId: commandId });
+        }
       }
-      void triggerActionHaptic();
+    } catch {
+      setQuickError('Could not update this habit. Try again.');
       invalidate();
-      if (undoTimer.current) {
-        clearTimeout(undoTimer.current);
-      }
-      setUndo({
-        boardTitle: card.board.title,
-        checkInId: result.value.checkInId,
-        createdByCommandId: commandId,
-      });
-      undoTimer.current = setTimeout(() => setUndo(null), UNDO_WINDOW_MS);
-    },
-    [core, invalidate, nextCommandId],
-  );
+    } finally {
+      releaseBoard(boardId);
+    }
+  }, [clearUndo, core, invalidate, nextCommandId, offerUndo, releaseBoard]);
 
   const undoLast = useCallback(async () => {
-    if (!undo) {
-      return;
-    }
-    if (undoTimer.current) {
-      clearTimeout(undoTimer.current);
-    }
-    setUndo(null);
-    const result = await undoCreatedCheckIn(core, {
-      commandId: nextCommandId(),
-      checkInId: undo.checkInId,
-      createdByCommandId: undo.createdByCommandId,
-    });
-    if (result.ok) {
+    const target = undoTarget.current;
+    if (!target || undoPending.current || pendingBoards.current.has(target.boardId)) return;
+    undoPending.current = true;
+    pendingBoards.current.add(target.boardId);
+    setPendingBoardIds(new Set(pendingBoards.current));
+    clearUndo();
+    setQuickError(null);
+    try {
+      const result = await undoCreatedCheckIn(core, {
+        commandId: nextCommandId(), checkInId: target.checkInId,
+        createdByCommandId: target.createdByCommandId,
+      });
       invalidate();
-    } else {
-      // the undo surface is gone, so its failure lands on the shared line
-      setQuickError(result.error.message);
+      if (!result.ok) setQuickError(result.error.message);
+    } catch {
+      setQuickError('Could not undo this check-in. Try again.');
+      invalidate();
+    } finally {
+      undoPending.current = false;
+      releaseBoard(target.boardId);
     }
-  }, [core, invalidate, nextCommandId, undo]);
+  }, [clearUndo, core, invalidate, nextCommandId, releaseBoard]);
 
   const move = useCallback(
     async (cards: HomeBoardCard[], index: number, direction: -1 | 1) => {
@@ -231,7 +299,7 @@ export function BoardsHomeScreen() {
           }}
         >
           <AppText variant="subheadline" style={{ flex: 1, minWidth: 0 }}>{`Checked in to ${undo.boardTitle}`}</AppText>
-          <ProductPressable onPress={undoLast} label="Undo check-in" testID="undo-check-in">
+          <ProductPressable onPress={undoLast} disabled={pendingBoardIds.has(undo.boardId)} label="Undo check-in" testID="undo-check-in">
             <AppText variant="headline" selectable={false}>
               Undo
             </AppText>

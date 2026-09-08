@@ -33,6 +33,7 @@ import {
   dailyCounts,
   dailyCountsForBoards,
   earliestCheckInDate,
+  eligibleDailyCompletionsForActiveBoards,
   getCheckInById,
   latestCheckInForDate,
   listBoardCheckIns,
@@ -50,6 +51,8 @@ import { getSettings, getSyncState, listBoardPeriods } from '../persistence/repo
 import type { Board, CheckIn, Reminder, WidgetBoardRow } from './entities';
 import type { BoardId, CheckInId, LogicalDate, ReminderId } from './ids';
 import type { Clock } from './ports';
+import type { ExpectedCheckIn } from './check-in-commands';
+import { validateLogicalDateInput } from './validation';
 import type { DomainResult } from './result';
 import { err, ok } from './result';
 
@@ -141,11 +144,18 @@ export async function getBoard(
   return ok(result.value);
 }
 
+export type DailyHomeSummary = {
+  checkedToday: boolean;
+  completedThisWeek: number;
+  currentStreak: number | null;
+};
+
 export type HomeBoardCard = {
   board: Board;
   today: LogicalDate;
-  // fourteen counts, oldest first, ending today
+  // fourteen values, oldest first, ending today; daily values are binary.
   strip: number[];
+  daily: DailyHomeSummary | null;
 };
 
 export function getHomeBoardProjection(
@@ -168,16 +178,71 @@ export function getHomeBoardProjection(
       addDays(sorted[0], -13),
       sorted[sorted.length - 1],
     );
+    const dailyCompleted = boards.some((board) => board.kind === 'daily')
+      ? await eligibleDailyCompletionsForActiveBoards(tx, sorted[sorted.length - 1])
+      : new Map<string, Set<string>>();
     return boards.map((board, index) => {
       const today = todays[index];
       const boardCounts = counts.get(board.id);
       const strip: number[] = [];
       for (let offset = 13; offset >= 0; offset -= 1) {
-        strip.push(boardCounts?.get(addDays(today, -offset)) ?? 0);
+        const count = boardCounts?.get(addDays(today, -offset)) ?? 0;
+        strip.push(board.kind === 'daily' ? Math.min(1, count) : count);
       }
-      return { board, today, strip };
+      let daily: DailyHomeSummary | null = null;
+      if (board.kind === 'daily') {
+        const completed = new Set(
+          [...(dailyCompleted.get(board.id) ?? [])].filter((date) => date <= today),
+        );
+        const weekStart = startOfIsoWeek(today);
+        daily = {
+          checkedToday: strip[13] === 1,
+          completedThisWeek: [...completed].filter((date) => date >= weekStart).length,
+          currentStreak: board.metricsEnabled ? currentStreak(completed, today) : null,
+        };
+      }
+      return { board, today, strip, daily };
     });
   });
+}
+
+export type DailyToggleSnapshot = {
+  boardId: BoardId;
+  boardTitle: string;
+  logicalDate: LogicalDate;
+  checked: boolean;
+  checkInCount: number;
+  noteCount: number;
+  expectedCheckIns: ExpectedCheckIn[];
+};
+
+// the confirmation describes one consistent date snapshot. the command
+// later verifies the captured ids and stamps before any toggle writes.
+export async function getDailyToggleSnapshot(
+  deps: QueryDeps,
+  boardId: BoardId,
+  logicalDate?: LogicalDate,
+): Promise<DomainResult<DailyToggleSnapshot>> {
+  const result = await runQuery(deps, async (tx, now, timeZoneId): Promise<DomainResult<DailyToggleSnapshot>> => {
+    const board = await getBoardById(tx, boardId);
+    if (!board) return err('not_found', 'This board no longer exists.');
+    if (board.archivedAt !== null) return err('archived', 'Restore the board to change its check-ins.');
+    if (board.kind !== 'daily') return err('validation', 'Only Daily habits can be toggled.');
+    const today = boardToday(board, now, timeZoneId);
+    const date = validateLogicalDateInput(logicalDate ?? today, today);
+    if (!date.ok) return date;
+    const checks = await listBoardCheckInsForDate(tx, board.id, date.value);
+    return ok({
+      boardId: board.id,
+      boardTitle: board.title,
+      logicalDate: date.value,
+      checked: checks.length > 0,
+      checkInCount: checks.length,
+      noteCount: checks.filter((check) => check.note !== null).length,
+      expectedCheckIns: checks.map((check) => ({ checkInId: check.id, mutationStamp: check.mutationStamp })),
+    });
+  });
+  return result.ok ? result.value : result;
 }
 
 export function getSevenDayStrip(

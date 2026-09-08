@@ -19,6 +19,7 @@ type ProductPressableProps = {
   hint?: string;
   role?: AccessibilityRole;
   selected?: boolean;
+  checked?: boolean;
   testID?: string;
   // full-width row pressables opt out of horizontal content centering
   stretch?: boolean;
@@ -34,6 +35,7 @@ export function ProductPressable({
   hint,
   role = 'button',
   selected,
+  checked,
   testID,
   stretch,
   style,
@@ -44,7 +46,7 @@ export function ProductPressable({
       accessibilityRole={role}
       accessibilityLabel={label}
       accessibilityHint={hint}
-      accessibilityState={{ disabled: disabled === true, selected }}
+      accessibilityState={{ disabled: disabled === true, selected, checked }}
       disabled={disabled}
       onPress={onPress}
       testID={testID}
@@ -119,4 +121,3 @@ export function InlineError({ message, testID }: { message: string; testID?: str
     </AppText>
   );
 }
-

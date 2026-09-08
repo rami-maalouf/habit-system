@@ -2,6 +2,40 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T5 - Daily Home cards and guarded toggles (2026-09-08)
+
+1. Daily cards show fourteen binary cells, an ISO-week completion count, optional current
+   streak, and a checked/unchecked native accessibility state. Count cards retain their
+   numeric strip and quick check-in behavior. Daily previews reuse the focused strip.
+   The strip reflects stored history; week/streak summaries apply inherited activity-period
+   eligibility. A single grouped query handles distinct dates and streaks beyond the strip.
+2. A transactional read captures the selected date, all check ids/stamps, and note counts.
+   Home compares fresh date/state with the displayed card before acting. A synchronous
+   per-board guard covers that read, confirmation, and mutation. The command verifies the
+   captured records atomically; a prompt crossing midnight still targets its original date.
+3. Note-bearing unchecks confirm affected date/check/note counts. Cancellation writes nothing.
+   Undo is offered only for a newly created check, retains its exact id and creating command,
+   and has a synchronous duplicate-press guard. An uncertain committed result followed by
+   another press refreshes stale state without toggling the completion back off.
+4. Eleven domain tests cover binary projection, ISO/year boundaries, shifted dates, long
+   streaks, archive gaps, metrics, grouped reads, and confirmation snapshots. Seven feature
+   tests and eight independently authored race tests cover the visible flows, competing
+   actions, midnight, storage failure/retry, stale projections, and exact Undo ownership.
+5. Final gates: `bun run validate` exit 0, 54 suites and 686 tests, global coverage
+   97.47/95.93/95.58/97.53, all 40 core files at 100 percent on all four metrics. Native:
+   9 plugin and 64 Swift tests pass. Lint, typecheck, and diff hygiene are clean. Coordinating
+   review approved core; independent non-author review approved UI and both feature suites.
+6. Simulator QA proves Daily check/uncheck/Undo, two-note cancellation and atomic removal,
+   exact checkbox labels/states, and readable wrapping at accessibility-extra-large text.
+   Count quick check plus Undo preserves both original complete records byte-for-byte.
+   Light/dark captures are settled and final scoped logs contain zero entries.
+7. Evidence in `.artifacts/t5/`: `validate.log`, `native.log`, `qa-proof.md`,
+   `home-light-final.png`, `home-dark-baseline.png`,
+   `home-light-accessibility-extra-large.png`, `home-light-checked-undo.png`,
+   `notes-confirmation-dark.png`, and `final-log-registry.json`. QA data is synthetic and
+   remains on the dedicated Migration QA simulator. T6 owns the Daily detail heatmap and
+   its inherited unavailable-date rendering correction.
+
 ### T4 - Daily and Count board forms (2026-09-08)
 
 1. New forms default to Daily; edit forms retain the stored kind. Daily hides amount,

@@ -209,6 +209,35 @@ export async function dailyCountsForBoards(
   return byBoard;
 }
 
+// distinct eligible dates keep daily summaries independent of retained row
+// counts. one grouped read covers every active daily board's full streak.
+export async function eligibleDailyCompletionsForActiveBoards(
+  tx: SqlExecutor,
+  throughDate: LogicalDate,
+): Promise<Map<string, Set<string>>> {
+  const rows = await tx.getAllAsync<{ board_id: string; logical_date: string }>(
+    `SELECT c.board_id, c.logical_date FROM check_ins c
+     INNER JOIN boards b ON b.id = c.board_id
+     WHERE b.kind = 'daily' AND b.archived_at IS NULL AND b.deleted_at IS NULL
+       AND c.deleted_at IS NULL AND c.logical_date <= ?
+       AND EXISTS (
+         SELECT 1 FROM board_activity_periods p
+         WHERE p.board_id = c.board_id AND p.deleted_at IS NULL
+           AND c.logical_date >= p.start_date
+           AND (p.end_date IS NULL OR c.logical_date <= p.end_date)
+       )
+     GROUP BY c.board_id, c.logical_date ORDER BY c.board_id, c.logical_date`,
+    [throughDate],
+  );
+  const completed = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const dates = completed.get(row.board_id) ?? new Set<string>();
+    dates.add(row.logical_date);
+    completed.set(row.board_id, dates);
+  }
+  return completed;
+}
+
 // count per logical date for one board, bounded by an inclusive range
 export async function dailyCounts(
   tx: SqlExecutor,

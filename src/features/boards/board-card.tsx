@@ -10,6 +10,7 @@ import { deriveBoardColors } from './board-colors';
 import { BoardSymbol } from './board-symbol';
 import { ProductPressable, useScheme } from '../ui';
 import { SevenDayStrip } from './seven-day-strip';
+import { DailyStrip } from './daily-strip';
 
 type BoardCardProps = {
   card: HomeBoardCard;
@@ -42,6 +43,60 @@ export function BoardCard({
   const background = card.board.usesTintedBackground
     ? colors.tintedCardBackground
     : semanticColor('secondaryGroupedBackground', scheme);
+
+  if (card.daily) {
+    const daily = card.daily;
+    return (
+      <View
+        testID={testID}
+        style={{ backgroundColor: background, borderWidth: 1, borderColor: colors.cardBorder,
+          borderRadius: radius.lg, borderCurve: radiusCurve, padding: spacing.lg, gap: spacing.md }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <ProductPressable onPress={onOpen} label={card.board.title} hint="Opens the board" disabled={!onOpen} stretch style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <BoardSymbol symbol={card.board.symbol} color={colors.accent} />
+              <AppText variant="headline" selectable={false} style={{ flex: 1 }}>{card.board.title}</AppText>
+            </View>
+          </ProductPressable>
+          {editMode ? (
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <ProductPressable onPress={onMoveUp} disabled={!canMoveUp} label={`Move ${card.board.title} up`} testID={`${testID}-move-up`}>
+                <Icon name="arrowUp" color={colors.accent} />
+              </ProductPressable>
+              <ProductPressable onPress={onMoveDown} disabled={!canMoveDown} label={`Move ${card.board.title} down`} testID={`${testID}-move-down`}>
+                <Icon name="arrowDown" color={colors.accent} />
+              </ProductPressable>
+            </View>
+          ) : (
+            <ProductPressable
+              onPress={onQuickCheckIn}
+              disabled={quickPending || !onQuickCheckIn}
+              role="checkbox"
+              checked={daily.checkedToday}
+              label={daily.checkedToday ? 'Checked, double tap to uncheck' : 'Not checked, double tap to check'}
+              hint={`${card.board.title}, ${card.today}`}
+              testID={`${testID}-quick`}
+            >
+              <View style={{ width: minimumTouchTarget, height: minimumTouchTarget,
+                borderRadius: radius.capsule, borderCurve: radiusCurve, borderWidth: 2,
+                borderColor: colors.accent, backgroundColor: daily.checkedToday ? colors.accent : 'transparent',
+                alignItems: 'center', justifyContent: 'center' }}>
+                {daily.checkedToday ? <Icon name="checkmark" size={23} color={colors.onAccent} /> : null}
+              </View>
+            </ProductPressable>
+          )}
+        </View>
+        <DailyStrip strip={card.strip} colors={colors} testID={testID} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.sm }}>
+          <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>{`${daily.completedThisWeek}/7 this week`}</AppText>
+          {daily.currentStreak !== null ? (
+            <AppText variant="footnote" style={{ color: semanticColor('secondaryLabel', scheme), fontVariant: ['tabular-nums'] }}>{`${daily.currentStreak} ${daily.currentStreak === 1 ? 'day' : 'days'} streak`}</AppText>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View
