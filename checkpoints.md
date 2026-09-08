@@ -2,6 +2,43 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T9 - editable informational anchor times (2026-09-08)
+
+1. Added the shared `setAnchorPresetMinute` command with runtime preset and
+   quarter-hour validation, transactional current-settings reads, idempotent
+   receipts, and one matching settings stamp/outbox mutation. Unchanged values
+   retain their stamp and outbox. Migration 6 defaults remain 420/720/1080/1380;
+   outgoing serialization remains T19 work. No schema or native changes occurred.
+2. Settings > Anchors shows four stored times and an explicit Save/Cancel editor.
+   A labeled native SwiftUI wheel supplies exactly 96 choices, 00:00 through 23:45.
+   The installed SDK 57 DateTimePicker has no quarter-hour interval API, so the
+   existing native Picker is used. Times remain informational reference points.
+   Pending writes lock controls synchronously; load/save failures allow retry.
+   Reopening the active row preserves its unsaved draft.
+3. Tests preceded implementation: 28 command cases cover validation, all presets,
+   boundaries, replay, concurrent different-field edits and real transaction
+   rollback at settings/outbox/receipt boundaries. Seven routed feature cases
+   cover editing, Cancel, duplicates, failures and draft preservation. Core author
+   plan_review and UI author simulator_readiness received non-author review:
+   root and data_contract_review approved core; plan_review approved final UI.
+4. Final `bun run validate`: exit 0, 63 suites / 812 tests, global coverage
+   96.93/95.38/95.25/97.42, all 43 core files at 100 percent across all metrics.
+   `bun run test:native`: 9 plugin checks and 74 Swift tests pass. Typecheck,
+   lint and diff whitespace checks pass. Logs: `.artifacts/t9/validate.log`
+   and `.artifacts/t9/native.log`.
+5. Independent real simulator QA passed on Migration QA / iOS 26.5 using the
+   development-signed T7b native app with current Metro 8082 JavaScript. The wheel
+   exposes its label and quarter-hour choices; Save changed only wake to 435,
+   reopening and cold launch retained 07:15, and Cancel preserved settings and
+   stamp byte-for-byte. Light/dark and accessibility-extra-large layouts were
+   visually reviewed. Every board, check, action, reminder and activity-period
+   row remained identical, including the original two-check Count fixture.
+6. Evidence: `.artifacts/t9/qa/qa-proof.md`, `persistence-proof.json`,
+   `original-count-unchanged.json` and the named screenshots. The final connected
+   debugger capture has zero entries; the earlier restart/reset notice is retained,
+   so this is a bounded final-capture claim. No user device, iCloud session or
+   Metro 8081 was touched. T9 is complete; T10 proceeds with anchor validation.
+
 ### T8 - native Daily verification and actual Shortcuts execution (2026-09-08)
 
 1. Read-only audit confirms the three-action inventory, schema-7/checksum gate,

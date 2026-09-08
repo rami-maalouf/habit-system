@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T8 done; T9 next. Revised planning documents were pushed; implementation continues through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T9 done; T10 next. Revised planning documents were pushed; implementation continues through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -72,7 +72,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
 
 ## Phase 2: same-day stacks
 
-- [ ] **T9: Preset anchor minutes**
+- [x] **T9: Preset anchor minutes**
   - Acceptance: Settings > Anchors edits Waking up, Lunch, Dinner, Sleeping in 15-minute steps across 0 through 1439. Defaults remain 420, 720, 1080, 1380. These times are informational and never assign checks to runs. Commands persist values; synced representation arrives at T19.
   - Verify: domain validation, feature tests, native picker evidence.
   - Ownership scope: command/query, anchor settings screen/route, settings navigation, tests.

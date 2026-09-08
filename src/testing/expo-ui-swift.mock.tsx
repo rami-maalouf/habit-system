@@ -36,11 +36,13 @@ export function Spacer() {
   return <View />;
 }
 
-export function Picker({ label, selection, onSelectionChange, children, testID }: AnyProps & {
+export function Picker({ label, selection, onSelectionChange, children, testID, modifiers }: AnyProps & {
   label?: string;
   selection?: string | number;
   onSelectionChange?: (value: string | number) => void;
+  modifiers?: { __disabled?: boolean }[];
 }) {
+  const isDisabled = modifiers?.some((modifier) => modifier.__disabled === true) ?? false;
   const selected = React.Children.toArray(children).find((child) =>
     React.isValidElement<{ modifiers?: { __tag?: unknown }[] }>(child) &&
     child.props.modifiers?.some((modifier) => modifier.__tag === selection),
@@ -53,8 +55,9 @@ export function Picker({ label, selection, onSelectionChange, children, testID }
       accessibilityRole="combobox"
       accessibilityLabel={label}
       accessibilityValue={{ text: selectedLabel }}
+      accessibilityState={{ disabled: isDisabled }}
       testID={testID}
-      {...{ onSelectionChange }}
+      {...{ onSelectionChange: isDisabled ? undefined : onSelectionChange }}
     >
       {children}
     </View>
@@ -64,6 +67,7 @@ export function Picker({ label, selection, onSelectionChange, children, testID }
 export function pickerStyle() { return {}; }
 export function frame() { return {}; }
 export function tag(value: string | number) { return { __tag: value }; }
+export function disabled(value: boolean) { return { __disabled: value }; }
 
 export function Section({ title, children }: AnyProps & { title?: string }) {
   return (

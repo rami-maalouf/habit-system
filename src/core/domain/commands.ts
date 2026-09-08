@@ -53,6 +53,7 @@ import type { CommandContext, CommandDeps } from './command-context';
 import { runCommand } from './command-context';
 export { runCommand, replayCommand } from './command-context';
 export type { CommandContext, CommandDeps } from './command-context';
+export { setAnchorPresetMinute } from './anchor-settings-commands';
 
 // --- boards ------------------------------------------------------------------
 

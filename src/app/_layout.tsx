@@ -67,6 +67,7 @@ export default function RootLayout() {
           <Stack.Screen name="boards/[boardId]/reminders/new" options={halfSheet} />
           <Stack.Screen name="boards/[boardId]/reminders/[reminderId]" options={halfSheet} />
           <Stack.Screen name="settings/index" options={sheet} />
+          <Stack.Screen name="settings/anchors" options={sheet} />
           <Stack.Screen name="settings/archived" options={sheet} />
           <Stack.Screen name="settings/import" options={sheet} />
           <Stack.Screen name="settings/notifications" options={sheet} />

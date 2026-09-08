@@ -1,4 +1,5 @@
 export { SettingsScreen } from './settings-screen';
+export { AnchorsScreen } from './anchors-screen';
 export { ArchivedBoardsScreen } from './archived-boards-screen';
 export { ImportScreen } from './import-screen';
 export { NotificationsScreen } from './notifications-screen';

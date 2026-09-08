@@ -56,6 +56,11 @@ export function SettingsScreen() {
       >
         <SettingsGroup>
           <SettingsRow
+            title="Anchors"
+            onPress={() => router.push('/settings/anchors')}
+            testID="settings-anchors"
+          />
+          <SettingsRow
             title="Notifications"
             onPress={() => router.push('/settings/notifications')}
             testID="settings-notifications"
