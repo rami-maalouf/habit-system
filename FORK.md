@@ -40,4 +40,4 @@ the local native module directory `modules/ripples-apple` and its swift type nam
 
 ## what this fork adds
 
-see `SPEC-habit-system.md`: daily toggle habits beside count habits, atomic-habits stacking through anchors, an append-only coin ledger with a full-stack bonus, user-defined rewards, one never-miss-twice alert, a sample mode, and a one-tap starter stack. ripples' spec bans gamification; the new spec replaces that rule.
+see `SPEC-habit-system.md`: daily toggle habits beside count habits, same-day stacking through anchors, an append-only coin ledger with a restorable full-stack bonus, user-defined rewards, one never-miss-twice alert, and a sample mode. no starter stack is seeded; prepared habits enter through import. ripples' spec bans gamification; the new spec replaces that rule.

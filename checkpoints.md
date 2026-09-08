@@ -2,6 +2,33 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Approved pre-T2 amendments and continuation (2026-09-08)
+
+1. Rami clarified: "Stacks are only within the day" and rejected stacks across back-to-back
+   days. Stack membership now uses exact saved logical dates; usual times never reassign dates.
+   The earlier overnight run and wake-after-bed recommendation is superseded.
+2. Rami answered yes to the review recommendations and instructed updating the spec files,
+   incorporating the review fixes, pushing them, and continuing the entire plan without stopping.
+   Bonus restoration and offline latest-action resolution with append-only ledger corrections
+   are approved. Routine implementation and verification choices remain delegated.
+3. The revised spec and plan split migrations by feature, preserve count history, require coin
+   controls and all TS/Swift mutation paths, correct sync version compatibility, specify the
+   widget toggle destination, and require complete sample adapter/navigation isolation.
+   Intermediate builds are development checkpoints until native and serialization gates pass.
+4. Date-based activity eligibility uses the inherited periods; no precise intraday history is
+   invented. The structural root identifies a stack independently of its display order.
+   An empty set of eligible required members never earns a bonus.
+5. The settlement contract is recorded in `docs/ledger-reconciliation.md`: immutable action
+   evidence, deterministic generated ids, bounded correction proofs, and cancellation of
+   obsolete corrections. Date/time edits never mint new rewards; live rechecks can restore
+   eligible bonuses. Baseline actions and generated ledger rows use UUIDv5, live commands use
+   UUIDv4. Migrations 6 through 10 are staged at T2, T3, T15, T18, and T21 respectively.
+6. Validation before the documentation commit: `bun run validate` and `bun run test:native`
+   both exit 0 (570 Jest, 51 Swift, 9 plugin checks). Logs are under `.artifacts/readiness/`.
+   The coordinating agent reviewed task amendments and the protocol; the data-contract
+   reviewer independently checked spec amendments, and corrections were incorporated.
+   Product implementation remains unchanged in this documentation commit.
+
 ### Pre-T2 plan review (2026-09-08)
 
 1. Rami authorized reviewing the whole plan and continuing T2 through the remaining tasks,

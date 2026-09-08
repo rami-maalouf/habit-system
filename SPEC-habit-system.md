@@ -8,7 +8,7 @@ Capability map: CAPABILITY-MAP.md (amendment proposed in section 12 of this docu
 
 Covered module ids: fork-identity, daily-habits, stacks, coins, rewards, miss-alerts, sample-mode
 
-Status: Approved by Rami on 2026-09-08 with one correction: no starter stack in code (see assumption 9 and section 4.11). Phase 2 plan is `tasks/plan.md`; task list is `tasks/todo.md`.
+Status: Approved by Rami on 2026-09-08. Amended after the pre-T2 review: stacks stay within one logical day, bonuses return on re-completion, and offline actions reconcile deterministically with append-only ledger corrections. The review corrections, staged migrations, documentation updates, push, and continued implementation are authorized. No starter stack in code. Plan: `tasks/plan.md`; task list: `tasks/todo.md`.
 
 Date: 2026-09-08
 
@@ -28,18 +28,18 @@ Three inherited rules are replaced:
 
 Rami: correct any of these now. Each one is a decision I filled in because it was not covered in the interview.
 
-1. **Stack start time is derived, not stored.** You said the stack's start time is the first habit's start time. So every anchor (built-in, custom text) and every habit gets an optional `usualTimeMinute`. A stack's run starts at the usual time of its first element. If the first element has no time, the run starts at midnight. This time is informational only. It never penalizes a check.
+1. **Stacks stay within one day.** Corrected after the pre-T2 review. A stack day contains only check-ins with that exact logical date. There is no overnight run, cross-date offset, or back-to-back-day stack. The first element's usual time is informational; it never moves a check into another date or penalizes one.
 2. **Stacks are derived from anchors, not stored as their own records.** A stack is every board connected through board-to-board anchors, ordered by the anchor direction. No `stacks` table. Stack metrics recompute when the stack changes, the same way Ripples analytics recompute when a board is archived.
-3. **A built-in or text anchor ends a stack.** "Wake after the alarm" starts a new stack, because the alarm is not a habit and has no predecessor. With your six habits written as in habits-v2, that produces two stacks: a night stack (closed, bed) rooted at isha prayer and a morning stack (wake, dump, ignition, courage) rooted at the alarm. If you want one stack, anchor wake "after bed" and mention the alarm in the habit's text. Open question 1 asks which you want.
-4. **The ledger is append-only.** Coins are rows, never a stored balance. Earned total is the sum of positive rows, spent total the sum of negative rows, balance the difference. A claw-back is a new negative row that references the row it reverses. This is the "two grow-only counters" you agreed to, expressed as rows so CloudKit merge is a plain set union.
-5. **Claw-back applies to the run bonus too.** Un-checking a habit before the stack's next start time reverses the habit's coin and, if the run had been complete, the run bonus.
+3. **A built-in or text anchor ends a stack.** "Wake after the alarm" starts a morning stack; the night stack is separate. The earlier proposal to join bedtime to the following morning is superseded. Board anchors describe order within the same day and cannot represent a next-day dependency.
+4. **The ledger is append-only.** Coins are rows, never a stored balance. Earned total is the sum of positive rows, spent total the sum of negative rows, balance the difference. Synchronization merges immutable rows and reconciles duplicate entitlements through further rows; plain row union alone is insufficient.
+5. **Claw-back applies to the daily stack bonus too.** Unchecking inside the earning day's boundary reverses its eligible coin and any now-incomplete stack bonus. Re-completing that day restores the bonus through a new entry, with at most one effective bonus for the stack and date.
 6. **"Next morning" for the never-miss-twice alert means 09:00 local**, adjustable later. The alert is scheduled by the same reconciler that schedules reminders (cold start, foreground, significant time change). It cannot fire from a background that iOS does not give us.
 7. **Daily boards do not track amounts or exact time.** Enabling `daily` hides Track Amounts and Track Check-In Time. A daily check-in stores amount null and time null, plus the logical date.
 8. **Sample mode runs the real UI on a throwaway in-memory database.** Every screen works inside it. Sync, widgets, notifications, export, import, and intents are disabled inside it. Closing it discards everything.
 9. **No starter stack.** Corrected on review. The only habit-related constants in code are the four built-in anchors and their default times. A prepared set of habits reaches a fresh install through the existing import of the app's own export JSON.
 10. **Identifiers use the `studio.orbitlabs.habitsystem` family** (open question 2 confirms the exact strings). Ripples' identifiers are never reused.
 
-Reviewed by Rami on 2026-09-08. Assumption 9 was corrected; the rest stand.
+Reviewed by Rami on 2026-09-08. Assumption 9 was corrected initially; assumptions 1, 3, 4, and 5 were amended after the pre-T2 review. The same-day correction supersedes the earlier overnight recommendation.
 
 ## 1. Objective
 
@@ -53,7 +53,7 @@ Rami first. He runs the six-habit night-to-morning chain from habits-v2 and the 
 
 - Create a habit as a `daily` toggle or keep it as a `count` board.
 - Anchor a habit to another habit, to a built-in anchor (waking up, lunch, dinner, sleeping), or to typed text, as "after" or "before".
-- See the stacks that form from those anchors, each with its own run window, and see whether each run was complete.
+- See the stacks that form from those anchors and whether each day's stack was complete, without combining consecutive dates.
 - Earn one coin per checked habit that is set to earn coins, capped per day, plus one bonus coin per complete stack run.
 - Write a reward list with coin prices and claim rewards with the balance.
 - Get one alert when the same habit is missed two runs in a row, and nothing else new.
@@ -108,12 +108,14 @@ Board gains `kind: 'count' | 'daily'`. Default for new boards is `daily`. Existi
 
 `daily` boards:
 
-- At most one non-deleted check-in per logical date. `createCheckIn` on a date that already has one returns the existing check-in id with `ok: true` and does not insert. The command receipt records that no mutation happened.
+- At most one effective daily completion per logical date. New local daily checks create at most one non-deleted record per date. `createCheckIn` on an already checked date returns the existing check-in id with `ok: true` without inserting. The receipt records that no mutation happened. History retained by a Count-to-Daily conversion is an explicit exception to physical row uniqueness.
 - The quick action toggles. On an unchecked day it creates the check-in. On a checked day it removes it (a tombstone, as in Ripples). Both paths run through named commands.
 - `tracksAmount` and `tracksTime` are forced false and their controls are hidden. Existing amounts and times on a board switched to `daily` are retained, not deleted.
 - Heatmap cells have two states, unchecked and checked. The accessibility label says "checked" or "not checked" with the date.
 - Analytics are unchanged: a completed day is one with a check-in. Streak, consistency, weekday, timeline, and year comparison all work without change.
 - Switching kind is an edit with optimistic concurrency. Switching `count` to `daily` keeps all history; days with several check-ins show as checked.
+- Unchecking a daily date tombstones all live checks for that date in one transaction, with confirmation when any has a note. Deleting one selected history entry remains a single-record operation. Toggle reads and writes in the same command transaction. Edits, Undo, import, sync, and native intents obey the same daily-state rules.
+- Concurrent offline check/uncheck actions resolve by the existing total hybrid-clock order, with stable id tie-breaking. Sync must reconcile duplicate daily completions and their coin consequences. A local unique index alone is not the conflict policy.
 
 ### 4.2 Anchors
 
@@ -152,10 +154,11 @@ All four are editable in Settings in 15-minute increments. They sync as part of 
 
 A stack is derived. It is the set of boards reachable from one another through `board` anchors, ordered so that every "after" edge points forward and every "before" edge points backward. Siblings anchored to the same board keep home order.
 
-- Root: the first element in that order. It is either a board with no `board` anchor, or the preset or text anchor of such a board.
-- Run start minute: the root's `usualTimeMinute` if it is a board with one; the preset's configured minute if the root is a preset; the anchoring board's `usualTimeMinute` if the root is a text anchor with none of its own; otherwise 0.
-- A run is the window from one run start to the next. Runs are identified by the logical date on which they start, computed with the same shifted-day rule Ripples uses for `startOfDayMinute`, but using the run start minute across the whole clock. Boards inside a stack use the run window, not their own `startOfDayMinute`, for stack metrics. Their own check-ins keep their own logical dates; the run assigns each check-in to a run by its occurrence instant, or by its logical date when untimed.
-- A run is complete when every member with `requiredInStack` true and not archived during that run has a check-in inside the run window.
+- Stable identity: `rootId` is the component's structural root board, found by following stored board anchors to a board without a board anchor. Display order is a stable topological ordering of before/after relations, with home order and board id as tie-breakers. The structural root need not be the first displayed member. Archived members retain structural links and identity but are absent from the active display and completion requirement.
+- Usual start minute: derive the first displayed element's usual time, or its leading preset's configured time, otherwise 0. Text anchors use their anchoring board's time. This is a display hint only, not a run boundary.
+- A run means one stack day, keyed by `<rootId>|<logicalDate>`. Only check-ins whose stored logical date equals that date participate, for both timed and untimed boards. Never reassign by occurrence instant, creation time, usual time, or the next day's checks. Each following date has its own independent run.
+- The structural root's inherited `startOfDayMinute` determines the current stack date and when a stack day closes in the device's current time zone. It does not change any member's stored logical date. A member's own board day still governs its individual daily toggle and check-coin boundary.
+- Completion uses the inherited date-based activity periods and current anchor membership. A run is complete only when at least one required eligible member exists and every required eligible member has a check with that exact date. There is no inferred intraday activity history. Root/membership edits recompute stack analytics; they do not create a cross-date stack or mint retroactive historical bonuses.
 - A stack with one member is still a stack. A board with no anchors and nothing anchored to it is not in any stack.
 
 Stack metrics (all derived, none stored):
@@ -173,15 +176,21 @@ New table `coin_ledger`:
 
 | Field | Contract |
 | --- | --- |
-| id | branded LedgerEntryId, UUIDv4 |
-| kind | `'check'`, `'run_bonus'`, `'claim'`, `'reversal'` |
-| delta | integer; positive for `check` and `run_bonus`, negative for `claim` and `reversal` |
+| id | branded LedgerEntryId; UUIDv4 for user claim rows, deterministic UUIDv5 for rows derived from immutable evidence |
+| kind | `'check'`, `'run_bonus'`, `'claim'`, `'reversal'`, `'adjustment'` |
+| delta | nonzero integer; positive for `check` and `run_bonus`, negative for `claim` and `reversal`; either sign for deterministic reconciliation adjustments |
 | boardId | BoardId for `check`; null otherwise |
 | checkInId | CheckInId for `check`; null otherwise |
 | runKey | `<rootId>|<runDate>` for `run_bonus`; null otherwise |
 | rewardId | RewardId for `claim`; null otherwise |
+| rewardTitleSnapshot | trimmed reward title, at most 80 code points, for `claim`; null otherwise |
 | reversesId | LedgerEntryId for `reversal`; null otherwise |
-| logicalDate | the board's logical date for `check`, the run date for `run_bonus`, the current logical date for `claim` |
+| scopeKey | `check:<boardId>:<logicalDate>` or `bonus:<rootId>:<logicalDate>` for earning/correction rows; null for claims |
+| sourceActionId | nullable immutable habit action id responsible for the economic event |
+| reconciliationKey | nullable canonical evidence-set digest for an adjustment |
+| adjustsId | nullable ledger entry id whose obsolete correction is canceled |
+| provenanceJson | nullable canonical sorted immutable evidence fingerprints for a correction |
+| logicalDate | board logical date for `check`, stack date for `run_bonus`, current logical date for `claim`, earning scope's date for reversals and adjustments |
 | createdAt | UTC epoch milliseconds |
 | mutationStamp | hybrid logical clock stamp |
 | deletedAt | always null; ledger rows are never tombstoned |
@@ -189,12 +198,16 @@ New table `coin_ledger`:
 Rules:
 
 - Earned total is the sum of positive deltas. Spent total is the absolute sum of negative deltas. Balance is their difference. All three are queries, never columns.
-- A `check` row is written in the same exclusive transaction as the check-in that earns it, when the board has `earnsCoins` and the number of non-reversed `check` rows for that board and logical date is below `coinCapPerDay`. Idempotent by (`boardId`, `checkInId`).
-- A `run_bonus` row of +1 is written in the transaction that makes a run complete. Idempotent by `runKey`.
-- Claw-back: removing or un-checking a check-in that has a non-reversed `check` row writes a `reversal` row of -1 when the current instant is before the next run start of the board's stack (or before the board's next logical day when it is in no stack). After that boundary the coin stays. The same rule reverses a `run_bonus` whose run is no longer complete.
+- A `check` row is written in the same exclusive transaction as its check-in when the immutable policy enables coins and scope replay has fewer outstanding canonical awards than `coinCapPerDay`. Raw corrected rows do not consume a cap slot. Its deterministic identity uses the earning scope and source check action; retries of that event cannot earn again.
+- A `run_bonus` of +1 is written when a stack day becomes complete. Its net entitlement is one coin per `runKey`. Re-completing after a reversal restores the bonus through a new immutable row. Idempotency applies to each causally identified completion or correction, not a permanent unique constraint on `runKey`.
+- Claw-back: removing or unchecking an earned check writes a reversal while its board logical day is still open. A stack bonus reverses while the structural root's logical day is still open and the day becomes incomplete. After each boundary its legitimate historical earnings stay. Concurrent duplicate/cap corrections remain required after day close; they correct conflicting awards rather than penalizing late edits.
 - A `claim` row of -cost is written when a reward is claimed. The command fails with `validation` when balance is below cost. Balance is read inside the same exclusive transaction.
-- Ledger rows sync as first-class records. They never conflict: equal ids are equal rows. The balance on two devices converges as soon as both have all rows. A claim made offline on both devices that together overspend is accepted; the balance can go negative and the UI shows it. The next earnings pay it back. No row is ever deleted to fix it.
+- Ledger rows sync as first-class immutable records. Equal ids require equal payloads. Deterministic reconciliation preserves one effective daily completion, the board/day cap, one effective stack bonus, and one effective reversal per award. It also awards a stack completed only by merging separate offline member checks. App commands, Swift intents, and sync use the same contract; corrections append rows and converge under duplicate and out-of-order delivery.
+- A claim made offline on both devices that together overspend is accepted; the balance can go negative and the UI shows it. The next earnings pay it back. Claims are never discarded to repair overspending.
+- Earn Coins and Daily Coin Cap are editable board-form controls for both Count and Daily. All mutation paths apply consequences atomically: create, remove, daily toggle, Remove Latest, Undo, date/time edits, and board deletion. Import preserves historical ledger identity and does not mint fresh earnings from restored checks.
+- Editing a check's date or time never mints fresh check coins or bonuses. A date move records leaving the old date and entering the new one; leaving may revoke the old date's entitlement while its captured day remains open. Closed-day earnings stay and the edit earns nothing new. Changing anchors, required members, or coin settings applies prospectively and does not retroactively award a historical completion.
 - Export includes the ledger. Import from a version 1 Ripples export produces no ledger rows.
+- `docs/ledger-reconciliation.md` defines the shared TS/Swift settlement protocol, immutable action evidence, deterministic identities, provenance validation, and obsolete-correction cancellation. It is part of this specification. Raw positive/negative totals remain as defined above; technical corrections do not silently change their formulas.
 
 ### 4.5 Rewards
 
@@ -222,9 +235,9 @@ Rules:
 ### 4.6 Never miss twice
 
 - Applies to `daily` boards only.
-- A miss is a run (for a stacked board) or a logical day (for an unstacked board) in which the board was active for the whole window and has no check-in.
+- A miss is an eligible logical date with no check-in on that date. Stacked boards use the same exact-date rule as stack completion. Eligibility uses the inherited date-based activity periods, not an assertion about every intraday instant. Creation dates and closed periods follow the inherited analytics convention; tests explicitly cover same-day archive/restore.
 - When a board's two most recent closed windows are both misses and no alert has been recorded for that pair, the reconciler schedules one local notification for the next 09:00 local time, or immediately if that has passed and the app is in the foreground. Body: "[title] was missed twice. Fix the environment before anything else today." The tap deep-links to the board.
-- New device-local table `miss_alerts` stores boardId, the second missed window key, and the native identifier. It never syncs and is excluded from export.
+- New device-local table `miss_alerts` stores boardId, the second missed date key, nullable native identifier, and schedule status (`pending`, `scheduled`, `denied`, `error`). It never syncs and is excluded from export.
 - The alert uses the existing notification permission. If permission is denied, the alert is recorded as `denied` and nothing prompts. Settings > Notifications shows the count of pending miss alerts.
 - Ripples' per-board reminders are unchanged and remain the way to be reminded before a habit.
 
@@ -238,7 +251,7 @@ A coin balance pill sits in the Boards header trailing area, before edit and plu
 
 ### 4.8 Stacks screen
 
-New root-level route `/stacks`, reached from a Boards header icon. It lists derived stacks. Each stack shows its members in order with today's run state, the run start time, complete runs this week, and the current complete-run streak. Selecting a stack opens `/stacks/[rootId]` with the stack heatmap and per-member counts. There is no create or edit on this screen; stacks change by editing anchors on boards. The empty state explains anchors in one sentence and links to Create Board.
+New root-level route `/stacks`, reached from a Boards header icon. It lists derived stacks. Each stack shows its members in order with today's state, the usual start time, complete days this week, and the current complete-day streak. Selecting a stack opens `/stacks/[rootId]` with the stack heatmap and per-member counts. There is no create or edit on this screen; stacks change by editing anchors on boards. The empty state explains anchors in one sentence and links to Create Board.
 
 ### 4.9 Coins and rewards screens
 
@@ -251,6 +264,7 @@ New root-level route `/stacks`, reached from a Boards header icon. It lists deri
 - A persistent top banner reads "Sample data. Nothing here is saved." with a Close button in the trailing corner. Close discards the database.
 - Inside sample mode: sync, widgets, notifications, export, import, App Intents, iCloud settings, and App Icon are disabled with a one-line explanation. Every other command works so the user can feel the app.
 - Sample mode never reads or writes the real App Group database. A test asserts the real database file's checksum is unchanged across a sample session.
+- Database, clock, and platform adapters are injected at the sample host. All nested routes retain sample context. Real-store background coordination is suspended during the sample session; widget publication, native listeners, and every disabled adapter are verified separately from the file checksum. Closing disposes the sample database and resumes the real app.
 
 ### 4.11 Starter stack
 
@@ -258,11 +272,18 @@ Removed on review, 2026-09-08. No template constant, no Settings action. The fou
 
 ### 4.12 Widgets, intents, sync, export
 
-- Widget rows for `daily` boards show the checked state and the toggle. The quick action deep-links as today.
+- Widget rows persist the board kind and derive checked state from their strip. The quick action deep-links to a daily toggle flow that resolves current state and asks before removing notes. Count boards retain Add Check-In. No in-extension mutation is claimed.
 - App Intents: Check In on a `daily` board checks it (idempotent for the day). Remove Latest Check-In un-checks it. Get Today's Check-Ins reports checked or not. The shared fixture suite gains cases for all three.
-- Sync: `coin_ledger` and `rewards` are new `SyncEntityType`s. Board and settings records carry the new fields. `SYNC_SCHEMA_VERSION` becomes 2. A device on version 1 ignores unknown types and fields; a version 2 device fills missing fields with defaults.
-- Export: `exportVersion` becomes 2 and adds `rewards` and `coinLedger`. Import accepts versions 1 and 2 of this app's export and the Ripples CSV.
-- Migration: schema version 6 adds the columns and tables above with defaults, in one exclusive transaction, checksum-tested, with a fixture from version 5.
+- Sync: `habit_actions`, `coin_ledger`, and `rewards` add `habit_action`, `ledger_entry`, and `reward` entity types. Board and settings records carry the new fields. `SYNC_SCHEMA_VERSION` becomes 2. Version 2 reads valid version 1 data with compatibility defaults. Existing version 1 clients reject unknown versions/types; they must be upgraded before participating in the version 2 data set. TS serialization, inbound validation, engine merge, outbox handling, and Swift mapping change together.
+- Export: `exportVersion` becomes 2 and includes new board/settings fields, `habitActions`, `rewards`, and `coinLedger`. Import accepts versions 1 and 2 and Ripples CSV. Restore anchors in two passes, validate the resulting graph, and retain immutable action/ledger ids. Ledger references to deleted checks/rewards may remain unresolved in the live exported objects; action evidence, history, and title snapshots must round-trip regardless. Action evidence never contains note text.
+- Migration: version 6 adds board/settings fields and widget kind; version 7 adds immutable habit actions with daily semantics; version 8 adds the ledger; version 9 rewards; version 10 device-local miss alerts. Every migration is exclusive and checksum-tested against all earlier fixtures, and updates the Swift schema/checksum gate in the same commit. Versions 1 through 5 never change.
+- Intermediate task builds are development checkpoints, not release candidates. New data must not be used across real devices or exported as a complete backup until the native, sync, and export integration gates pass. No unsupported version 1 compatibility or completed product behavior may be claimed by a partial slice.
+
+### 4.13 Immutable habit action evidence
+
+`habit_actions` records the minimum immutable evidence needed for latest-action daily state and deterministic coin settlement. It lives in the same SQLite store; it is neither a second store nor a stored balance, stack, or run. Fields: `id` (UUIDv4 for live actions, deterministic UUIDv5 for synthetic baselines), nullable `commandId` (UUIDv4 for live commands, null for baselines), `boardId`, `logicalDate`, nullable `checkInId`, action `kind`, `createdAt`, `mutationStamp`, and nullable canonical `policyJson`. The policy snapshot contains only the coin rules, relevant member ids, and day-close instants for that action; it contains no notes or habit titles. Exact action kinds, canonical encoding, compatibility baselines, and settlement rules are in `docs/ledger-reconciliation.md`.
+
+Commands write their action evidence in the same transaction as the check-in, receipt, widget projection, and outbox. Existing Count history remains intact; conversion and legacy import establish deterministic daily-state baselines without inventing historical coins. Immutable actions sync and export with the ledger so losing offline actions and closed-day entitlement facts remain available. A repeated id with unequal content is rejected and never overwrites accepted evidence.
 
 ## 5. Project structure
 
@@ -305,19 +326,18 @@ tests/
 Inherited. One illustration of how the new pure domain code should read: small, typed, no I/O, lowercase comments, no clever abstractions.
 
 ```ts
-// a run is complete when every required, present member has a check-in inside the window
+// a stack day requires at least one eligible required member and checks on that date
 export function isRunComplete(run: StackRun): boolean {
-  return run.members
-    .filter((member) => member.requiredInStack && !member.archivedDuringRun)
-    .every((member) => member.checkInIds.length > 0);
+  const required = run.members.filter((member) => member.requiredInStack && member.eligible);
+  return required.length > 0 && required.every((member) => member.checkInIds.length > 0);
 }
 
-// claw-back is allowed only until the stack's next run starts
+// user claw-back is allowed only before the relevant logical day closes
 export function canReverseCoin(input: {
   nowUtcMs: number;
-  nextRunStartUtcMs: number;
+  dayClosesAtUtcMs: number;
 }): boolean {
-  return input.nowUtcMs < input.nextRunStartUtcMs;
+  return input.nowUtcMs < input.dayClosesAtUtcMs;
 }
 ```
 
@@ -329,9 +349,9 @@ Inherited process: red, green, refactor; Jest with React Native Testing Library;
 
 New coverage that this spec requires:
 
-- Domain: stack derivation for chains, siblings, before/after mixes, cycles (rejected), archived members, preset and text roots; run windows across midnight, DST, and time-zone change; completeness with optional members; cap enforcement; claw-back inside and outside the window; run bonus idempotency; claim with sufficient, insufficient, and negative balance; ledger totals.
+- Domain: stack derivation for chains, siblings, before/after mixes, cycles (rejected), archived members, preset and text roots; exact-date assignment with consecutive dates never combined, DST and time-zone changes at day close; optional and empty required sets; cap enforcement; claw-back inside and outside the day; bonus restoration and idempotency; claims and ledger totals.
 - Migrations: version 5 fixture migrates to 6 with defaults; every earlier fixture still opens.
-- Sync: ledger and rewards records round-trip; a version 1 peer ignores them; out-of-order ledger delivery converges to one balance.
+- Sync: ledger/rewards round-trip; version 2 reads version 1; conflicting daily actions, cap races, duplicate awards/reversals, merged stack completion, and out-of-order adjustments converge. Offline double claims remain in the negative balance.
 - Contracts: daily-board cases in `intent-contract.json`, executed by both the TypeScript and Swift executors.
 - Features: toggle behavior and accessibility labels; anchor picker with all three kinds and both directions; stacks screen states; coins screens; sample mode isolation (real database checksum unchanged).
 - Device: Argent evidence for toggle, anchor picker, stacks screen, claim, sample mode open and close, and the miss alert firing on a simulator with the clock advanced.
@@ -368,14 +388,14 @@ New coverage that this spec requires:
 
 ## 9. Success criteria
 
-1. A `daily` board toggles from Home, widget, and Shortcuts with exactly one check-in per day and correct accessibility labels.
+1. A `daily` board toggles from Home, the widget deep-link flow, and Shortcuts with one effective completion per day, preserved legacy history, and correct accessibility labels.
 2. Anchors of all three kinds and both directions save, validate (no self, no cycle), and render as sentences in the board form.
-3. Rami's six habits, entered by hand with the anchors from habits-v2, produce the stacks named in open question 1, with the correct run windows across midnight.
-4. Checking a coin-earning habit writes one `check` row; the cap holds; un-checking before the next run start writes a `reversal`; un-checking after does not.
-5. Completing a run writes exactly one `run_bonus` row, and un-checking a required member inside the window reverses it.
+3. Habits entered by hand form ordered stacks within a single logical date. A bedtime check and a following-day wake check never complete the same stack day.
+4. Checking a coin-earning habit writes its eligible `check` row; the cap holds; unchecking before its logical day closes reverses it, and later user removal preserves it. Native and app writers agree.
+5. Completing a stack day gives one effective bonus; unchecking within that day reverses it and re-completing restores it without duplicate entitlement.
 6. A reward can be created, claimed with sufficient balance, refused with insufficient balance, and its claim survives the reward's deletion.
 7. Two devices with offline ledger writes converge to the same balance after sync, including a negative balance from double claims.
-8. Schema 6 migrates from every earlier fixture; export version 2 round-trips; import accepts versions 1 and 2 and the Ripples CSV.
+8. Every staged schema migration opens all earlier fixtures and passes the Swift gate; export version 2 round-trips; import accepts versions 1 and 2 and Ripples CSV, preserving ledger history and anchor references.
 9. The never-miss-twice alert schedules exactly once per missed pair, deep-links to the board, and never prompts for permission on its own.
 10. Sample mode opens with three years of generated data, every screen works, and the real database checksum is unchanged after closing.
 11. Removed on review (starter stack).
@@ -385,9 +405,9 @@ New coverage that this spec requires:
 
 ## 10. Open questions
 
-Resolved on 2026-09-08 by Rami's approval of the recommendations: (1) one stack, handled in habits-v2 by anchoring wake after bed; (2) identifiers as proposed; (3) constant 09:00; (4) cap 1 through 10; (5) rename after the first build. The original questions remain below for the record.
+Resolved on 2026-09-08. The post-review correction supersedes the original single overnight stack recommendation: stacks only group one logical date, so morning and night routines do not bridge consecutive dates. Bonus restoration and offline latest-action reconciliation are approved. Identifiers, constant 09:00, cap 1 through 10, and cosmetic rename order remain approved. Earlier questions below are historical, not pending decisions.
 
-1. **One stack or two.** With anchors as written in habits-v2 (wake after the alarm), your six habits form a night stack and a morning stack. Do you want that, or should wake anchor "after bed" so the whole night-to-morning chain is one run? Recommendation: one stack. "Full chain" is the number you care about, and two stacks give you two smaller numbers instead.
+1. **Stack date scope, resolved.** Stacks exist within one day only. The proposed bedtime-to-next-morning run was rejected. Separate night and morning anchors retain the source design without a cross-date dependency.
 2. **Exact identifiers.** Proposed: name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, App Group `group.studio.orbitlabs.habitsystem`, container `iCloud.studio.orbitlabs.habitsystem`, zone `habit-system`, scheme `habitsystem`, new EAS project via `eas init`. Confirm or change.
 3. **Miss alert time.** 09:00 local as a constant, or editable in Settings next to the preset anchors? Recommendation: constant now.
 4. **Coin cap range.** 1 through 10 per day. Is 10 enough for a count board like water?

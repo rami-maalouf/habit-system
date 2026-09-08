@@ -19,3 +19,7 @@ these are the habit-system design documents that the product spec (`SPEC-habit-s
 ## privacy
 
 these documents describe one person's routines, prayer times, sleep, and reward preferences. the repository is private today. before it becomes public, decide whether this folder stays, moves out, or is reduced to the spec alone.
+
+## App specification correction (2026-09-08)
+
+The source notes describe Rami's personal routine, including its progression from night to morning. The app's approved specification now restricts each stack completion to one logical date. Night and morning routines do not share a run across consecutive dates. Usual times are informational. The previous proposal to change wake's anchor to the previous night's bed is superseded; preserve the original alarm anchor. `SPEC-habit-system.md` governs the application.

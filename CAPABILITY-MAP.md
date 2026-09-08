@@ -29,7 +29,7 @@ Module ids remain useful planning, ownership, checkpoint, and dependency units. 
 | `android-readiness` | Verify the shared core is platform-neutral and define Compose, Android notification, App Actions, and Glance adapter seams without shipping the Android UI in the iOS-first release | `board-configuration`, `reminders`, `check-in-history`, `journal`, `analytics`, `settings`, `data-export`, `widgets` |
 | `fork-identity` | New bundle, group, container, zone, scheme, EAS project, and name; the FORK.md table applied | `native-foundation` |
 | `daily-habits` | `daily` board kind, toggle semantics, home card, widget and intent behavior | `boards`, `board-configuration`, `widgets`, `automations` |
-| `stacks` | anchors, preset anchor settings, derived stacks and runs, stacks screens and analytics | `daily-habits`, `analytics` |
+| `stacks` | anchors, preset anchor settings, derived stacks within one logical date, stack screens and analytics | `daily-habits`, `analytics` |
 | `coins` | append-only ledger, earning, cap, claw-back, run bonus, balance, history, sync and export of ledger rows | `stacks`, `cloud-sync`, `data-export` |
 | `rewards` | reward records, claim flow, reward screens | `coins` |
 | `miss-alerts` | never-miss-twice reconciler and notification | `daily-habits`, `reminders` |

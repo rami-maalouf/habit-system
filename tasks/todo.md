@@ -1,177 +1,196 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami 2026-09-08. T1 done; T2 next.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 done; T2 next. Revised planning documents may be pushed, then T2 through T24 completed.
 
-Definition of done for every task: tests first, `bun run validate` exit 0, `src/core` at 100 percent, Argent evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry, lowercase conventional commit without co-author lines.
+Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
 ## Phase 0: fork identity
 
 - [x] **T1: Apply fork identifiers and create the EAS project** (done 2026-09-08, see checkpoints.md)
-  - Acceptance: `app.json` name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, scheme `habitsystem`, widget name and display name renamed; `CloudKitTransport.swift` zone `habit-system`; podspec URLs point at `rami-maalouf/habit-system`; `extra.eas.projectId` and `updates.url` come from a new `eas init`; `package.json` name `habit-system`; FORK.md table marked applied.
-  - Verify: `bun run test:native:config`; `bunx expo-doctor`; `bunx expo prebuild --platform ios --clean` then `bunx expo run:ios`; the built app's bundle id is the new one; `git status` shows no generated `ios/`.
-  - Files: `app.json`, `package.json`, `modules/ripples-apple/ios/CloudKitTransport.swift`, `modules/ripples-apple/ios/RipplesApple.podspec`, `modules/ripples-apple/tests/plugin/config.test.cjs`, `FORK.md`.
-  - Depends on: none. Size: M.
+  - Acceptance: `app.json` name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, scheme `habitsystem`, widget name and display name renamed; `CloudKitTransport.swift` zone `habit-system`; podspec URLs point at `rami-maalouf/habit-system`; EAS project and updates URL use the new project; `package.json` name `habit-system`; FORK.md table marked applied.
+  - Verify: native configuration checks, doctor, clean iOS prebuild, simulator build with the new bundle id, generated `ios/` untracked.
+  - Files: `app.json`, `package.json`, `modules/ripples-apple/ios/CloudKitTransport.swift`, `modules/ripples-apple/ios/RipplesApple.podspec`, native config test, `FORK.md`.
+  - Depends on: none.
 
 ### Checkpoint 0
-- [x] Simulator build runs under the new identifiers; plugin tests and doctor pass; entry in `checkpoints.md`.
+
+- [x] Simulator runs under the new identifiers; plugin tests and doctor pass; entry in `checkpoints.md`.
 
 ## Phase 1: daily habits
 
-- [ ] **T2: Migration version 6 and entity types**
-  - Acceptance: version 6 adds board columns `kind`, `anchor_relation`, `anchor_kind`, `anchor_board_id`, `anchor_preset`, `anchor_text`, `usual_time_minute`, `required_in_stack`, `earns_coins`, `coin_cap_per_day`; settings columns for the four preset minutes with defaults 420, 720, 1080, 1380; tables `coin_ledger`, `rewards`, `miss_alerts` with indexes; existing boards get `kind = 'count'`; `Board`, `AppSettings`, `LedgerEntry`, `Reward` types and branded ids exist; board repository reads and writes the new columns; the Swift intents executor accepts the new schema.
-  - The Swift schema gate (read this first): `modules/ripples-apple/ios/Intents/Core/IntentExecutor.swift` lines 11-12 hardcode `static let schemaVersion = 5` and `migrationChecksums = [1: ..., 5: "633f8fb7"]`. `IntentExecutor` refuses every mutation when the database's `schema_migrations` rows do not match that map exactly (lines 218-221). The Swift test `testNativeSchemaGateMatchesAuthoritativeMigrations` recomputes the checksums from `src/core/persistence/schema.ts` through `bun` and fails if the map is stale. So T2 must append version 6 to that map (compute the checksum with `migrationChecksum` from `src/core/persistence/migrations.ts`) and bump `schemaVersion` to 6, in the same commit as the migration. Never edit migrations 1 through 5; their checksums must stay identical.
-  - Also note: `createBoard`, `updateBoard`, `importSnapshotInTransaction` (`src/core/domain/commands.ts`) and the reference fixture construct `Board` objects; adding required fields to the `Board` type breaks them until they set the new fields. Decide and record the command-level default for `kind` when the input omits it: the spec's "default daily" is the form default (T4); imports of Ripples data and old exports must stay `count`.
-  - Verify: `bun run test:migrations` with a new version 5 fixture; every earlier fixture still opens; checksum test updated; `bun run test:native` green (the Swift gate test is in it); `bun run validate`.
-  - Files: `src/core/persistence/schema.ts`, `src/core/domain/entities.ts`, `src/core/domain/ids.ts`, `src/core/persistence/repositories/boards.ts`, `src/core/persistence/repositories/support.ts` (settings row), `modules/ripples-apple/ios/Intents/Core/IntentExecutor.swift`, `tests/product/migrations/`.
-  - Depends on: T1. Size: M (seven files; the Swift edit is two lines).
+- [ ] **T2: Schema 6, board/settings fields, and widget kind**
+  - Acceptance: migration 6 adds board columns `kind`, `anchor_relation`, `anchor_kind`, `anchor_board_id`, `anchor_preset`, `anchor_text`, `usual_time_minute`, `required_in_stack`, `earns_coins`, `coin_cap_per_day`; four settings preset minutes defaulting to 420, 720, 1080, 1380; widget projection kind support. Existing boards are Count. Ledger, rewards, and miss-alert tables belong to T15/T18/T21, not migration 6.
+  - T2a: atomic migration, fixture, and matching Swift gate/checksum update. Never edit migrations 1 through 5. Compute the appended checksum through `migrationChecksum`; `testNativeSchemaGateMatchesAuthoritativeMigrations` must pass in this commit.
+  - T2b: `Board`, `AppSettings`, and widget types plus repository hydration/writes, explicit defaults at every command/import/fixture construction site. Omitted-kind compatibility callers and legacy imports remain Count; the new form explicitly defaults Daily in T4.
+  - Verify: every earlier fixture opens, version 5 migration defaults, fresh database, existing checks unchanged, native gate, full validation.
+  - Ownership scope: schema/migrations tests, entities, board/settings/widget repositories/projection, command construction sites, reference fixtures, and Swift gate. Keep each substep bounded while committing schema/gate changes atomically.
+  - Depends on: T1.
 
-- [ ] **T3: `daily` kind rules and the toggle dispatcher**
-  - Acceptance: `validateBoardFields` accepts `kind` and forces `tracksAmount` and `tracksTime` false for `daily`; `createCheckIn` on a `daily` board with an existing check-in for the date returns that id with `ok: true` and no mutation, recorded in the receipt; `toggleDailyCheckIn` command creates or removes today's check-in; `count` behavior unchanged.
-  - Verify: `bun run test:domain` with new cases for both kinds, idempotent create, toggle both ways, kind switch preserving history.
-  - Files: `src/core/domain/validation.ts`, `src/core/domain/commands.ts`, `tests/product/domain/commands.test.ts`, `tests/product/domain/daily.test.ts`.
-  - Depends on: T2. Size: M.
+- [ ] **T3: Schema 7 action evidence, Daily rules, and atomic toggle**
+  - Acceptance: Daily forces amount/time tracking false while retaining historical values. Check on an already checked date returns the existing id without another check mutation and records an idempotent receipt. Toggle resolves state inside its mutation transaction. Uncheck removes all live checks on that date, including preserved Count history; single-record history removal stays single-record. Date edits cannot silently create a second logical Daily state.
+  - T3a: schema 7 adds immutable `habit_actions` with action ids/stamps, explicit checked/unchecked evidence, and nullable `policy_json` reserved for coin snapshots; repository/types plus Swift gate/checksum land atomically. Use the evidence contract in `docs/ledger-reconciliation.md`; commands/live actions remain UUIDv4, while deterministic legacy baselines use UUIDv5 and nullable command ids.
+  - T3b: validation, defaults, shared transaction helpers, create/edit rules, and action evidence on every relevant TS/native write. Date moves emit `move_out`/`move_in`, mapping Daily state to unchecked/checked without representing a new earning action. T3c: toggle/uncheck, Remove Latest, Undo, receipt behavior, and deterministic action folding ready for later sync/ledger integration. Do not resolve a toggle outside `runCommand` or nest transactions. A tombstoned check must not erase evidence needed to resolve an offline uncheck.
+  - Verify: both kinds, replay, concurrent actions, count-to-daily history preservation, several checks on one date, date moves, selective history deletion, and Undo ownership.
+  - Ownership scope: schema/entities/ids/action repository, domain validation/commands, check-in repository, Swift executor/gate, domain/native tests. Import/sync integration closes at T19/T20 using the same action/state rules.
+  - Depends on: T2.
 
 - [ ] **T4: Board form Kind control**
-  - Acceptance: Create and Edit Board show a Kind control (Daily, Count) defaulting to Daily for new boards; selecting Daily hides Track Amounts, Unit, Quick Check-In Amount, and Track Check-In Time; live preview reflects the kind; saving persists it.
-  - Verify: `bun run test:features` board form cases by role and name; Argent screenshot of both states.
-  - Files: `src/features/board-configuration/board-form.tsx` (or the existing form file), related form state, `tests/product/features/boards-slice.test.tsx`.
-  - Depends on: T3. Size: S.
+  - Acceptance: Create/Edit offers Daily and Count; new forms default Daily. Daily hides Track Amounts, Unit, Quick Amount, and Track Time; preview and saved state reflect kind. Editing an existing Count board preserves its kind.
+  - Verify: accessible form tests, save/reopen, both simulator states.
+  - Ownership scope: board form/state and feature tests.
+  - Depends on: T3.
 
-- [ ] **T5: Home card for `daily` boards**
-  - Acceptance: card shows fourteen two-state cells ending today, "N/7 this week" using ISO Monday weeks and the board's logical day, the current streak label, and a toggle whose label is "Checked, double tap to uncheck" or "Not checked, double tap to check"; `getHomeBoardProjection` returns the needed fields; un-check of a check-in with a note asks for confirmation.
-  - Verify: `bun run test:features` and `test:domain`; Argent evidence of check and un-check with Undo.
-  - Files: `src/core/domain/queries.ts`, `src/features/boards/board-card.tsx`, `src/features/boards/boards-home.tsx`, `tests/product/features/boards-slice.test.tsx`, `tests/product/domain/queries.test.ts`.
-  - Depends on: T3. Size: M.
+- [ ] **T5: Daily Home card**
+  - Acceptance: fourteen binary cells ending today, ISO-week `N/7 this week`, current streak, and filled checked toggle. Labels are "Checked, double tap to uncheck" and "Not checked, double tap to check". Unchecking a date containing notes confirms the affected history; Undo has a precise action target and does not delete another action's check.
+  - Verify: projection/feature tests, multi-record note confirmation, rapid presses and retry, simulator check/uncheck/Undo.
+  - Ownership scope: domain queries, board card, home, and associated tests.
+  - Depends on: T4.
 
-- [ ] **T6: Heatmap two-state rendering for `daily` boards**
-  - Acceptance: `daily` boards render checked and unchecked cells only, with labels "checked" or "not checked" plus the date; `count` boards unchanged.
-  - Verify: `bun run test:features`; Argent screenshot in light and dark.
-  - Files: `src/features/boards/heatmap-view.tsx`, `src/features/boards/board-detail.tsx`, `tests/product/features/boards-detail-states.test.tsx`.
-  - Depends on: T3. Size: S.
+- [ ] **T6: Daily heatmap states**
+  - Acceptance: Daily cells are checked/unchecked with date labels and non-color cues; inherited Count intensity and unavailable dates remain correct.
+  - Verify: feature tests and light/dark simulator evidence.
+  - Ownership scope: heatmap/detail and feature tests.
+  - Depends on: T5.
 
-- [ ] **T7: Widget rows and TypeScript intents for `daily` boards**
-  - Acceptance: `widget_board_rows` carries `kind` and checked state; the widget row shows the checked state; Check In on a `daily` board is idempotent for the day; Remove Latest un-checks; Get Today's Check-Ins reports checked or not; `intent-contract.json` gains cases for all three.
-  - Verify: `bun run test:contracts`; widget renders on the simulator with a `daily` board.
-  - Files: `src/core/persistence/projections/widget-rows.ts`, `src/platform/widgets/ripples-boards-widget.tsx`, `src/core/automations/contract.ts`, `src/core/automations/fixtures/intent-contract.json`, `tests/product/contracts/automations.test.ts`.
-  - Depends on: T5. Size: M.
+- [ ] **T7: Widget fallback and shared daily intent integration**
+  - T7a acceptance: widget projection/props carries kind and checked state; row shows binary state for Daily. A daily quick-action deep link opens a dedicated flow that resolves current state, toggles through the command, and confirms removal when notes exist. Count keeps its Add Check-In fallback. Include the route and provider integration; do not pretend the existing Add Check-In link can uncheck.
+  - T7b acceptance: add Check In, Remove Latest, and Get Today's Check-Ins Daily fixture cases together with their TS and Swift implementations. Check is idempotent, Remove Latest unchecks the selected date, and Today reports checked state. Shared receipt results match verbatim. Commit the fixture and both executors together so native checks never knowingly fail between T7 and T8.
+  - Verify: widget/feature tests, contracts, native suite, simulator widget appearance and fallback action with fresh state.
+  - Ownership scope: widget projection/props/layout, daily action route/flow, provider, TS contract, shared fixture, Swift executor, and focused tests. Keep T7a and the atomic T7b integration as separate bounded substeps.
+  - Depends on: T6.
 
-- [ ] **T8: Swift intents executor for `daily` boards**
-  - Acceptance: the Swift executor passes the new fixture cases verbatim; idempotent daily create replays the same receipt shape as TypeScript.
-  - Verify: `bun run test:native`; Shortcuts on a simulator with a `daily` board.
-  - Files: `modules/ripples-apple/ios/` intent executor sources and their tests.
-  - Depends on: T7. Size: M.
+- [ ] **T8: Native daily verification**
+  - Acceptance: audit Swift-only schema/projection/outbox/idempotency paths against T7's shared cases; add native-specific regressions without changing the public intent inventory. Shortcuts Check In, Remove Latest, and Today work with Daily and Count boards on the simulator.
+  - Verify: native suite and real Shortcuts execution; record any signed-device gate separately from simulator results.
+  - Ownership scope: Swift executor/tests and checkpoint evidence. Any fixture amendment ships with both implementations.
+  - Depends on: T7.
 
 ### Checkpoint A
-- [ ] `daily` board created, toggled from Home, widget, Shortcuts; `count` boards unchanged; all gates and review recorded.
 
-## Phase 2: stacks
+- [ ] Daily creation and toggling work through Home, widget fallback, and Shortcuts, including inherited multi-check days; Count behavior and all gates pass. Development-only pending serialization completion.
+
+## Phase 2: same-day stacks
 
 - [ ] **T9: Preset anchor minutes**
-  - Acceptance: settings hold four preset minutes with defaults; `setPresetAnchorMinute` validates 0 through 1439 in 15-minute steps; Settings > Anchors lists Waking up, Lunch, Dinner, Sleeping with native time pickers stepping by 15 minutes; values sync as settings fields.
-  - Verify: `bun run test:domain`, `test:features`; Argent screenshot.
-  - Files: `src/core/domain/commands.ts`, `src/core/domain/queries.ts`, `src/features/settings/anchors-screen.tsx`, `src/app/settings/anchors.tsx`, `tests/product/features/settings-flows.test.tsx`.
-  - Depends on: T2. Size: M.
+  - Acceptance: Settings > Anchors edits Waking up, Lunch, Dinner, Sleeping in 15-minute steps across 0 through 1439. Defaults remain 420, 720, 1080, 1380. These times are informational and never assign checks to runs. Commands persist values; synced representation arrives at T19.
+  - Verify: domain validation, feature tests, native picker evidence.
+  - Ownership scope: command/query, anchor settings screen/route, settings navigation, tests.
+  - Depends on: T8.
 
-- [ ] **T10: Anchor fields and rules**
-  - Acceptance: `updateBoard` and `createBoard` accept the anchor fields and `usualTimeMinute`, `requiredInStack`; validation rejects self-anchor, cycles, and inconsistent field sets; `deleteBoard` clears dependents' anchors in the same transaction and `getBoardDependentCounts` reports the number.
-  - Verify: `bun run test:domain` with chain, sibling, before/after, cycle, and delete cases.
-  - Files: `src/core/domain/validation.ts`, `src/core/domain/commands.ts`, `src/core/domain/queries.ts`, `tests/product/domain/anchors.test.ts`.
-  - Depends on: T9. Size: M.
+- [ ] **T10: Anchor fields and validation**
+  - Acceptance: create/update accepts consistent anchor fields, usual time, and required-member flag; rejects self/cycles/invalid links; deletion clears dependents in the same transaction and reports their count. Archiving preserves links. Stable stack identity will use the terminal structural anchor-root board even when a Before member displays first.
+  - Verify: chains, siblings, mixed directions, cycles, archived targets, delete cleanup/outbox effects.
+  - Ownership scope: validation/commands/queries, board repository as needed, anchor domain tests.
+  - Depends on: T9.
 
-- [ ] **T11: Anchor picker and usual time in the board form**
-  - Acceptance: an Anchor row opens a bottom sheet with three sections: Habits (default, active boards in home order), Built-in (four presets with their times), and a text input; a segmented After/Before control; the row renders the sentence "After Bed" or "Before Lunch"; a Usual Time row with a native picker in 15-minute steps; Required in Stack toggle.
-  - Verify: `bun run test:features` by role and name; Argent evidence of all three anchor kinds.
-  - Files: `src/features/anchors/anchor-picker-sheet.tsx`, board form file, `tests/product/features/anchors.test.tsx`.
-  - Depends on: T10. Size: M.
+- [ ] **T11: Anchor form controls**
+  - Acceptance: Anchor sheet has Habits in home order, four Built-in anchors with informational times, and text input; After/Before selection; sentence summary; optional Usual Time picker; Required in Stack control. Editing times does not imply a run window or deadline.
+  - Verify: accessible feature tests and simulator evidence for each anchor kind and direction.
+  - Ownership scope: anchor picker, board form/state, feature tests.
+  - Depends on: T10.
 
-- [ ] **T12: Stack derivation and runs (pure)**
-  - Acceptance: `deriveStacks(boards)` returns ordered stacks with root and run start minute; `assignRuns(stack, checkIns, window)` returns runs keyed by start date with member check-ins and completeness honoring `requiredInStack` and archived members; cycles never reach it (validated upstream) but a defensive guard returns an error result.
-  - Verify: `bun run test:domain` covering chains, siblings, before/after mixes, preset and text roots, midnight crossing, DST both directions, zone change, leap day, optional members, archived members.
-  - Files: `src/core/domain/stacks.ts`, `tests/product/domain/stacks.test.ts`.
-  - Depends on: T10. Size: M.
+- [ ] **T12: Pure same-day stack derivation**
+  - Acceptance: `deriveStacks` produces deterministic before/after order, sibling home order, stable structural root ids, and informational times. `assignRuns` uses exact stored logical dates: `<rootId>|<logicalDate>`. No occurrence instant, usual time, preset time, or adjacent calendar date moves a check between runs. Completeness uses required members eligible under inherited date-based activity periods; zero required eligible members means incomplete and no bonus.
+  - Verify: mixed directions, preset/text roots, isolated/unanchored boards, root archive, optional members, same-day archive/restore, defensive cycle error, midnight/shifted-day/DST/time-zone fixtures proving stored dates stay fixed, leap day. Explicitly prove evening Tuesday plus morning Wednesday cannot complete one run.
+  - Ownership scope: `src/core/domain/stacks.ts`, domain tests, queries/repository inputs needed for activity periods.
+  - Depends on: T11.
 
 - [ ] **T13: Stack analytics**
-  - Acceptance: complete runs per ISO week, longest complete-run streak, per-member checks per week, and stack heatmap data for the rolling 365 runs with four shade steps and text alternatives.
-  - Verify: `bun run test:domain` at 100 percent branches.
-  - Files: `src/core/analytics/stacks.ts`, `src/core/domain/queries.ts`, `tests/product/domain/stack-analytics.test.ts`.
-  - Depends on: T12. Size: M.
+  - Acceptance: complete runs by ISO week, current and longest consecutive-date streaks, per-member weekly checks, rolling 365-date heatmap with none/some/most/all and text alternatives. Unavailable/empty-required dates do not become free completions.
+  - Verify: domain coverage including unfinished today, historical changes, archived gaps, and informational time edits leaving date membership unchanged.
+  - Ownership scope: stack analytics, domain queries, tests.
+  - Depends on: T12.
 
-- [ ] **T14: Stacks screens**
-  - Acceptance: Boards header gains a Stacks icon; `/stacks` lists stacks with members, today's run state, run start time, complete runs this week, current run streak; `/stacks/[rootId]` shows the stack heatmap and per-member counts; empty state explains anchors and links to Create Board; every metric has a text alternative.
-  - Verify: `bun run test:features`; Argent screenshots light and dark.
-  - Files: `src/app/stacks/index.tsx`, `src/app/stacks/[rootId].tsx`, `src/features/stacks/stacks-screen.tsx`, `src/features/stacks/stack-detail.tsx`, `tests/product/features/stacks-slice.test.tsx`.
-  - Depends on: T13. Size: M.
+- [ ] **T14: Stack screens**
+  - Acceptance: header Stacks action, list with ordered members/current date state/informational time/weekly count/current streak, detail heatmap and member counts, and empty state linking to Create Board. Route identity uses the structural root id and remains stable when display order changes.
+  - Verify: feature tests and light/dark simulator evidence; no overnight-run language in product UI.
+  - Ownership scope: stack routes/screens, home header integration, feature tests.
+  - Depends on: T13.
 
 ### Checkpoint B
-- [ ] Six habits entered by hand form one stack; run window across midnight correct; gates and review recorded.
+
+- [ ] User-entered habits derive the expected topology and same-date runs; checks on consecutive dates never combine. Time edits are informational, archived eligibility is date-based, and every gate/review is recorded.
 
 ## Phase 3: coins and rewards
 
-- [ ] **T15: Ledger, coin rules, earning and claw-back**
-  - Acceptance: ledger repository with append-only writes; `coins.ts` pure rules for cap and claw-back window; `createCheckIn` on an `earnsCoins` board writes a `check` row inside the same transaction when under the cap; `removeCheckIn` and the toggle write a `reversal` row when before the next run start (or next logical day when unstacked); `earned_total`, `spent_total`, balance queries.
-  - Verify: `bun run test:domain` with cap, inside and outside window, idempotent replay, and atomicity (row and check-in commit together or not at all).
-  - Files: `src/core/domain/coins.ts`, `src/core/persistence/repositories/ledger.ts`, `src/core/domain/commands.ts`, `src/core/domain/queries.ts`, `tests/product/domain/coins.test.ts`.
-  - Depends on: T12. Size: M.
+- [ ] **T15: Schema 8, ledger rules, all-writer earnings, and controls**
+  - T15a acceptance: prove the immutable action-replay/adjustment protocol in `docs/ledger-reconciliation.md` at small scale, then add schema 8 with ledger fields/indexes, claim title snapshots, and `adjustment` rows carrying `scopeKey`, `sourceActionId`, `reconciliationKey`, `adjustsId`, and `provenanceJson`. Generated ledger ids use UUIDv5; command/live-action ids stay UUIDv4, with T3's synthetic baseline exception. Branded types and append-only repository exist. Update Swift schema gate/checksum with the migration. Historical references survive parent deletion/export omission.
+  - T15b acceptance: pure rules replay immutable action/policy evidence for opted-in Daily and Count earnings, cap 1 through 10, logical-day claw-back, raw positive/negative totals, and deterministic adjustment. Check-award identity includes earning scope and source check action. Check coins close at their own board's next logical day; bonuses close at the structural root's next logical day. Shared helpers cover create, remove, toggle, Remove Latest, Undo, date/time edit, and board deletion. Edits never mint fresh rewards: timely move-out may revoke the original; late move-out preserves it; move-in earns nothing. Root changes use separate old/new policy actions and never mint retroactively. Check/action, receipt, stamp, outbox, projection, and ledger effects commit together, including replay of eligible earlier actions delivered after closure.
+  - T15c acceptance: Swift executor performs the same earning/reversal behavior; shared native/TS cases land together. Define explicit import/restore mode that preserves history without creating earnings from restored checks; T19/T20 close external data integration.
+  - T15d acceptance: board form exposes Earn Coins and Daily Coin Cap for both kinds, with validation, save/reopen, defaults, and accessible labels.
+  - Verify: cap/races/replay/atomic rollback, all mutation paths, historical edits, current/closed date boundaries, count multi-checks, native fixtures, and form simulator evidence.
+  - Ownership scope: schema/ids/entities, ledger repository, pure coin rules, command helpers/queries, Swift executor, board form, and focused tests. Use bounded substeps; no schema or shared contract commit may leave native checks red.
+  - Depends on: T14.
 
-- [ ] **T16: Run bonus**
-  - Acceptance: the check that completes a run writes one `run_bonus` row keyed by `rootId|runDate`; un-checking a required member inside the window writes its reversal; idempotent under replay.
-  - Verify: `bun run test:domain`.
-  - Files: `src/core/domain/coins.ts`, `src/core/domain/commands.ts`, `tests/product/domain/coins.test.ts`.
-  - Depends on: T15. Size: S.
+- [ ] **T16: Same-day bonus restoration and reconciliation**
+  - Acceptance: each complete same-day run has one net bonus entitlement keyed by structural root and logical date. Unchecking a required member inside the approved boundary reverses it; re-completing restores it through new immutable compensation rows. Zero required eligible members earn no bonus. Reconciliation handles duplicate awards/reversals and a run completed only by merged checks, with deterministic identities and no duplicate compensation under retry or delivery reordering.
+  - T16a: pure entitlement/compensation model and local command integration. T16b: matching Swift fixtures and reconciliation entry point used by T19. Topology/required/archive changes follow the same current-date eligibility and closed-date policy.
+  - Verify: check/uncheck/recheck, date edits, deletions, replay, two replicas, split-member completion, informational time edits, and logical-day close boundaries in both executors.
+  - Ownership scope: coin/stack rules, command/reconciliation helpers, Swift implementation, shared fixtures, tests.
+  - Depends on: T15.
 
 - [ ] **T17: Coins screens and balance pill**
-  - Acceptance: Boards header shows a balance pill with a VoiceOver label; `/coins` shows balance, earned, spent, and the reward list placeholder; `/coins/history` is a virtualized ledger grouped by logical date showing kind, delta, and the board, run, or reward.
-  - Verify: `bun run test:features`; Argent screenshots.
-  - Files: `src/app/coins/index.tsx`, `src/app/coins/history.tsx`, `src/features/coins/coins-screen.tsx`, `src/features/coins/ledger-history.tsx`, `src/features/boards/boards-home.tsx`.
-  - Depends on: T16. Size: M.
+  - Acceptance: accessible balance pill, `/coins` balance/earned/spent with rewards placeholder, `/coins/history` virtualized newest-first ledger grouped by logical date. Show negative balance and meaningful restoration/compensation entries. Historical missing board/reward references have stable readable fallbacks.
+  - Verify: queries/features, negative balance and deleted-reference history, light/dark simulator evidence.
+  - Ownership scope: routes, coin screens/history, home header, feature tests.
+  - Depends on: T16.
 
-- [ ] **T18: Rewards**
-  - Acceptance: rewards repository and commands create, update, reorder, archive, delete; `claimReward` reads balance in the transaction, refuses below cost with `validation`, writes a `claim` row with `rewardTitleSnapshot`; `/coins/rewards/new` and `/coins/rewards/[rewardId]` form sheets; Claim with confirmation stating cost and balance after; empty state offers Create Reward.
-  - Verify: `bun run test:domain`, `test:features`; Argent evidence of create, claim, refuse, delete with history intact.
-  - Files: `src/core/persistence/repositories/rewards.ts`, `src/core/domain/commands.ts`, `src/app/coins/rewards/new.tsx`, `src/app/coins/rewards/[rewardId].tsx`, `src/features/coins/reward-form.tsx`, `tests/product/domain/rewards.test.ts`, `tests/product/features/coins-slice.test.tsx`.
-  - Depends on: T17. Size: L, split into T18a (domain and repository) and T18b (screens) when scheduled.
+- [ ] **T18: Schema 9 and rewards**
+  - T18a acceptance: schema 9 adds rewards with branded ids, approved constraints/indexes, and matching Swift gate/checksum. Repository and commands create/update/reorder/archive/delete; ledger rows remain untouched by reward deletion.
+  - T18b acceptance: `claimReward` checks balance inside its exclusive transaction, fails below cost, writes immutable debit plus title snapshot, and replays safely. Editing/deleting a reward preserves prior claim cost/title. Distinct offline claims remain accepted after merge even if their combined balance is negative.
+  - T18c acceptance: native-style new/edit forms, reward list, empty state, and Claim confirmation showing cost and resulting balance.
+  - Verify: domain/native schema/feature checks plus simulator create/claim/refuse/edit/delete with history intact.
+  - Ownership scope: schema/ids/entities, reward repository/commands, coin routes/forms/list, tests, Swift gate.
+  - Depends on: T17.
 
-- [ ] **T19: Sync schema 2**
-  - Acceptance: `SyncEntityType` gains `ledger_entry` and `reward`; `SPECS` gains their tables and the new board and settings columns; `SYNC_SCHEMA_VERSION = 2`; a version 1 fake peer ignores unknown types and fields; Swift mapping accepts the new types and columns; the shared fixture round-trips through both.
-  - The Swift side to change: `modules/ripples-apple/ios/CloudKitRecordMapping.swift` line 84 guards `input.schemaVersion == 1` and reads a per-entity column allowlist (`columns[input.entityType]`); unknown fields and types fail before writing (`testUnknownFieldsAndInvalidStructureFailBeforeWriting`). Until this task lands, do not add the new board or settings columns to `SPECS` in `src/core/sync/records.ts`, or every upload will be rejected natively.
-  - Verify: `bun run test:sync`; `bun run test:native`; two-simulator convergence including a double claim at checkpoint C.
-  - Files: `src/core/sync/records.ts`, `src/core/sync/transport.ts`, `modules/ripples-apple/ios/` mapping sources and tests, `tests/product/sync/`.
-  - Depends on: T18. Size: M.
+- [ ] **T19: Sync schema 2 and offline convergence**
+  - T19a acceptance: add habit-action/ledger/reward types, board/settings fields, defaults for valid v1 records, inbound semantic validation, outbox/ordering support, and immutable action/ledger merge handling. Validate policy/provenance JSON and deterministic UUIDv5 ledger/baseline identities without changing UUIDv4 command/live-action rules. Update TS and Swift mapping together. Supported compatibility is v2 reading v1; v1 peers must upgrade before accessing v2 data. Do not use a fake v1 peer that ignores types contrary to shipped code.
+  - T19b acceptance: greatest valid action stamp determines conflicting Daily state with deterministic tie-breaks; compensation resolves superseded/duplicate earnings, cap races, duplicate bonuses/reversals, and runs complete only after merge. Transactional remote application/reconciliation updates projections and outbox once, and retries settle without oscillation. Distinct reward claims remain unchanged.
+  - T19c acceptance: two signed devices/simulators converge after offline mutation, reordered/duplicated pages, interruption, and reconnection. Minimum-version behavior is documented truthfully and does not corrupt records.
+  - Verify: sync/native contracts and real convergence for duplicate checks, check/uncheck, cap race, bonus/reversal duplicates, split-member completion, double claim, parent delivery order, and invalid record quarantine.
+  - Ownership scope: sync records/transport/validation/engine, repositories/coin reconciler, Swift mapping, shared fixtures/tests, platform integration as needed. Do not add new columns to outgoing record allowlists before matching native support lands.
+  - Depends on: T18.
 
-- [ ] **T20: Export version 2 and import**
-  - Acceptance: export adds `rewards` and `coinLedger` with `exportVersion: 2`; import accepts versions 1 and 2 of this app and the Ripples CSV; forbidden-key scan covers new tables; `miss_alerts` never exported.
-  - Verify: `bun run test:domain` import-export suite; device round trip.
-  - Files: `src/core/export/serialize.ts`, `src/core/export/import-parsers.ts`, `src/core/domain/commands.ts` (`importSnapshotInTransaction`), `tests/product/domain/import-export.test.ts`.
-  - Depends on: T19. Size: M.
+- [ ] **T20: Export 2 and complete import compatibility**
+  - T20a acceptance: explicit export 2 fields include all new board/settings values, habit actions with required policy/provenance evidence, rewards, and coin ledger. Allow only the spec's narrowly approved evidence fields in the export scan; unrelated receipts/outbox/device metadata remain forbidden. Export omits local miss alerts. Ledger snapshots survive omitted deleted parents.
+  - T20b acceptance: import v1/v2 and Ripples CSV, preserve old defaults, restore anchors in two passes with complete-graph validation and existing-parent handling, preserve immutable ledger identity/snapshots, and report invalid records. Repeat import is safe; tombstoned product records stay deleted. Restoring checks never mints fresh earnings; imported ledger and approved reconciliation restore the original balance without duplicates.
+  - Verify: round-trip, repeated restore, forward anchors/cycles, missing/deleted parent references, partial invalid data, legacy history, real device import/export, and forbidden-key scans.
+  - Ownership scope: export serializer/parsers, import transaction helpers, summary/confirmation UI as needed, domain/feature tests.
+  - Depends on: T19.
 
 ### Checkpoint C
-- [ ] Balance converges across two simulators after offline writes; export round-trips; gates and review recorded.
 
-## Phase 4: tails
+- [ ] Two devices converge on Daily state and balance after every offline conflict scenario, including merged-only completion and negative double-claim balance. Native integration and export/import round-trip pass. New data is eligible for real multi-device use only after this checkpoint.
 
-- [ ] **T21: Never-miss-twice alerts**
-  - Acceptance: reconciler (cold start, foreground, significant time change) finds `daily` boards whose two most recent closed windows are misses and have no `miss_alerts` row for the pair; schedules one local notification at the next 09:00 local, or fires now in the foreground; body and deep link per spec 4.6; denied permission records `denied` without prompting; Settings > Notifications shows pending miss alerts.
-  - Verify: `bun run test:domain`, `test:features`; Argent evidence with the simulator clock advanced.
-  - Files: `src/core/domain/miss-alerts.ts`, `src/core/persistence/repositories/miss-alerts.ts`, `src/features/product-store/provider.tsx`, `src/features/settings/notifications-screen.tsx`, `tests/product/domain/miss-alerts.test.ts`.
-  - Depends on: T15. Size: M.
+## Phase 4: alerts, sample mode, and closure
 
-- [ ] **T22: Sample generator and in-memory database**
-  - Acceptance: `generateSample(seed)` produces eight habits, one four-habit stack with a preset root, one count board, three years of check-ins with weekly rhythm and gaps, ledger rows including reversals, four rewards with claims; deterministic for a fixed seed; in-memory database factory runs the real migrations.
-  - Verify: `bun run test:domain` snapshot of counts and a determinism test.
-  - Files: `src/core/sample/generator.ts`, `src/platform/database/in-memory.ts`, `tests/product/domain/sample-generator.test.ts`.
-  - Depends on: T18. Size: M.
+- [ ] **T21: Schema 10 and never-miss-twice alerts**
+  - T21a acceptance: schema 10 adds local `miss_alerts` with board/date-pair key, native identifier, status including denied, and indexes; update Swift schema gate/checksum atomically. Table never syncs or exports.
+  - T21b acceptance: reconciler runs at cold start/foreground/significant time change and relevant mutation, using two most recent closed logical dates with date-based activity-period eligibility. Stacked and unstacked Daily boards use same-day checks, without usual-time windows or intraday activity-history claims. Schedule once at the next 09:00 local or immediately in foreground when applicable; denied permission records denied without prompting. Deep link opens the board; Settings shows pending count.
+  - Verify: controlled clock, archived gaps/same-day restore, duplicate reconcile, permission denial, native scheduling failure/retry, notification delivery/deep link, pending count.
+  - Ownership scope: schema/Swift gate, miss-alert repository/domain, notification adapter/provider/settings, tests and simulator evidence.
+  - Depends on: T20.
 
-- [ ] **T23: Sample mode modal**
-  - Acceptance: Settings > Utilities "Try a sample" opens `/sample` full-screen; the real route tree mounts against the in-memory database with sync, widgets, notifications, export, import, intents, iCloud, and App Icon disabled with one-line explanations; persistent banner with Close in the trailing corner; Close discards; a test asserts the real database file checksum is unchanged across a session.
-  - Verify: `bun run test:features`; Argent evidence of open, navigate, claim, close.
-  - Files: `src/app/sample.tsx`, `src/features/sample-mode/sample-host.tsx`, `src/features/settings/settings-screen.tsx`, `tests/product/features/sample-mode.test.tsx`.
-  - Depends on: T22. Size: M.
+- [ ] **T22: Deterministic sample and in-memory factory**
+  - Acceptance: fixed-seed generator supplies the spec's habits, a four-habit same-day stack with preset root, Count history, three years of rhythms/gaps, immutable action evidence, append-only earnings/reversals/restorations, four rewards and claims. The in-memory factory applies all migrations through schema 10. Data is seeded only into the sample database.
+  - Verify: determinism, counts, calendar ranges, valid graph/ledger relationships, final schema, and no real database opens.
+  - Ownership scope: sample generator, platform in-memory factory, domain/platform tests.
+  - Depends on: T21.
 
-- [ ] **T24: Cosmetic rename**
-  - Acceptance: README describes Habit System; native module display strings, widget display name, and podspec names no longer say Ripples where user-visible; code identifiers may keep `ripples` internally.
-  - Verify: `bun run validate`; `bun run test:native`.
-  - Files: `README.md`, `app.json`, `modules/ripples-apple/expo-module.config.json`, module strings.
-  - Depends on: T23. Size: S.
+- [ ] **T23: Isolated sample navigation and effects**
+  - T23a acceptance: inject all product effects, not just the database. Sample sync/widgets/notifications/import/export/intents/iCloud/icon adapters are disabled with explanations; no real native listener or widget publisher is registered by the sample provider.
+  - T23b acceptance: Settings > Utilities opens a full-screen sample modal; all routes, nested forms, back actions, and internal navigation retain sample context. Persistent banner and Close remain available. Normal internal commands work; closing disposes sample state/listeners/database.
+  - T23c acceptance: real database checksum remains unchanged across open/navigate/edit/claim/close, and spies prove no real prohibited adapter calls. Reopening creates a fresh deterministic sample. Test navigation and real app resumption rather than only a directly rendered sample component.
+  - Verify: feature/platform isolation tests and simulator open/navigate/edit/claim/close/reopen evidence.
+  - Ownership scope: provider/dependency boundary, sample host/routes/navigation, settings entry and disabled surfaces, platform adapters, tests. Separate injection, navigation, and end-to-end verification substeps.
+  - Depends on: T22.
+
+- [ ] **T24: Cosmetic rename and final closure**
+  - Acceptance: README describes Habit System; remaining user-visible native/module/widget strings use the new name; internal `ripples` identifiers may remain. No starter stack is introduced. Every current success criterion has honest recorded evidence.
+  - Verify: full validation/native gates, doctor, iOS/Android exports, diff hygiene, signed-device and multi-device requirements, and independent final review. Fix discovered regressions rather than weakening gates.
+  - Ownership scope: README, app/module display strings, final regression fixes as independently assigned, checkpoints.
+  - Depends on: T23.
 
 ### Checkpoint D
-- [ ] All fourteen success criteria in `SPEC-habit-system.md` section 9 recorded true in `checkpoints.md`.
+
+- [ ] Every current success criterion in `SPEC-habit-system.md` section 9 is supported by recorded tests/device evidence. The removed starter-stack item stays removed; external checks that could not run are recorded as incomplete rather than asserted true.

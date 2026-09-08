@@ -1,171 +1,142 @@
 # Implementation Plan: Habit System
 
-Spec: `SPEC-habit-system.md` (approved 2026-09-08). Inherited specs: `SPEC-native-foundation.md`, `SPEC-ripples-product.md`.
+Spec: `SPEC-habit-system.md` (approved 2026-09-08, amended by Rami's pre-T2 decisions). Inherited specs: `SPEC-native-foundation.md`, `SPEC-ripples-product.md`.
 
-Status: Phase 2 draft for Rami's review. Implementation starts only after this plan and `tasks/todo.md` are approved.
+Status: approved for implementation. T1 is complete. Rami authorized updating and pushing the planning documents, then completing T2 through T24. The latest correction takes precedence: stacks combine checks on one stored logical date only; consecutive dates never combine into one stack run.
 
-Author: Fable 5.1. Ripples planning artifacts are archived under `tasks/ripples/`.
+The original plan was authored by Fable 5.1. Ripples planning artifacts remain archived under `tasks/ripples/`; the incorporated review is `tasks/plan-review.md`.
 
 ## Overview
 
-Turn the Ripples fork into the habit system in five sequential slices and two parallel tails. Every slice leaves the app shippable: `count` boards keep working exactly as Ripples at every checkpoint, and each new capability is usable on its own before the next one starts. The order follows the data dependency: a board must be able to be `daily` before it can be anchored, anchored before stacks exist, stacked before a run bonus makes sense, earning before rewards can be claimed. Miss alerts and sample mode depend on everything above and run in parallel at the end.
+Implement daily habits, same-day stacks, coins and rewards, then alerts and sample mode. Preserve inherited Count board behavior except where the approved spec explicitly changes it. Each completed task leaves automated and native gates green. Intermediate builds are development checkpoints, not release-ready versions: new data is not safe for real multi-device use or backup until the native, sync, and export gates through T20 pass.
 
-## Inputs observed in the repository (2026-09-08)
+Work through task numbers in order. Bounded substeps keep large tasks reviewable without leaving shared contracts broken between commits. Delegate independent inspection, testing, and review; implementation ownership must remain explicit.
 
-- Schema at version 5 (`src/core/persistence/schema.ts`, `latestSchemaVersion`). Migrations are a statement list per version with checksum tests.
-- Commands in `src/core/domain/commands.ts` run through `runCommand` with idempotency receipts; `createCheckIn`, `removeCheckIn`, `removeLatestCheckIn`, `undoCreatedCheckIn` are the check-in paths. Reminder commands live in `reminder-commands.ts`.
-- Queries in `src/core/domain/queries.ts`; the home card reads `getHomeBoardProjection`; the widget reads `getWidgetProjection` over the `widget_board_rows` projection in `src/core/persistence/projections/widget-rows.ts`.
-- Sync records are declared per entity in `src/core/sync/records.ts` (`SPECS`, `SYNC_SCHEMA_VERSION = 1`). The Swift CloudKit mapping rejects unknown fields and types before writing, so every new synced column and type needs a Swift-side change too.
-- Export is version 1 in `src/core/export/serialize.ts`; import parsers in `import-parsers.ts`.
-- The App Intents executor exists twice: TypeScript in `src/core/automations/contract.ts` and Swift in `modules/ripples-apple/ios`, both driven by `src/core/automations/fixtures/intent-contract.json`.
-- The plugin derives App Group and CloudKit container from `ios.bundleIdentifier` (`modules/ripples-apple/plugin/index.js` lines 42 to 53). The zone name is a Swift constant (`CloudKitTransport.swift` line 21).
-- Home card renders fourteen days (`src/features/boards/board-card.tsx`, `seven-day-strip.tsx` is the widget strip). Settings screens live in `src/features/settings/`, routes in `src/app/settings/`.
-- Gates: `bun run validate` (570 tests, core at 100 percent), `bun run test:native` (50 Swift tests, 8 plugin checks), `bunx expo-doctor` 21/21.
+## Repository baseline (2026-09-08)
+
+- Schema version 5 with immutable statement lists and migration checksum tests.
+- TypeScript commands use exclusive transactions, mutation stamps, outbox writes, and idempotency receipts. Create, edit, remove, Remove Latest, Undo, board deletion, import, sync, and Swift intents are separate mutation paths that need consistent behavior.
+- Home uses fourteen days; widgets use seven. Widget quick actions currently deep-link into the app because extension interaction events do not safely reach the app writer.
+- Sync records and native CloudKit mapping use schema version 1 and reject unsupported types/versions. Existing version 1 peers do not silently ignore version 2.
+- Export version 1 has explicit parsers and omits tombstones and sync metadata. Restore retains stable ids and does not revive tombstoned records.
+- The TS and Swift App Intents executors share `src/core/automations/fixtures/intent-contract.json`.
+- Pre-T2 gates: 570 Jest tests with core at 100 percent, 51 Swift tests, 9 plugin checks; T1 recorded doctor 21/21 and a simulator build under Habit System identifiers.
+- Metro 8081 belongs to Ripples. Use a separate fork port, normally 8082, and never stop 8081.
 
 ## Architecture decisions
 
-- **One migration, version 6, carries every schema change in this spec.** Migrations are sequential and each version runs once; splitting the fork's columns across several versions would only multiply fixtures. Version 6 adds board columns, settings columns, `coin_ledger`, `rewards`, `miss_alerts`, and their indexes. It lands first so every later slice only adds code.
-- **Stacks and runs are pure functions over boards and check-ins.** `src/core/domain/stacks.ts` takes an array of boards plus a check-in window and returns stacks, runs, and completeness. No table, no cache. Queries call it; analytics call it; the run-bonus command calls it inside the same transaction as the check.
-- **The ledger is written inside the check-in transaction.** Earning, claw-back, and the run bonus are consequences of `createCheckIn` and `removeCheckIn` on `daily` boards, computed by pure rules in `src/core/domain/coins.ts` and written by the same exclusive transaction. There is no separate "award coins" command and no reconciler for coins.
-- **Toggle is two existing commands plus one dispatcher.** `toggleDailyCheckIn` reads today's check-in and calls `createCheckIn` or `removeCheckIn`. Widgets and intents keep calling the underlying commands; only the UI uses the dispatcher.
-- **New synced types are additive.** `SYNC_SCHEMA_VERSION` becomes 2. A version 1 peer ignores unknown types and fields. The Swift mapping learns the new types and columns in the same task as the TypeScript records so the fixture round-trip test covers both.
-- **Sample mode reuses the real provider with a different database handle.** The product-store provider already takes a database dependency. Sample mode constructs an in-memory database, runs migrations, seeds it, and mounts the same route tree in a modal with adapters swapped for no-op fakes.
-- **Identifiers change first.** Nothing is built or run on a device under Ripples' identity. `fork-identity` is task 1.
+- **Migrate with the feature.** T2 adds board/settings fields and widget kind support in schema 6. T3 adds immutable `habit_actions` evidence in schema 7, including a nullable policy snapshot reserved for later coin rules. T15 adds the ledger in schema 8; T18 adds rewards in schema 9; T21 adds local miss alerts in schema 10. Each migration updates the Swift schema gate/checksum map in the same commit. Versions 1 through 5 never change. Future tables are not frozen in T2.
+- **Stacks group one stored date.** `deriveStacks` orders anchor-connected boards. The stable stack id is the structural anchor-root board id, independent of whichever member displays first. `assignRuns` groups by exact stored `logicalDate`; `rootId|logicalDate` identifies a run. Occurrence instants and usual times never move a check to an adjacent date. Usual times and preset times are informational.
+- **Eligibility uses existing date-based activity periods.** Archived dates follow inherited period semantics, including same-day archive/restore merging. A run is complete only when at least one required eligible member exists and every such member is checked for that date. There is no new claim of precise intraday activity history.
+- **Daily mutation state is atomic and has durable evidence.** The toggle resolves current state and writes inside one command transaction. Check is idempotent for a checked date. Uncheck clears all live checks for that selected date, including preserved Count history, with UI confirmation when notes would be removed. Individual history deletion remains a single-record operation. Immutable `habit_actions` retain checked and unchecked action evidence so offline daily state follows the greatest valid mutation stamp with a deterministic tie-break. Evidence is written by all TS/native mutation paths and later syncs/exports as its own record type.
+- **All writers obey the coin rules.** Check earnings apply to opted-in Daily and Count boards. Pure entitlement rules and shared transaction helpers cover create, edit, remove, Remove Latest, Undo, board deletion, native intents, import, and sync. Date/time edits never mint a fresh reward; a date move emits `move_out`/`move_in`, with only a timely move-out revoking the original entitlement. Explicit restore/import paths preserve history without minting earnings. Root changes write separate old/new policy snapshots; policy evidence preserves prior entitlement and never creates retroactive rewards.
+- **The ledger stays append-only and is reconciled.** Ordinary local effects commit with the triggering action. The event replay and adjustment protocol in `docs/ledger-reconciliation.md` deterministically compensates duplicate or superseded offline earnings, cap races, and reversals; it also handles runs completed only by merged checks. Re-completing an eligible same-day run restores its net bonus without deleting earlier rows. Generated ledger and synthetic baseline-action identities use UUIDv5; commands/live actions remain UUIDv4. Adjustment rows carry scope, source action, reconciliation identity, adjusted-row reference, and provenance. Claims remain distinct immutable debits; approved offline overspending can produce a negative balance. Earned/spent totals retain the approved raw positive/negative sums.
+- **Claw-back follows logical-day boundaries.** A check coin uses its own board's logical-day close. A run bonus uses the structural root board's inherited start-of-day boundary. Usual time never controls either. Old earnings remain after their approved boundary. Explicitly test closed-date edits and replay valid earlier actions received after closure without changing that policy.
+- **Sync compatibility is directional.** Version 2 reads valid version 1 records with defaults. Running version 1 peers against version 2 data is unsupported and requires upgrading peers. TS record definitions, validation/merge logic, and Swift mapping change together. No fake peer test may claim old binaries support unknown types.
+- **Sample mode isolates effects and navigation.** Reuse product components and commands against a separate in-memory database with injectable no-op adapters. Every nested screen/form stays under the sample provider. Real widget publication, notification listeners, sync, import/export, App Intents, iCloud settings, and icon changes are disabled there. Close tears down sample navigation, listeners, and database.
 
-## Dependency graph
+## Dependency order and commit boundaries
 
-```
-T1 fork identity
-   |
-T2 schema v6 + entities
-   |
-T3 daily kind domain ---- T4 board form kind control
-   |                          |
-T5 home card toggle -------- T6 heatmap daily states
-   |
-T7 widget + TS intents daily ---- T8 Swift intents daily
-   |
-   [checkpoint A: daily habits]
-   |
-T9 preset anchor settings
-   |
-T10 anchor domain rules ---- T11 anchor picker UI
-   |
-T12 stack derivation (pure)
-   |
-T13 stack analytics ---- T14 stacks screens
-   |
-   [checkpoint B: stacks]
-   |
-T15 ledger repository + coin rules + earning/claw-back in check-in commands
-   |
-T16 run bonus
-   |
-T17 coins queries, balance pill, coins + history screens
-   |
-T18 rewards entity, commands, claim, screens
-   |
-T19 sync v2 (TS records + Swift mapping)
-   |
-T20 export v2 + import v1/v2
-   |
-   [checkpoint C: coins and rewards]
-   |
-T21 miss alerts ---------------- T22 sample generator + in-memory db
-                                    |
-                                 T23 sample mode modal
-   |
-T24 rename cosmetics
-   |
-   [checkpoint D: spec success criteria]
+```text
+T1 identity (done)
+  -> T2 schema 6 + board/settings/widget defaults
+  -> T3 schema 7 + action evidence + daily commands
+  -> T4 form -> T5 home -> T6 heatmap
+  -> T7 widget action flow + atomic TS/Swift fixture integration
+  -> T8 native daily device verification
+  -> checkpoint A: daily development build
+  -> T9 preset times -> T10 anchor rules -> T11 anchor form
+  -> T12 same-date stacks -> T13 analytics -> T14 screens
+  -> checkpoint B: same-day stacks development build
+  -> T15 schema 8 + ledger + all-writer earnings + controls
+  -> T16 bonus restoration and reconciliation
+  -> T17 coins screens
+  -> T18 schema 9 + rewards domain + screens
+  -> T19 sync 2 integration and offline conflict convergence
+  -> T20 export 2 and complete import compatibility
+  -> checkpoint C: complete data/native compatibility
+  -> T21 schema 10 + miss alerts
+  -> T22 sample generator -> T23 isolated sample UI
+  -> T24 cosmetics and final closure
+  -> checkpoint D: every current success criterion
 ```
 
-## Phases
+T7 and T8 remain separately recorded tasks, but new shared fixture cases and both executor implementations land together in T7's contract substep. T8 owns the remaining native-specific regression and device evidence. No intermediate commit deliberately fails native fixtures. The same rule applies when T15/T16 extend native coin behavior.
+
+## Phases and checkpoints
 
 ### Phase 0: fork identity
-- T1 apply the FORK.md identifier table and create the EAS project.
 
-### Checkpoint 0
-- `bun run test:native:config` passes with the new identifiers; `bunx expo-doctor` 21/21; `bunx expo prebuild --platform ios --clean` succeeds; generated `ios/` stays untracked; simulator build runs under the new bundle id.
+T1 applied the identifiers and created the EAS project. Checkpoint 0 already records plugin checks, doctor, generated-native hygiene, and a running simulator build under the new bundle id.
 
 ### Phase 1: daily habits
-- T2 migration version 6 and entity types.
-- T3 `daily` kind domain rules and the toggle dispatcher.
-- T4 board form: Kind control, hidden amount and time controls.
-- T5 home card for `daily` boards: fourteen binary cells, checks this week, streak, toggle.
-- T6 heatmap two-state rendering and labels for `daily` boards.
-- T7 widget rows and TypeScript intents for `daily` boards, fixture cases.
-- T8 Swift intents executor for `daily` boards against the same fixtures.
 
-### Checkpoint A
-- A `daily` board can be created, toggled from Home, widget, and Shortcuts, shows correct labels; `count` boards unchanged; migrations from every fixture pass; `bun run validate`, `bun run test:native`, Argent evidence, independent review.
+- T2: schema 6, repository hydration, explicit Count compatibility defaults, board/settings/widget entity types, and Swift gate.
+- T3: schema 7 action evidence, Daily validation, atomic toggle, preserved history handling, manual edit rules, idempotency, and reusable TS/native transaction helpers.
+- T4-T6: native Kind control, fourteen-state Home card with weekly count/streak, accessible toggle/confirmation/Undo, and binary heatmap.
+- T7-T8: daily widget fallback route, checked-state rendering, matching TS/Swift intent contracts, and native verification.
 
-### Phase 2: stacks
-- T9 preset anchor minutes in settings, command, Settings > Anchors screen.
-- T10 anchor fields, validation (self, cycle, consistency), `deleteBoard` clears dependents.
-- T11 anchor picker bottom sheet and usual-time control in the board form.
-- T12 stack derivation, run windows, completeness (pure, exhaustive tests).
-- T13 stack analytics: complete runs per week, run streak, per-member counts, stack heatmap data.
-- T14 `/stacks` and `/stacks/[rootId]` screens, Boards header icon.
+Checkpoint A: create and toggle a Daily board through Home, widget fallback, and Shortcuts; preserved multi-check history unchecks correctly; Count behavior remains covered. All task gates and independent review pass. This is a development checkpoint pending T19/T20 compatibility.
 
-### Checkpoint B
-- Rami's six habits entered by hand form one stack with the right run window across midnight; stacks screens render; `bun run validate`, Argent evidence, independent review.
+### Phase 2: same-day stacks
+
+- T9-T11: preset settings, anchor validation and deletion cleanup, anchor picker, informational usual time, and required-member control.
+- T12: pure derivation with stable structural identity, before/after ordering, exact stored-date membership, and date-based eligibility.
+- T13-T14: current/longest streaks, complete runs per ISO week, member counts, four-state heatmap, stack list/detail, and meaningful empty states.
+
+Checkpoint B: user-entered habits derive the expected topology, while evening checks on one date and morning checks on the next never complete one run together. Informational time edits do not reassign history. Before/after order, archived members, and zero-required-member behavior pass automated and simulator checks.
 
 ### Phase 3: coins and rewards
-- T15 ledger repository, coin rules, earning and claw-back inside `createCheckIn` and `removeCheckIn`.
-- T16 run bonus and its reversal.
-- T17 ledger queries, balance pill, `/coins`, `/coins/history`.
-- T18 rewards entity, commands, claim with snapshot, `/coins/rewards/*` screens.
-- T19 sync schema 2: ledger and rewards records, new board and settings fields, Swift mapping.
-- T20 export version 2 and import of versions 1 and 2.
 
-### Checkpoint C
-- Two simulators converge on a balance after offline ledger writes including a double claim; export round-trips; `bun run validate`, `bun run test:native`, Argent evidence, independent review.
+- T15: deterministic action-replay/adjustment contract, schema 8, append-only repository, cap/claw-back rules, all TS/Swift mutation paths, and Earn Coins/Daily Coin Cap form controls for both kinds.
+- T16: one net bonus per complete same-day run, reversal/restoration, and deterministic reconciliation for merged-only completion and conflicts.
+- T17: balance pill, totals, Coins, and virtualized history, including negative balances and compensation explanations.
+- T18: schema 9, reward commands, confirmed claims with title snapshots, forms, and history surviving reward deletion.
+- T19: coordinated sync schema 2 across TS/native, immutable action evidence, old-record defaults, minimum peer policy, deterministic daily conflict resolution, immutable ledger union, and compensation convergence.
+- T20: export 2 including action evidence/provenance, version 1/2 and CSV import, two-pass anchor restore, repeated restore safety, historical ledger references to omitted deleted parents, and complete round-trip coverage.
 
-### Phase 4: tails
-- T21 never-miss-twice reconciler, `miss_alerts` table, notification, Settings count.
-- T22 deterministic sample generator and in-memory database factory.
-- T23 sample mode modal with disabled adapters and the real-database checksum test.
-- T24 cosmetic rename: README, native module display strings, widget display name.
+Checkpoint C: two signed devices/simulators converge after duplicate checks, check/uncheck races, cap races, duplicate bonuses/reversals, a run completed only by merged checks, and offline double claims. Repeated/out-of-order delivery remains stable. Export/import round-trips, native fixtures, all automated gates, and independent review pass before real multi-device use.
 
-### Checkpoint D
-- Every success criterion in `SPEC-habit-system.md` section 9 is true, recorded in `checkpoints.md`.
+### Phase 4: alerts, sample mode, and closure
 
-## Verification standard per task
+- T21: schema 10, local miss-alert status and identifiers, date-based reconciler, existing notification permission, deduplication, deep links, and pending count.
+- T22: deterministic three-year sample and in-memory factory using all current migrations.
+- T23: modal navigation, injectable disabled adapters, persistent banner, working internal commands, teardown, and real-database/effect isolation.
+- T24: user-visible rename completion, final regression, exports, doctor, and evidence ledger.
 
-Inherited from the Ripples process and unchanged:
+Checkpoint D: every current success criterion in spec section 9 is supported by evidence. The removed starter-stack criterion remains removed. Record unavailable external checks honestly; simulator or mock results do not substitute for required signed-device behavior.
 
-1. Tests first (red), implementation (green), refactor. Jest with React Native Testing Library, queries by accessible role and name.
-2. `bun run validate` exit 0 before every commit; every `src/core` file at 100 percent on all four metrics.
-3. Argent simulator evidence for every visible change; a full-resolution screenshot comparison for pixel-changing tasks.
-4. Independent verification by a second model that did not author the task.
-5. One `checkpoints.md` entry per task with commits, tests, evidence, and decisions.
-6. Lowercase conventional commit, no co-author lines, pushed only after 1 to 5.
+## Verification and delivery
+
+1. Tests first, implementation, then refactor. Use accessible role/name queries and meaningful domain/contract cases.
+2. `bun run validate` exits 0 before every commit, with every `src/core` file at 100 percent on all four metrics. `bun run test:native` stays green.
+3. Capture simulator evidence for visible changes, including full-resolution screenshots for pixel review. Delegate repeated device inspection to a bounded non-author agent.
+4. Independently verify each completed task/substep. Record decisions, tests, native evidence, and commits in `checkpoints.md`.
+5. Use lowercase conventional commits without signatures/co-authors. Rami authorized pushing the revised planning documents and completing the implementation; finish required checks before each push.
+6. Final gates include doctor, iOS/Android production exports, `git diff --check`, signed-device requirements, and multi-device sync evidence.
 
 ## Risks and mitigations
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Run windows across midnight with DST and time-zone changes produce off-by-one run assignment | High | T12 is pure and gets the same fixture families as Ripples' calendar tests (midnight, shifted day, DST both directions, zone change, leap day) before any UI uses it |
-| Coins written outside the check-in transaction drift from check-ins | High | Earning, claw-back, and bonus are written by the same `runCommand` transaction as the check-in; tests assert receipt, ledger row, and check-in commit together or not at all |
-| Swift CloudKit mapping rejects new fields and sync stalls with `needs_attention` | High | T19 changes TypeScript records and Swift mapping together; the shared fixture round-trip test is the gate; two-simulator convergence at checkpoint C |
-| Version 1 peers (old installs) receive unknown record types | Medium | Version 1 code already ignores unknown types; T19 adds a test with a version 1 fake peer |
-| Toggle un-check deletes a check-in that has a note or amount | Medium | Un-check on a `daily` board with a note asks for confirmation; `daily` boards cannot add amounts or times |
-| Sample mode leaks into the real database | High | Separate database handle, adapters replaced by fakes, and a checksum test on the real file across a sample session |
-| Miss alert double-schedules or fires for archived boards | Medium | `miss_alerts` records the missed-window key; reconciler skips archived boards and windows where the board was not active for the whole window |
-| Building under Ripples' identifiers by accident | High | T1 runs first and checkpoint 0 verifies the bundle id in the built app before any other task |
-| Swift intents executor refuses all writes after the schema bump | High | `IntentExecutor.swift` hardcodes the schema version and every migration checksum and refuses mutations on mismatch; T2 updates it in the same commit as migration 6 and `bun run test:native` is in T2's gate |
-| Swift CloudKit mapping rejects new columns before T19 | High | `CloudKitRecordMapping.swift` allowlists columns per entity; `SPECS` in `records.ts` gains the new columns only in T19, together with the Swift change |
-| Fork dev client attaches to the Ripples Metro on 8081 and loads the wrong JavaScript | Medium | Observed in T1; run the fork's Metro on another port; rule recorded in AGENTS.md and MEMORY.md |
-| Scope creep toward dice, deadlines, penalties | Medium | Listed under Ask first in the spec; not in any task |
+| Risk | Mitigation |
+| --- | --- |
+| Adjacent dates accidentally combine | Exact stored-date membership tests; usual/occurrence time changes never shift stack assignment |
+| Stable root changes with display order | Key stacks by the terminal structural anchor-root board, with deterministic ordering tested separately |
+| Daily history has multiple old records | Atomic all-record uncheck, note confirmation, single-record history deletion, and restore/edit tests |
+| Offline duplicate entitlement inflates balance | Deterministic compensation identity, full-mesh/out-of-order fixtures, and two-device convergence |
+| Bonus stays lost after rechecking | Append-only restoration cases across app, Swift, sync, replay, and close boundaries |
+| A writer bypasses ledger effects | All-writer transaction inventory and shared TS/Swift fixtures |
+| Schema bump disables Shortcuts | Gate/checksum map changes with every migration; native schema test before commit |
+| Partial sync/export loses new fields | Development-only checkpoints until T19/T20; coordinated TS/native schemas |
+| Old peer is treated as compatible | Explicit upgrade requirement; test v2 reads v1 without claiming reverse compatibility |
+| Deleted ledger parents break restore | Loose historical references, title snapshots, immutable ids, and repeated-import tests |
+| Sample escapes into the real app | Adapter call assertions, navigation/provider coverage, checksum, and teardown tests |
+| Miss alerts repeat or count archived gaps | Date-based periods, persistent pair key/status, denied-permission and clock fixtures |
+| Fork loads Ripples JavaScript | Separate Metro port and verified deep link/bundle identity |
 
-## Parallelization
+## Parallel work
 
-- T3 and T4 after T2; T5 and T6 after T3; T7 then T8.
-- T10 and T11 after T9; T13 and T14 after T12.
-- T17 and T18 after T16; T19 after T18; T20 after T19.
-- T21, and the pair T22 then T23, in parallel after checkpoint C. T24 last.
+Task dependencies stay sequential. Agents may independently inspect, test, or review bounded work without sharing file ownership. T21 and T22 preparation can be explored independently, but T22's final factory tests must include schema 10. Keep code commits and checkpoint entries in task order. T24 follows completion of both tails.
 
-## Open questions
+## Resolved review decisions
 
-None. The spec's open questions were resolved on 2026-09-08.
+Rami approved the review amendments and continued implementation on 2026-09-08. His latest correction replaces overnight grouping entirely: stacks are same-day only. Re-completion restores the net bonus; offline daily state uses latest-action resolution with append-only ledger compensation. There are no pending product questions from the pre-T2 review.
