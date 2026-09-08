@@ -13,7 +13,7 @@ type ProductCore = {
   db: SqlDatabase;
   clock: { nowUtcMs(): number; timeZoneId(): string };
   ids: { uuid(): string };
-  hashing: { sha1(bytes: Uint8Array): Promise<Uint8Array> };
+  hashing: { sha1(bytes: Uint8Array): Promise<Uint8Array>; sha256(bytes: Uint8Array): Promise<Uint8Array> };
 };
 
 class MockSqlDatabase implements SqlDatabase {
@@ -99,7 +99,10 @@ async function open(): Promise<DomainResult<ProductCore>> {
     db,
     clock: { nowUtcMs: () => mockClock.utcMs, timeZoneId: () => mockClock.zone },
     ids,
-    hashing: { sha1: async (bytes) => new Uint8Array(createHash('sha1').update(bytes).digest()) },
+    hashing: {
+      sha1: async (bytes) => new Uint8Array(createHash('sha1').update(bytes).digest()),
+      sha256: async (bytes) => new Uint8Array(createHash('sha256').update(bytes).digest()),
+    },
   });
 }
 

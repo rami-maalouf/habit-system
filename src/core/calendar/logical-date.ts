@@ -1,4 +1,5 @@
 import type { LogicalDate } from '../domain/ids';
+import { createOffsetSecondsReader } from './time-zone-offset';
 
 const DATE_SHAPE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -113,47 +114,37 @@ export function currentLogicalDate(
   return local.hour * 60 + local.minute < startOfDayMinute ? addDays(date, -1) : date;
 }
 
-// signed utc offset in minutes observed in a zone at an instant
+// historical offsets may contain seconds, represented as fractional minutes.
 export function offsetMinutesAt(utcMs: number, timeZoneId: string): number {
-  const local = localWallClock(utcMs, timeZoneId);
-  const asUtc = utcInstant(local.year, local.month, local.day, local.hour, local.minute);
-  return Math.round((asUtc - truncateToMinute(utcMs)) / 60000);
+  return createOffsetSecondsReader(timeZoneId)(utcMs) / 60;
 }
 
-function truncateToMinute(utcMs: number): number {
-  return Math.floor(utcMs / 60000) * 60000;
-}
+const wallClockOffsetReaders = new Map<string, (utcMs: number) => number>();
 
-const wallClockFormatters = new Map<string, Intl.DateTimeFormat>();
-
-function wallClockFormatterFor(timeZoneId: string): Intl.DateTimeFormat {
-  let formatter = wallClockFormatters.get(timeZoneId);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timeZoneId,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    wallClockFormatters.set(timeZoneId, formatter);
+function wallClockOffsetReaderFor(timeZoneId: string): (utcMs: number) => number {
+  let reader = wallClockOffsetReaders.get(timeZoneId);
+  if (!reader) {
+    reader = createOffsetSecondsReader(timeZoneId);
+    wallClockOffsetReaders.set(timeZoneId, reader);
   }
-  return formatter;
+  return reader;
 }
 
 export function localWallClock(
   utcMs: number,
   timeZoneId: string,
 ): { year: number; month: number; day: number; hour: number; minute: number } {
-  const parts = wallClockFormatterFor(timeZoneId).formatToParts(new Date(utcMs));
-  const read = (type: string): number => {
-    const part = parts.find((p) => p.type === type);
-    /* istanbul ignore next: intl always emits the requested parts */
-    return part ? Number(part.value) : 0;
+  // intl civil parts use apple's historical cutover on hermes. utc getters
+  // preserve our proleptic calendar after applying the exact zone offset.
+  const instant = new Date(utcMs).getTime();
+  const offsetSeconds = wallClockOffsetReaderFor(timeZoneId)(instant);
+  const local = new Date(instant + offsetSeconds * 1000);
+  if (!Number.isFinite(local.getTime())) throw new RangeError('local wall clock outside supported range');
+  return {
+    year: local.getUTCFullYear(),
+    month: local.getUTCMonth() + 1,
+    day: local.getUTCDate(),
+    hour: local.getUTCHours(),
+    minute: local.getUTCMinutes(),
   };
-  // intl reports midnight as 24 in some engines with hour12 false
-  const hour = read('hour') % 24;
-  return { year: read('year'), month: read('month'), day: read('day'), hour, minute: read('minute') };
 }

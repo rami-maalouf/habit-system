@@ -101,19 +101,19 @@ describe('daily transaction atomicity', () => {
       .toEqual([{ check_in_id: null }]);
   });
 
-  it('keeps staged action rows pending without starving supported uploads behind them', async () => {
+  it.each(['habit_action', 'ledger_entry', 'reward'] as const)('keeps staged %s rows pending without starving supported uploads behind them', async (entityType) => {
     const boardId = await create(h, 'daily');
     const board = await getBoardById(h.db, boardId);
     if (!board) throw new Error('missing board');
     await h.db.runAsync('DELETE FROM mutation_outbox');
     for (let index = 0; index < 205; index += 1) {
-      await appendOutbox(h.db, 'habit_action', h.ids.uuid(), board.mutationStamp, h.clock.utcMs);
+      await appendOutbox(h.db, entityType, h.ids.uuid(), board.mutationStamp, h.clock.utcMs);
     }
     await appendOutbox(h.db, 'board', boardId, board.mutationStamp, h.clock.utcMs);
     expect(await listOutbox(h.db, 1)).toEqual([{
       id: expect.any(Number), entityType: 'board', entityId: boardId, mutationStamp: board.mutationStamp,
     }]);
-    expect(await h.db.getFirstAsync("SELECT COUNT(*) AS count FROM mutation_outbox WHERE entity_type = 'habit_action'"))
+    expect(await h.db.getFirstAsync('SELECT COUNT(*) AS count FROM mutation_outbox WHERE entity_type = ?', [entityType]))
       .toEqual({ count: 205 });
   });
 

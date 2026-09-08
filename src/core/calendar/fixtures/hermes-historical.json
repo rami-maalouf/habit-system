@@ -1,0 +1,226 @@
+{
+  "description": "actual hermes ios 26.5 civil parts captured on habit system migration qa; apple gregorian cutover differs from the stored proleptic calendar",
+  "timeZoneId": "UTC",
+  "cases": [
+    {
+      "expected": "0000-02-29",
+      "instant": -62162121600000,
+      "formatted": "03/02/0001 BC, 00:00",
+      "parts": [
+        {
+          "type": "month",
+          "value": "03"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "day",
+          "value": "02"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "year",
+          "value": "0001"
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "era",
+          "value": "BC"
+        },
+        {
+          "type": "literal",
+          "value": ","
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "hour",
+          "value": "00"
+        },
+        {
+          "type": "literal",
+          "value": ":"
+        },
+        {
+          "type": "minute",
+          "value": "00"
+        }
+      ]
+    },
+    {
+      "expected": "0001-01-01",
+      "instant": -62135596800000,
+      "formatted": "01/03/0001 AD, 00:00",
+      "parts": [
+        {
+          "type": "month",
+          "value": "01"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "day",
+          "value": "03"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "year",
+          "value": "0001"
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "era",
+          "value": "AD"
+        },
+        {
+          "type": "literal",
+          "value": ","
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "hour",
+          "value": "00"
+        },
+        {
+          "type": "literal",
+          "value": ":"
+        },
+        {
+          "type": "minute",
+          "value": "00"
+        }
+      ]
+    },
+    {
+      "expected": "1582-10-10",
+      "instant": -12219724800000,
+      "formatted": "09/30/1582 AD, 00:00",
+      "parts": [
+        {
+          "type": "month",
+          "value": "09"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "day",
+          "value": "30"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "year",
+          "value": "1582"
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "era",
+          "value": "AD"
+        },
+        {
+          "type": "literal",
+          "value": ","
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "hour",
+          "value": "00"
+        },
+        {
+          "type": "literal",
+          "value": ":"
+        },
+        {
+          "type": "minute",
+          "value": "00"
+        }
+      ]
+    },
+    {
+      "expected": "2026-09-08",
+      "instant": 1788825600000,
+      "formatted": "09/08/2026 AD, 00:00",
+      "parts": [
+        {
+          "type": "month",
+          "value": "09"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "day",
+          "value": "08"
+        },
+        {
+          "type": "literal",
+          "value": "/"
+        },
+        {
+          "type": "year",
+          "value": "2026"
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "era",
+          "value": "AD"
+        },
+        {
+          "type": "literal",
+          "value": ","
+        },
+        {
+          "type": "literal",
+          "value": " "
+        },
+        {
+          "type": "hour",
+          "value": "00"
+        },
+        {
+          "type": "literal",
+          "value": ":"
+        },
+        {
+          "type": "minute",
+          "value": "00"
+        }
+      ]
+    }
+  ]
+}

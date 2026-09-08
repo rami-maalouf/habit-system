@@ -137,6 +137,67 @@ final class IntentExecutorTests: XCTestCase {
     return try Harness(seed: source["seed"] as! [String: Any], migrations: migrations())
   }
 
+  func testTimedHistoricalCheckInsPreserveProlepticDatesAndSelectedWallTime() throws {
+    let harness = try harness()
+    harness.timeZone = "UTC"
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE boards SET tracks_time = 1, start_of_day_minute = 0 WHERE id = ?", [.text(board)])
+    let cases: [(String, Double)] = [
+      ("0000-02-29", -62_162_121_600_000),
+      ("0001-01-02", -62_135_467_200_000),
+      ("1582-10-10", -12_219_724_800_000),
+    ]
+    for (date, instant) in cases {
+      let result = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, occurredAtUtc: instant)).get()
+      XCTAssertEqual(result.logicalDate, date)
+      let row = try XCTUnwrap(harness.database.rows("SELECT logical_date, occurred_at_utc, offset_minutes FROM check_ins WHERE id = ?", [.text(result.checkInId)]).first)
+      XCTAssertEqual(row["logical_date"]?.string, date)
+      XCTAssertEqual(row["occurred_at_utc"]?.number, instant)
+      XCTAssertEqual(row["offset_minutes"]?.number, 0)
+    }
+    // the app intent resolves its selected date and time before calling the executor.
+    let instant = try IntentCalendar.occurredAt(logicalDate: "0001-01-02", hour: 12, minute: 0, startMinute: 0, zone: "UTC")
+    let result = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, logicalDate: "0001-01-02", occurredAtUtc: instant)).get()
+    XCTAssertEqual(result.logicalDate, "0001-01-02")
+    XCTAssertEqual(try harness.database.rows("SELECT occurred_at_utc FROM check_ins WHERE id = ?", [.text(result.checkInId)]).first?["occurred_at_utc"]?.number, -62_135_467_200_000)
+  }
+
+  func testTimedHistoricalCheckInsKeepFractionalMinuteOffsets() throws {
+    let harness = try harness()
+    harness.timeZone = "Europe/Paris"
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE boards SET tracks_time = 1, start_of_day_minute = 0 WHERE id = ?", [.text(board)])
+    for instant in [-2_208_988_800_000.0, -2_208_988_755_000.0] {
+      let result = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, occurredAtUtc: instant)).get()
+      XCTAssertEqual(result.logicalDate, "1900-01-01")
+      XCTAssertEqual(try harness.database.rows("SELECT offset_minutes FROM check_ins WHERE id = ?", [.text(result.checkInId)]).first?["offset_minutes"]?.number, 9.35)
+    }
+  }
+
+  func testSelectedTimesInsideGapsPersistTheSameDayForwardResolution() throws {
+    let harness = try harness()
+    harness.instant = 1_800_000_000_000
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE boards SET tracks_time = 1, start_of_day_minute = 0 WHERE id = ?", [.text(board)])
+    let cases: [(String, String, Int, Int, Double, Double)] = [
+      ("2026-03-08", "America/New_York", 2, 0, 1_772_953_200_000, -240),
+      ("2026-10-04", "Australia/Lord_Howe", 2, 0, 1_791_041_400_000, 660),
+      ("2026-10-04", "Australia/Lord_Howe", 2, 15, 1_791_042_300_000, 660),
+      ("1972-01-07", "Africa/Monrovia", 0, 0, 63_593_070_000, 0),
+      ("1972-01-07", "Africa/Monrovia", 0, 15, 63_593_970_000, 0),
+      ("1972-01-07", "Africa/Monrovia", 0, 30, 63_594_870_000, 0),
+    ]
+    for (date, zone, hour, minute, expected, offset) in cases {
+      harness.timeZone = zone
+      let instant = try IntentCalendar.occurredAt(logicalDate: date, hour: hour, minute: minute, startMinute: 0, zone: zone)
+      let result = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, logicalDate: date, occurredAtUtc: instant)).get()
+      XCTAssertEqual(result.logicalDate, date)
+      let row = try XCTUnwrap(harness.database.rows("SELECT occurred_at_utc, offset_minutes FROM check_ins WHERE id = ?", [.text(result.checkInId)]).first)
+      XCTAssertEqual(row["occurred_at_utc"]?.number, expected, "\(zone) \(hour):\(minute)")
+      XCTAssertEqual(row["offset_minutes"]?.number, offset)
+    }
+  }
+
   func testRemovalValidatesDatesBeforeSelectingRowsAndReplaysStoredOutcomesFirst() throws {
     for kind in ["count", "daily"] {
       let harness = try harness()

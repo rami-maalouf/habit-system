@@ -178,7 +178,7 @@ New table `coin_ledger`:
 | --- | --- |
 | id | branded LedgerEntryId; UUIDv4 for user claim rows, deterministic UUIDv5 for rows derived from immutable evidence |
 | kind | `'check'`, `'run_bonus'`, `'claim'`, `'reversal'`, `'adjustment'` |
-| delta | nonzero integer; positive for `check` and `run_bonus`, negative for `claim` and `reversal`; either sign for deterministic reconciliation adjustments |
+| delta | nonzero safe integer; exactly +1 for `check` and `run_bonus`, negative for `claim` and `reversal`; either sign for deterministic reconciliation adjustments |
 | boardId | BoardId for `check`; null otherwise |
 | checkInId | CheckInId for `check`; null otherwise |
 | runKey | `<rootId>|<runDate>` for `run_bonus`; null otherwise |
@@ -201,6 +201,7 @@ Rules:
 - A `check` row is written in the same exclusive transaction as its check-in when the immutable policy enables coins and scope replay has fewer outstanding canonical awards than `coinCapPerDay`. Raw corrected rows do not consume a cap slot. Its deterministic identity uses the earning scope and source check action; retries of that event cannot earn again.
 - A `run_bonus` of +1 is written when a stack day becomes complete. Its net entitlement is one coin per `runKey`. Re-completing after a reversal restores the bonus through a new immutable row. Idempotency applies to each causally identified completion or correction, not a permanent unique constraint on `runKey`.
 - Claw-back: removing or unchecking an earned check writes a reversal while its board logical day is still open. A stack bonus reverses while the structural root's logical day is still open and the day becomes incomplete. After each boundary its legitimate historical earnings stay. Concurrent duplicate/cap corrections remain required after day close; they correct conflicting awards rather than penalizing late edits.
+- Capture the economic close at the first actual crossing of the following date's start-of-day threshold in the action's time zone. A missing threshold closes at the first real instant after a clock gap; a repeated threshold uses its first occurrence and never reopens an already closed award. Equality is closed. Stored dates, informational times and conservative display-refresh deadlines remain separate from this captured boundary.
 - A `claim` row of -cost is written when a reward is claimed. The command fails with `validation` when balance is below cost. Balance is read inside the same exclusive transaction.
 - Ledger rows sync as first-class immutable records. Equal ids require equal payloads. Deterministic reconciliation preserves one effective daily completion, the board/day cap, one effective stack bonus, and one effective reversal per award. It also awards a stack completed only by merging separate offline member checks. App commands, Swift intents, and sync use the same contract; corrections append rows and converge under duplicate and out-of-order delivery.
 - A claim made offline on both devices that together overspend is accepted; the balance can go negative and the UI shows it. The next earnings pay it back. Claims are never discarded to repair overspending.

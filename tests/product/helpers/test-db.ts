@@ -131,5 +131,8 @@ export async function createTestHarness(): Promise<TestHarness> {
   if (!initialized.ok) {
     throw new Error(initialized.error.message);
   }
-  return { db, clock, ids, deps: { db, clock, ids, hashing: { sha1: async (bytes) => new Uint8Array(createHash('sha1').update(bytes).digest()) } } };
+  return { db, clock, ids, deps: { db, clock, ids, hashing: {
+    sha1: async (bytes) => new Uint8Array(createHash('sha1').update(bytes).digest()),
+    sha256: async (bytes) => new Uint8Array(createHash('sha256').update(bytes).digest()),
+  } } };
 }

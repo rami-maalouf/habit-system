@@ -9,6 +9,8 @@ export type CommandId = Brand<string, 'CommandId'>;
 export type DeviceId = Brand<string, 'DeviceId'>;
 export type LogicalDate = Brand<string, 'LogicalDate'>;
 export type HabitActionId = Brand<string, 'HabitActionId'>;
+export type LedgerEntryId = Brand<string, 'LedgerEntryId'>;
+export type RewardId = Brand<string, 'RewardId'>;
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

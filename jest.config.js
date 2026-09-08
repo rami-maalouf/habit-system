@@ -1,6 +1,11 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
+  // test discovery uses the filesystem without sharing metro's watchman state.
+  watchman: false,
+  // preserved qa worktrees and probes are evidence, outside the product suite.
+  modulePathIgnorePatterns: ['<rootDir>/\\.artifacts/'],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/\\.artifacts/'],
   // bun variant of the expo-recommended pattern (docs.expo.dev/develop/unit-testing),
   // plus standard-navigation, which expo-router 57 depends on and ships as esm
   transformIgnorePatterns: [

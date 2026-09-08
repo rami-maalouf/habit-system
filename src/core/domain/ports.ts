@@ -9,6 +9,7 @@ export interface IdGenerator {
 
 export interface Hashing {
   sha1(bytes: Uint8Array): Promise<Uint8Array>;
+  sha256(bytes: Uint8Array): Promise<Uint8Array>;
 }
 
 export type ReminderAuthorization = 'granted' | 'denied' | 'undetermined';

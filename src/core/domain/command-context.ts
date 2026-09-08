@@ -58,12 +58,12 @@ export async function runCommand<Value>(
   if (!isUuidV4(commandId)) {
     return err('validation', 'Command ids must be uuids.', { field: 'commandId' });
   }
-  const now = deps.clock.nowUtcMs();
-  const timeZoneId = deps.clock.timeZoneId();
   try {
     return await deps.db.withExclusiveTransactionAsync(async (tx) => {
       const replayed = await replayCommand<Value>(tx, commandId);
       if (replayed !== null) return replayed;
+      const now = deps.clock.nowUtcMs();
+      const timeZoneId = deps.clock.timeZoneId();
       const settings = await getSettings(tx);
       if (!settings) {
         return err('database', 'The database is not initialized.');
@@ -99,4 +99,3 @@ export async function runCommand<Value>(
 function describe(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
-

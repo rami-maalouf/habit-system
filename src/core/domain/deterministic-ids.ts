@@ -2,7 +2,7 @@ import type { Hashing } from './ports';
 
 export const HABIT_SYSTEM_NAMESPACE = '4d96f757-73e0-561c-99b9-16b7ef2d1903';
 
-export async function uuidV5(name: string, hashing: Hashing): Promise<string> {
+export async function uuidV5(name: string, hashing: Pick<Hashing, 'sha1'>): Promise<string> {
   const namespace = HABIT_SYSTEM_NAMESPACE.replaceAll('-', '');
   const prefix = Uint8Array.from({ length: 16 }, (_, index) =>
     parseInt(namespace.slice(index * 2, index * 2 + 2), 16),

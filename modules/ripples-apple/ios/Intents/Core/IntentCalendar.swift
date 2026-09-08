@@ -11,30 +11,22 @@ enum IntentCalendar {
 
   static func logicalDate(utcMs: Double, zone: String, startMinute: Int) throws -> String {
     let calendar = try calendar(zone: zone)
-    let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: Date(timeIntervalSince1970: utcMs / 1000))
-    guard let year = components.year, let month = components.month, let day = components.day,
-          let hour = components.hour, let minute = components.minute else { throw IntentFailure.database }
-    let date = String(format: "%04d-%02d-%02d", year, month, day)
-    return hour * 60 + minute < startMinute ? try addingDays(-1, to: date) : date
+    let wall = try IntentCivilTime.wall(utcMs: utcMs, zone: calendar.timeZone)
+    return IntentCivilTime.date(epochDay: wall.day - (wall.minute < startMinute ? 1 : 0))
   }
 
   // a conservative display refresh deadline, never an economic day close.
   // minute probes also observe skipped thresholds and repeated-hour rollbacks.
   static func nextWidgetRefreshUtc(utcMs: Double, zone: String, startMinutes: [Int]) throws -> Double {
     let calendar = try calendar(zone: zone)
-    let fields: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute]
-    let initial = calendar.dateComponents(fields, from: Date(timeIntervalSince1970: utcMs / 1000))
-    guard let hour = initial.hour, let minute = initial.minute else { throw IntentFailure.database }
-    let initialMinute = hour * 60 + minute
+    let initial = try IntentCivilTime.wall(utcMs: utcMs, zone: calendar.timeZone)
     let starts = Set(startMinutes)
     let limit = utcMs + 48 * 60 * 60_000
     var instant = floor(utcMs / 60_000) * 60_000 + 60_000
     while instant < limit {
-      let local = calendar.dateComponents(fields, from: Date(timeIntervalSince1970: instant / 1000))
-      guard let localHour = local.hour, let localMinute = local.minute else { throw IntentFailure.database }
-      let minuteOfDay = localHour * 60 + localMinute
-      if local.year != initial.year || local.month != initial.month || local.day != initial.day ||
-          starts.contains(where: { (minuteOfDay < $0) != (initialMinute < $0) }) { return instant }
+      let local = try IntentCivilTime.wall(utcMs: instant, zone: calendar.timeZone)
+      if local.day != initial.day ||
+          starts.contains(where: { (local.minute < $0) != (initial.minute < $0) }) { return instant }
       instant += 60_000
     }
     return limit
@@ -51,25 +43,20 @@ enum IntentCalendar {
   }
 
   static func addingDays(_ count: Int, to date: String) throws -> String {
-    let parts = date.split(separator: "-").compactMap { Int($0) }
-    guard parts.count == 3 else { throw IntentFailure.database }
-    let calendar = try calendar(zone: "UTC")
-    guard let start = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
-          let result = calendar.date(byAdding: .day, value: count, to: start) else { throw IntentFailure.database }
-    let components = calendar.dateComponents([.year, .month, .day], from: result)
-    return String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
+    IntentCivilTime.date(epochDay: try IntentCivilTime.epochDay(date: date) + count)
   }
 
   // date and time intent parameters are wall-clock components. a time
   // before the shift belongs to the next calendar day of a logical date.
   static func occurredAt(logicalDate: String, hour: Int, minute: Int, startMinute: Int, zone: String) throws -> Double {
-    let actualDate = hour * 60 + minute < startMinute ? try addingDays(1, to: logicalDate) : logicalDate
-    let parts = actualDate.split(separator: "-").compactMap { Int($0) }
-    let calendar = try calendar(zone: zone)
-    guard let midnight = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
-          let result = calendar.nextDate(after: midnight.addingTimeInterval(-1), matching: DateComponents(hour: hour, minute: minute), matchingPolicy: .nextTimePreservingSmallerComponents, repeatedTimePolicy: .first, direction: .forward) else {
+    guard (0...23).contains(hour), (0...59).contains(minute) else {
       throw IntentFailure(code: "validation", message: "Choose a valid local time.", field: "occurredAtUtc")
     }
-    return result.timeIntervalSince1970 * 1000
+    let day = try IntentCivilTime.epochDay(date: logicalDate) + (hour * 60 + minute < startMinute ? 1 : 0)
+    let target = Double(day * 86_400_000 + (hour * 60 + minute) * 60_000)
+    let timeZone = try calendar(zone: zone).timeZone
+    return try IntentCivilTime.resolve(target: target, preservingGap: true) {
+      timeZone.secondsFromGMT(for: Date(timeIntervalSince1970: $0 / 1000))
+    }
   }
 }

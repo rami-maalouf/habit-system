@@ -1,0 +1,114 @@
+[
+  {
+    "date": "2026-09-08",
+    "zone": "UTC",
+    "shift": 0,
+    "expected": "2026-09-09T00:00:00.000Z",
+    "expectedUtcMs": 1788912000000
+  },
+  {
+    "date": "2026-09-08",
+    "zone": "America/Toronto",
+    "shift": 240,
+    "expected": "2026-09-09T08:00:00.000Z",
+    "expectedUtcMs": 1788940800000
+  },
+  {
+    "date": "2026-03-07",
+    "zone": "America/New_York",
+    "shift": 150,
+    "expected": "2026-03-08T07:00:00.000Z",
+    "expectedUtcMs": 1772953200000
+  },
+  {
+    "date": "2026-10-31",
+    "zone": "America/New_York",
+    "shift": 90,
+    "expected": "2026-11-01T05:30:00.000Z",
+    "expectedUtcMs": 1793511000000
+  },
+  {
+    "date": "2026-10-31",
+    "zone": "America/New_York",
+    "shift": 240,
+    "expected": "2026-11-01T09:00:00.000Z",
+    "expectedUtcMs": 1793523600000
+  },
+  {
+    "date": "2026-04-04",
+    "zone": "Australia/Lord_Howe",
+    "shift": 90,
+    "expected": "2026-04-04T14:30:00.000Z",
+    "expectedUtcMs": 1775313000000
+  },
+  {
+    "date": "2011-12-29",
+    "zone": "Pacific/Apia",
+    "shift": 0,
+    "expected": "2011-12-30T10:00:00.000Z",
+    "expectedUtcMs": 1325239200000
+  },
+  {
+    "date": "1900-01-01",
+    "zone": "Europe/Paris",
+    "shift": 0,
+    "expected": "1900-01-01T23:50:39.000Z",
+    "expectedUtcMs": -2208902961000
+  },
+  {
+    "date": "0000-02-28",
+    "zone": "UTC",
+    "shift": 0,
+    "expected": "0000-02-29T00:00:00.000Z",
+    "expectedUtcMs": -62162121600000
+  },
+  {
+    "date": "0001-01-01",
+    "zone": "UTC",
+    "shift": 0,
+    "expected": "0001-01-02T00:00:00.000Z",
+    "expectedUtcMs": -62135510400000
+  },
+  {
+    "date": "0099-12-31",
+    "zone": "UTC",
+    "shift": 0,
+    "expected": "0100-01-01T00:00:00.000Z",
+    "expectedUtcMs": -59011459200000
+  },
+  {
+    "date": "1582-10-09",
+    "zone": "UTC",
+    "shift": 0,
+    "expected": "1582-10-10T00:00:00.000Z",
+    "expectedUtcMs": -12219724800000
+  },
+  {
+    "date": "9999-12-31",
+    "zone": "UTC",
+    "shift": 0,
+    "expected": "+010000-01-01T00:00:00.000Z",
+    "expectedUtcMs": 253402300800000
+  },
+  {
+    "date": "2026-09-08",
+    "zone": "Etc/GMT-14",
+    "shift": 0,
+    "expected": "2026-09-08T10:00:00.000Z",
+    "expectedUtcMs": 1788861600000
+  },
+  {
+    "date": "1883-11-17",
+    "zone": "America/New_York",
+    "shift": 720,
+    "expected": "1883-11-18T16:56:02.000Z",
+    "expectedUtcMs": -2717651038000
+  },
+  {
+    "date": "1972-01-06",
+    "zone": "Africa/Monrovia",
+    "shift": 0,
+    "expected": "1972-01-07T00:44:30.000Z",
+    "expectedUtcMs": 63593070000
+  }
+]

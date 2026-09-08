@@ -280,13 +280,13 @@ describe('stack query snapshots', () => {
     expect(await semanticSnapshot(h)).toEqual(before);
   });
 
-  it('stores the correct UTC offset when a timed check uses an accepted early AD instant', async () => {
+  it.each(['0000-02-29', '0001-01-02'])('stores the correct date and UTC offset for a timed check on %s', async (date) => {
     h.clock.zone = 'UTC';
     const root = await board({ tracksTime: true, anchor: { kind: 'text', relation: 'after', text: 'History' } });
-    const occurredAtUtc = Date.parse('0001-01-02T12:00:00Z');
+    const occurredAtUtc = Date.parse(`${date}T12:00:00Z`);
     const result = await createCheckIn(h.deps, { commandId: h.ids.nextCommandId(), boardId: root, occurredAtUtc, source: 'app' });
-    expect(result).toMatchObject({ ok: true, value: { logicalDate: '0001-01-02', created: true } });
+    expect(result).toMatchObject({ ok: true, value: { logicalDate: date, created: true } });
     expect(await h.db.getFirstAsync('SELECT logical_date, occurred_at_utc, time_zone_id, offset_minutes FROM check_ins WHERE board_id = ?', [root]))
-      .toEqual({ logical_date: '0001-01-02', occurred_at_utc: occurredAtUtc, time_zone_id: 'UTC', offset_minutes: 0 });
+      .toEqual({ logical_date: date, occurred_at_utc: occurredAtUtc, time_zone_id: 'UTC', offset_minutes: 0 });
   });
 });

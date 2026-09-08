@@ -1,0 +1,2541 @@
+{
+  "namespace": "4d96f757-73e0-561c-99b9-16b7ef2d1903",
+  "scope": {
+    "boardId": "00000000-0000-4000-8000-000000000064",
+    "logicalDate": "2026-09-08"
+  },
+  "policy": {
+    "version": 1,
+    "boardKind": "count",
+    "earnsCoins": true,
+    "coinCapPerDay": 1,
+    "checkClosesAtUtc": 1788926400000,
+    "rootId": null,
+    "requiredBoardIds": [],
+    "bonusClosesAtUtc": null,
+    "bonusEnabled": false
+  },
+  "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+  "cases": [
+    {
+      "name": "one genuine check earns",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1"
+      ],
+      "target": 1,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "count cap blocks a later check",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1",
+        "00000000-0000-4000-8000-0000000007d2"
+      ],
+      "target": 1,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "targeted removal never promotes a cap-blocked check",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-0000000003eb",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "uncheck",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d2"
+      ],
+      "target": 0,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "f370e946-3774-5764-b36a-438a055ab6fa",
+          "kind": "reversal",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000003",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "daily source removal leaves duplicate checked without a coin",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-0000000003eb",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "uncheck",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d2"
+      ],
+      "target": 0,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "f370e946-3774-5764-b36a-438a055ab6fa",
+          "kind": "reversal",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000003",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "late clear does not suppress a later-ordered timely targeted removal",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "commandId": "00000000-0000-4000-8000-0000000003ed",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "uncheck",
+          "createdAt": 1788926399999,
+          "mutationStamp": "01788825600000-00005-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "commandId": "00000000-0000-4000-8000-0000000003ec",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788926400000,
+          "mutationStamp": "01788825600000-00004-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [],
+      "target": 0,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "60963141-ff5b-58e7-84d3-47891e2b2ae2",
+          "kind": "reversal",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000005",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788926399999,
+          "mutationStamp": "01788825600000-00005-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "late targeted removal does not suppress a later-ordered timely clear",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "commandId": "00000000-0000-4000-8000-0000000003ed",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788926399999,
+          "mutationStamp": "01788825600000-00005-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "commandId": "00000000-0000-4000-8000-0000000003ec",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "uncheck",
+          "createdAt": 1788926400000,
+          "mutationStamp": "01788825600000-00004-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [],
+      "target": 0,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "60963141-ff5b-58e7-84d3-47891e2b2ae2",
+          "kind": "reversal",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000005",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788926399999,
+          "mutationStamp": "01788825600000-00005-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "daily configured cap 1 after closed award",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000006",
+          "commandId": "00000000-0000-4000-8000-0000000003ee",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d6",
+          "kind": "check",
+          "createdAt": 1788926400001,
+          "mutationStamp": "01788825600000-00006-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "commandId": "00000000-0000-4000-8000-0000000003ec",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788926400000,
+          "mutationStamp": "01788825600000-00004-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d6"
+      ],
+      "target": 1,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "daily configured cap 10 after closed award",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000006",
+          "commandId": "00000000-0000-4000-8000-0000000003ee",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d6",
+          "kind": "check",
+          "createdAt": 1788926400001,
+          "mutationStamp": "01788825600000-00006-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":10,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "commandId": "00000000-0000-4000-8000-0000000003ec",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788926400000,
+          "mutationStamp": "01788825600000-00004-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":10,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":10,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d6"
+      ],
+      "target": 2,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "4792b455-c126-5ed5-aa0a-315c1537f98f",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d6",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000006",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788926400001,
+          "mutationStamp": "01788825600000-00006-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "same active check token never earns twice",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1"
+      ],
+      "target": 1,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "baseline blocks promotion of retained token",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "e21d49f9-9dd1-56dd-ba03-3df19cbbed66",
+          "commandId": null,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "baseline",
+          "createdAt": 0,
+          "mutationStamp": "00000000000000-00000-baseline",
+          "policyJson": null
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1"
+      ],
+      "target": 0,
+      "ordinaryRows": []
+    },
+    {
+      "name": "null legacy policy never earns",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": null
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1"
+      ],
+      "target": 0,
+      "ordinaryRows": []
+    },
+    {
+      "name": "move in never earns",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "move_in",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1"
+      ],
+      "target": 0,
+      "ordinaryRows": []
+    },
+    {
+      "name": "timely move out revokes original source",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-0000000003eb",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "move_out",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [],
+      "target": 0,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "f370e946-3774-5764-b36a-438a055ab6fa",
+          "kind": "reversal",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000003",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "prospective daily cap reduction preserves old count awards",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":3,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":3,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000006",
+          "commandId": "00000000-0000-4000-8000-0000000003ee",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d6",
+          "kind": "check",
+          "createdAt": 1788825600006,
+          "mutationStamp": "01788825600000-00006-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":3,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000007",
+          "commandId": "00000000-0000-4000-8000-0000000003ef",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "policy",
+          "createdAt": 1788825600007,
+          "mutationStamp": "01788825600000-00007-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000008",
+          "commandId": "00000000-0000-4000-8000-0000000003f0",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d8",
+          "kind": "check",
+          "createdAt": 1788825600008,
+          "mutationStamp": "01788825600000-00008-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [
+        "00000000-0000-4000-8000-0000000007d1",
+        "00000000-0000-4000-8000-0000000007d2",
+        "00000000-0000-4000-8000-0000000007d6",
+        "00000000-0000-4000-8000-0000000007d8"
+      ],
+      "target": 3,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000002",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "4792b455-c126-5ed5-aa0a-315c1537f98f",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d6",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000006",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600006,
+          "mutationStamp": "01788825600000-00006-fixture",
+          "deletedAt": null
+        }
+      ]
+    },
+    {
+      "name": "genuine backdated creation may earn after its captured historical close",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-0000000003eb",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "uncheck",
+          "createdAt": 1788825600003,
+          "mutationStamp": "01788825600000-00003-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":-1,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":-1,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "activeCheckInIds": [],
+      "target": 1,
+      "ordinaryRows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        }
+      ]
+    }
+  ],
+  "correction": {
+    "actions": [
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "commandId": "00000000-0000-4000-8000-0000000003ea",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "kind": "check",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "commandId": "00000000-0000-4000-8000-0000000003e9",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "kind": "check",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      }
+    ],
+    "existingRows": [
+      {
+        "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000001",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000002",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      }
+    ],
+    "expectedAppend": [
+      {
+        "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "kind": "adjustment",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      }
+    ],
+    "target": 1,
+    "balance": 1
+  },
+  "overlap": {
+    "actions": [
+      {
+        "id": "00000000-0000-4000-8000-000000000006",
+        "commandId": "00000000-0000-4000-8000-0000000003ee",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d6",
+        "kind": "check",
+        "createdAt": 1788825600006,
+        "mutationStamp": "01788825600000-00006-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "commandId": "00000000-0000-4000-8000-0000000003ea",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "kind": "check",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "commandId": "00000000-0000-4000-8000-0000000003e9",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "kind": "check",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      }
+    ],
+    "existingRows": [
+      {
+        "id": "4792b455-c126-5ed5-aa0a-315c1537f98f",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d6",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000006",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600006,
+        "mutationStamp": "01788825600000-00006-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000002",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000001",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "6cbcc392-cef0-514a-a8a9-6474cee51302",
+        "kind": "adjustment",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "946a64e9c88d035ee1fa1a9a314e824d90da5d5d8ef0444ef175c4188219c61a",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000006\",\"79e8a25c57ec5142fe166b5de4eba35cbadd7df37b5a28ecb8d76ad177138228\"],[\"ledger_entry\",\"4792b455-c126-5ed5-aa0a-315c1537f98f\",\"be2d833d52113ce5b524cd99e16d113804a0ca0d50de16b9fd6fdf3f6518077f\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600006,
+        "mutationStamp": "01788825600000-00006-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "kind": "adjustment",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      }
+    ],
+    "expectedAppend": [
+      {
+        "id": "8d39e5b0-cccf-58fa-bdd4-1ebb3500166b",
+        "kind": "adjustment",
+        "delta": 1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "946a64e9c88d035ee1fa1a9a314e824d90da5d5d8ef0444ef175c4188219c61a",
+        "adjustsId": "6cbcc392-cef0-514a-a8a9-6474cee51302",
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000006\",\"79e8a25c57ec5142fe166b5de4eba35cbadd7df37b5a28ecb8d76ad177138228\"],[\"ledger_entry\",\"4792b455-c126-5ed5-aa0a-315c1537f98f\",\"be2d833d52113ce5b524cd99e16d113804a0ca0d50de16b9fd6fdf3f6518077f\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600006,
+        "mutationStamp": "01788825600000-00006-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "569fe2b9-8be6-55e4-a5e7-aedad6032185",
+        "kind": "adjustment",
+        "delta": 1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "5d18aa7c-b11d-54ea-9e11-65ec40f0d0a8",
+        "kind": "adjustment",
+        "delta": -2,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e1cfb42bc4851835016d592692f0bc6a8327eebc49b94d67792e5f3dc36524db",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000006\",\"79e8a25c57ec5142fe166b5de4eba35cbadd7df37b5a28ecb8d76ad177138228\"],[\"ledger_entry\",\"4792b455-c126-5ed5-aa0a-315c1537f98f\",\"be2d833d52113ce5b524cd99e16d113804a0ca0d50de16b9fd6fdf3f6518077f\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600006,
+        "mutationStamp": "01788825600000-00006-fixture",
+        "deletedAt": null
+      }
+    ],
+    "target": 1,
+    "balance": 1
+  },
+  "validPolicies": [
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": 1788926400000,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "daily",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": 1788926400000,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "json": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": false,
+        "coinCapPerDay": 10,
+        "checkClosesAtUtc": 1788926400000,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":false,\"coinCapPerDay\":10,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": -9007199254740991,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":-9007199254740991,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": 9007199254740991,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":9007199254740991,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": 1788926400000,
+        "rootId": "00000000-0000-4000-8000-000000000064",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000064"
+        ],
+        "bonusClosesAtUtc": -1,
+        "bonusEnabled": true
+      },
+      "json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000064\"],\"bonusClosesAtUtc\":-1,\"bonusEnabled\":true}"
+    },
+    {
+      "value": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": 1788926400000,
+        "rootId": "00000000-0000-4000-8000-000000000064",
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": -1,
+        "bonusEnabled": false
+      },
+      "json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":-1,\"bonusEnabled\":false}"
+    }
+  ],
+  "invalidPolicies": [
+    "{\"version\":2,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"other\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":1,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":0,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":11,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1.5,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":9007199254740992,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":-0.0,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":4,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"bad\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":\"bad\",\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000064\"],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":0,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":true}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":0}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false,\"extra\":true}",
+    "null",
+    "[]",
+    "true",
+    "{",
+    " {\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false,\"version\":1}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[\"bad\"],\"bonusClosesAtUtc\":-1,\"bonusEnabled\":true}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000064\",\"00000000-0000-4000-8000-000000000064\"],\"bonusClosesAtUtc\":-1,\"bonusEnabled\":true}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000065\",\"00000000-0000-4000-8000-000000000064\"],\"bonusClosesAtUtc\":-1,\"bonusEnabled\":true}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":-1,\"bonusEnabled\":true}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000064\"],\"bonusClosesAtUtc\":1.5,\"bonusEnabled\":true}",
+    "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000064\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000064\"],\"bonusClosesAtUtc\":-0.0,\"bonusEnabled\":true}"
+  ],
+  "shapeRows": [
+    {
+      "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+      "kind": "check",
+      "delta": 1,
+      "boardId": "00000000-0000-4000-8000-000000000064",
+      "checkInId": "00000000-0000-4000-8000-0000000007d1",
+      "runKey": null,
+      "rewardId": null,
+      "rewardTitleSnapshot": null,
+      "reversesId": null,
+      "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+      "sourceActionId": "00000000-0000-4000-8000-000000000001",
+      "reconciliationKey": null,
+      "adjustsId": null,
+      "provenanceJson": null,
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600001,
+      "mutationStamp": "01788825600000-00001-fixture",
+      "deletedAt": null
+    },
+    {
+      "id": "f370e946-3774-5764-b36a-438a055ab6fa",
+      "kind": "reversal",
+      "delta": -1,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": null,
+      "rewardId": null,
+      "rewardTitleSnapshot": null,
+      "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+      "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+      "sourceActionId": "00000000-0000-4000-8000-000000000003",
+      "reconciliationKey": null,
+      "adjustsId": null,
+      "provenanceJson": null,
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600003,
+      "mutationStamp": "01788825600000-00003-fixture",
+      "deletedAt": null
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000003e7",
+      "kind": "claim",
+      "delta": -3,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": null,
+      "rewardId": "00000000-0000-4000-8000-0000000003e6",
+      "rewardTitleSnapshot": "Café / \"tea\"\n休息",
+      "reversesId": null,
+      "scopeKey": null,
+      "sourceActionId": null,
+      "reconciliationKey": null,
+      "adjustsId": null,
+      "provenanceJson": null,
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600001,
+      "mutationStamp": "01788825600000-00001-fixture",
+      "deletedAt": null
+    },
+    {
+      "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+      "kind": "run_bonus",
+      "delta": 1,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": "00000000-0000-4000-8000-000000000064|2026-09-08",
+      "rewardId": null,
+      "rewardTitleSnapshot": null,
+      "reversesId": null,
+      "scopeKey": "bonus:00000000-0000-4000-8000-000000000064:2026-09-08",
+      "sourceActionId": "00000000-0000-4000-8000-000000000001",
+      "reconciliationKey": null,
+      "adjustsId": null,
+      "provenanceJson": null,
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600001,
+      "mutationStamp": "01788825600000-00001-fixture",
+      "deletedAt": null
+    },
+    {
+      "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+      "kind": "adjustment",
+      "delta": -1,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": null,
+      "rewardId": null,
+      "rewardTitleSnapshot": null,
+      "reversesId": null,
+      "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+      "sourceActionId": null,
+      "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+      "adjustsId": null,
+      "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600002,
+      "mutationStamp": "01788825600000-00002-fixture",
+      "deletedAt": null
+    },
+    {
+      "id": "569fe2b9-8be6-55e4-a5e7-aedad6032185",
+      "kind": "adjustment",
+      "delta": 1,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": null,
+      "rewardId": null,
+      "rewardTitleSnapshot": null,
+      "reversesId": null,
+      "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+      "sourceActionId": null,
+      "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+      "adjustsId": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+      "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600002,
+      "mutationStamp": "01788825600000-00002-fixture",
+      "deletedAt": null
+    }
+  ],
+  "canonicalRows": [
+    {
+      "row": {
+        "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000001",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      "json": "[\"habit-ledger-row-v1\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"check\",1,\"00000000-0000-4000-8000-000000000064\",\"00000000-0000-4000-8000-0000000007d1\",null,null,null,null,\"check:00000000-0000-4000-8000-000000000064:2026-09-08\",\"00000000-0000-4000-8000-000000000001\",null,null,null,\"2026-09-08\",1788825600001,\"01788825600000-00001-fixture\",null]"
+    },
+    {
+      "row": {
+        "id": "f370e946-3774-5764-b36a-438a055ab6fa",
+        "kind": "reversal",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000003",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600003,
+        "mutationStamp": "01788825600000-00003-fixture",
+        "deletedAt": null
+      },
+      "json": "[\"habit-ledger-row-v1\",\"f370e946-3774-5764-b36a-438a055ab6fa\",\"reversal\",-1,null,null,null,null,null,\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"check:00000000-0000-4000-8000-000000000064:2026-09-08\",\"00000000-0000-4000-8000-000000000003\",null,null,null,\"2026-09-08\",1788825600003,\"01788825600000-00003-fixture\",null]"
+    },
+    {
+      "row": {
+        "id": "00000000-0000-4000-8000-0000000003e7",
+        "kind": "claim",
+        "delta": -3,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": "00000000-0000-4000-8000-0000000003e6",
+        "rewardTitleSnapshot": "Café / \"tea\"\n休息",
+        "reversesId": null,
+        "scopeKey": null,
+        "sourceActionId": null,
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      "json": "[\"habit-ledger-row-v1\",\"00000000-0000-4000-8000-0000000003e7\",\"claim\",-3,null,null,null,\"00000000-0000-4000-8000-0000000003e6\",\"Café / \\\"tea\\\"\\n休息\",null,null,null,null,null,null,\"2026-09-08\",1788825600001,\"01788825600000-00001-fixture\",null]"
+    },
+    {
+      "row": {
+        "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "kind": "run_bonus",
+        "delta": 1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": "00000000-0000-4000-8000-000000000064|2026-09-08",
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "bonus:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000001",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      "json": "[\"habit-ledger-row-v1\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"run_bonus\",1,null,null,\"00000000-0000-4000-8000-000000000064|2026-09-08\",null,null,null,\"bonus:00000000-0000-4000-8000-000000000064:2026-09-08\",\"00000000-0000-4000-8000-000000000001\",null,null,null,\"2026-09-08\",1788825600001,\"01788825600000-00001-fixture\",null]"
+    },
+    {
+      "row": {
+        "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "kind": "adjustment",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      },
+      "json": "[\"habit-ledger-row-v1\",\"79ac9f4e-81dd-5140-b984-07d1917f964c\",\"adjustment\",-1,null,null,null,null,null,null,\"check:00000000-0000-4000-8000-000000000064:2026-09-08\",null,\"e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351\",null,\"{\\\"version\\\":1,\\\"facts\\\":[[\\\"habit_action\\\",\\\"00000000-0000-4000-8000-000000000001\\\",\\\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\\\"],[\\\"habit_action\\\",\\\"00000000-0000-4000-8000-000000000002\\\",\\\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\\\"],[\\\"ledger_entry\\\",\\\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\\\",\\\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\\\"],[\\\"ledger_entry\\\",\\\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\\\",\\\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\\\"]]}\",\"2026-09-08\",1788825600002,\"01788825600000-00002-fixture\",null]"
+    },
+    {
+      "row": {
+        "id": "569fe2b9-8be6-55e4-a5e7-aedad6032185",
+        "kind": "adjustment",
+        "delta": 1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      },
+      "json": "[\"habit-ledger-row-v1\",\"569fe2b9-8be6-55e4-a5e7-aedad6032185\",\"adjustment\",1,null,null,null,null,null,null,\"check:00000000-0000-4000-8000-000000000064:2026-09-08\",null,\"e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351\",\"79ac9f4e-81dd-5140-b984-07d1917f964c\",\"{\\\"version\\\":1,\\\"facts\\\":[[\\\"habit_action\\\",\\\"00000000-0000-4000-8000-000000000001\\\",\\\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\\\"],[\\\"habit_action\\\",\\\"00000000-0000-4000-8000-000000000002\\\",\\\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\\\"],[\\\"ledger_entry\\\",\\\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\\\",\\\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\\\"],[\\\"ledger_entry\\\",\\\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\\\",\\\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\\\"]]}\",\"2026-09-08\",1788825600002,\"01788825600000-00002-fixture\",null]"
+    }
+  ],
+  "unicodeClaims": [
+    {
+      "id": "00000000-0000-4000-8000-0000000003e7",
+      "kind": "claim",
+      "delta": -3,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": null,
+      "rewardId": "00000000-0000-4000-8000-0000000003e6",
+      "rewardTitleSnapshot": "Café",
+      "reversesId": null,
+      "scopeKey": null,
+      "sourceActionId": null,
+      "reconciliationKey": null,
+      "adjustsId": null,
+      "provenanceJson": null,
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600001,
+      "mutationStamp": "01788825600000-00001-fixture",
+      "deletedAt": null
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000003e7",
+      "kind": "claim",
+      "delta": -3,
+      "boardId": null,
+      "checkInId": null,
+      "runKey": null,
+      "rewardId": "00000000-0000-4000-8000-0000000003e6",
+      "rewardTitleSnapshot": "Café",
+      "reversesId": null,
+      "scopeKey": null,
+      "sourceActionId": null,
+      "reconciliationKey": null,
+      "adjustsId": null,
+      "provenanceJson": null,
+      "logicalDate": "2026-09-08",
+      "createdAt": 1788825600001,
+      "mutationStamp": "01788825600000-00001-fixture",
+      "deletedAt": null
+    }
+  ],
+  "totalsCases": [
+    {
+      "rows": [],
+      "earned": 0,
+      "spent": 0,
+      "balance": 0
+    },
+    {
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-0000000003e7",
+          "kind": "claim",
+          "delta": -3,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": "00000000-0000-4000-8000-0000000003e6",
+          "rewardTitleSnapshot": "Café / \"tea\"\n休息",
+          "reversesId": null,
+          "scopeKey": null,
+          "sourceActionId": null,
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "kind": "adjustment",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": null,
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        }
+      ],
+      "earned": 1,
+      "spent": 4,
+      "balance": -3
+    }
+  ],
+  "totalsOverflow": [
+    [
+      {
+        "id": "00000000-0000-4000-8000-0000000003e7",
+        "kind": "claim",
+        "delta": -9007199254740991,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": "00000000-0000-4000-8000-0000000003e6",
+        "rewardTitleSnapshot": "Café / \"tea\"\n休息",
+        "reversesId": null,
+        "scopeKey": null,
+        "sourceActionId": null,
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-0000000003e7",
+        "kind": "claim",
+        "delta": -3,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": "00000000-0000-4000-8000-0000000003e6",
+        "rewardTitleSnapshot": "Café / \"tea\"\n休息",
+        "reversesId": null,
+        "scopeKey": null,
+        "sourceActionId": null,
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      }
+    ],
+    [
+      {
+        "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "kind": "adjustment",
+        "delta": 9007199254740991,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000001",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      }
+    ]
+  ],
+  "zeroCorrection": {
+    "actions": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "commandId": "00000000-0000-4000-8000-0000000003e9",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "kind": "check",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "commandId": "00000000-0000-4000-8000-0000000003ea",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "kind": "check",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000009",
+        "commandId": "00000000-0000-4000-8000-0000000003f1",
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "logicalDate": "2026-09-08",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "kind": "uncheck",
+        "createdAt": 1788825600009,
+        "mutationStamp": "01788825600000-00009-fixture",
+        "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+      }
+    ],
+    "existingRows": [
+      {
+        "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d1",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000001",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600001,
+        "mutationStamp": "01788825600000-00001-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+        "kind": "check",
+        "delta": 1,
+        "boardId": "00000000-0000-4000-8000-000000000064",
+        "checkInId": "00000000-0000-4000-8000-0000000007d2",
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000002",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "35c1cfa2-656f-5d76-a407-37ca3a8d57dd",
+        "kind": "reversal",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": "00000000-0000-4000-8000-000000000009",
+        "reconciliationKey": null,
+        "adjustsId": null,
+        "provenanceJson": null,
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600009,
+        "mutationStamp": "01788825600000-00009-fixture",
+        "deletedAt": null
+      },
+      {
+        "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "kind": "adjustment",
+        "delta": -1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": null,
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      }
+    ],
+    "expectedAppend": [
+      {
+        "id": "569fe2b9-8be6-55e4-a5e7-aedad6032185",
+        "kind": "adjustment",
+        "delta": 1,
+        "boardId": null,
+        "checkInId": null,
+        "runKey": null,
+        "rewardId": null,
+        "rewardTitleSnapshot": null,
+        "reversesId": null,
+        "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+        "sourceActionId": null,
+        "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+        "adjustsId": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+        "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+        "logicalDate": "2026-09-08",
+        "createdAt": 1788825600002,
+        "mutationStamp": "01788825600000-00002-fixture",
+        "deletedAt": null
+      }
+    ],
+    "target": 1,
+    "balance": 1
+  },
+  "rejectedReplays": [
+    {
+      "actions": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "commandId": null,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "baseline",
+          "createdAt": 0,
+          "mutationStamp": "00000000000000-00000-baseline",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "reason": "invalid"
+    },
+    {
+      "actions": [
+        {
+          "id": "bad",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "reason": "invalid"
+    }
+  ],
+  "rejectedReconciliations": [
+    {
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "kind": "adjustment",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": null,
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        }
+      ],
+      "reason": "missing"
+    },
+    {
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000002",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "kind": "adjustment",
+          "delta": -2,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": null,
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        }
+      ],
+      "reason": "invalid"
+    },
+    {
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000002",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "569fe2b9-8be6-55e4-a5e7-aedad6032185",
+          "kind": "adjustment",
+          "delta": 1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        }
+      ],
+      "reason": "missing"
+    },
+    {
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000002",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "kind": "adjustment",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": null,
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "569fe2b9-8be6-55e4-a5e7-aedad6032185",
+          "kind": "adjustment",
+          "delta": 1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"57905a648a57b2b0701c352d1c2ff2fda938b6edacbcbb7e472d497da739102b\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        }
+      ],
+      "reason": "missing"
+    },
+    {
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        }
+      ],
+      "reason": "invalid"
+    },
+    {
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-0000000003e9",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "kind": "check",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-0000000003ea",
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "kind": "check",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+        }
+      ],
+      "rows": [
+        {
+          "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d1",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000001",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600001,
+          "mutationStamp": "01788825600000-00001-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "67b613e6-c058-5ead-9d1f-4c4e5bbd91ae",
+          "kind": "check",
+          "delta": 1,
+          "boardId": "00000000-0000-4000-8000-000000000064",
+          "checkInId": "00000000-0000-4000-8000-0000000007d2",
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": "00000000-0000-4000-8000-000000000002",
+          "reconciliationKey": null,
+          "adjustsId": null,
+          "provenanceJson": null,
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        },
+        {
+          "id": "79ac9f4e-81dd-5140-b984-07d1917f964c",
+          "kind": "adjustment",
+          "delta": -1,
+          "boardId": null,
+          "checkInId": null,
+          "runKey": null,
+          "rewardId": null,
+          "rewardTitleSnapshot": null,
+          "reversesId": null,
+          "scopeKey": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+          "sourceActionId": null,
+          "reconciliationKey": "e042b2c8358f690b356960c4ad27c45e1ce1962af86de7ec5bbf8e3dcd05d351",
+          "adjustsId": null,
+          "provenanceJson": "{\"version\":1,\"facts\":[[\"habit_action\",\"00000000-0000-4000-8000-000000000001\",\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\"],[\"habit_action\",\"00000000-0000-4000-8000-000000000002\",\"f52ee8583856da62246eb21100f96e46176c470c31d49968b795f182ff9e5c9b\"],[\"ledger_entry\",\"67b613e6-c058-5ead-9d1f-4c4e5bbd91ae\",\"c02fe835c2a5113e14084970ee78c64489258d15f447bcf78712e3766ebf7729\"],[\"ledger_entry\",\"e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae\",\"5e52ae56bb4fdf63eba320ff14bce66e35dd667b459bdfeadba5cc7e6fffb828\"]]}",
+          "logicalDate": "2026-09-08",
+          "createdAt": 1788825600002,
+          "mutationStamp": "01788825600000-00002-fixture",
+          "deletedAt": null
+        }
+      ],
+      "reason": "invalid"
+    }
+  ]
+}

@@ -54,7 +54,7 @@ export function canonicalHabitAction(action: HabitAction): string {
 
 export async function baselineAction(
   check: Pick<CheckIn, 'id' | 'boardId' | 'logicalDate'>,
-  hashing: Hashing,
+  hashing: Pick<Hashing, 'sha1'>,
 ): Promise<HabitAction> {
   const name = JSON.stringify(['habit-baseline-v1', check.id, check.boardId, check.logicalDate]);
   return {

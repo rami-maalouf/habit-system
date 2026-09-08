@@ -235,6 +235,56 @@ export const migrations: readonly Migration[] = [
       `UPDATE app_settings SET schema_revision = 7 WHERE id = 1`,
     ],
   },
+  {
+    version: 8,
+    name: 'immutable-coin-ledger',
+    statements: [
+      `CREATE TABLE coin_ledger (
+        id TEXT PRIMARY KEY NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('check', 'run_bonus', 'claim', 'reversal', 'adjustment')),
+        delta INTEGER NOT NULL CHECK (typeof(delta) = 'integer'
+          AND delta BETWEEN -9007199254740991 AND 9007199254740991 AND delta != 0),
+        board_id TEXT,
+        check_in_id TEXT,
+        run_key TEXT,
+        reward_id TEXT,
+        reward_title_snapshot TEXT,
+        reverses_id TEXT,
+        scope_key TEXT,
+        source_action_id TEXT,
+        reconciliation_key TEXT,
+        adjusts_id TEXT,
+        provenance_json TEXT,
+        logical_date TEXT NOT NULL,
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        mutation_stamp TEXT NOT NULL,
+        deleted_at INTEGER CHECK (deleted_at IS NULL),
+        CHECK ((kind IN ('check', 'run_bonus') AND delta = 1)
+          OR (kind IN ('claim', 'reversal') AND delta < 0) OR kind = 'adjustment'),
+        CHECK ((kind = 'check' AND board_id IS NOT NULL AND check_in_id IS NOT NULL)
+          OR (kind != 'check' AND board_id IS NULL AND check_in_id IS NULL)),
+        CHECK ((kind = 'run_bonus' AND run_key IS NOT NULL) OR (kind != 'run_bonus' AND run_key IS NULL)),
+        CHECK ((kind = 'claim' AND reward_id IS NOT NULL AND reward_title_snapshot IS NOT NULL)
+          OR (kind != 'claim' AND reward_id IS NULL AND reward_title_snapshot IS NULL)),
+        CHECK ((kind = 'reversal' AND reverses_id IS NOT NULL) OR (kind != 'reversal' AND reverses_id IS NULL)),
+        CHECK ((kind = 'claim' AND scope_key IS NULL) OR (kind != 'claim' AND scope_key IS NOT NULL)),
+        CHECK ((kind IN ('check', 'run_bonus', 'reversal') AND source_action_id IS NOT NULL)
+          OR (kind IN ('claim', 'adjustment') AND source_action_id IS NULL)),
+        CHECK ((kind = 'adjustment' AND reconciliation_key IS NOT NULL AND provenance_json IS NOT NULL)
+          OR (kind != 'adjustment' AND reconciliation_key IS NULL AND provenance_json IS NULL AND adjusts_id IS NULL))
+      )`,
+      `CREATE INDEX idx_coin_ledger_scope ON coin_ledger (scope_key, mutation_stamp, id)`,
+      `CREATE INDEX idx_coin_ledger_history ON coin_ledger (logical_date DESC, created_at DESC, id DESC)`,
+      `CREATE TRIGGER coin_ledger_no_replace BEFORE INSERT ON coin_ledger
+        WHEN EXISTS (SELECT 1 FROM coin_ledger WHERE id = NEW.id)
+        BEGIN SELECT RAISE(ABORT, 'coin ledger is immutable'); END`,
+      `CREATE TRIGGER coin_ledger_no_update BEFORE UPDATE ON coin_ledger
+        BEGIN SELECT RAISE(ABORT, 'coin ledger is immutable'); END`,
+      `CREATE TRIGGER coin_ledger_no_delete BEFORE DELETE ON coin_ledger
+        BEGIN SELECT RAISE(ABORT, 'coin ledger is immutable'); END`,
+      `UPDATE app_settings SET schema_revision = 8 WHERE id = 1`,
+    ],
+  },
 ];
 
 export const latestSchemaVersion = migrations[migrations.length - 1].version;

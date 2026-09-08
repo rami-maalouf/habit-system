@@ -127,7 +127,7 @@ export type OutboxEntityType =
 
 export async function appendOutbox(
   tx: SqlExecutor,
-  entityType: OutboxEntityType | 'habit_action',
+  entityType: OutboxEntityType | 'habit_action' | 'ledger_entry' | 'reward',
   entityId: string,
   mutationStamp: string,
   createdAt: number,
@@ -315,7 +315,8 @@ export type OutboxRow = {
   mutationStamp: string;
 };
 
-// oldest first, so a partial upload always makes forward progress
+// staged v2 facts remain queued until the coordinated transport upgrade.
+// filter before limiting so they cannot starve supported v1 uploads.
 export async function listOutbox(tx: SqlExecutor, limit: number): Promise<OutboxRow[]> {
   const rows = await tx.getAllAsync<{
     id: number;
@@ -324,7 +325,8 @@ export async function listOutbox(tx: SqlExecutor, limit: number): Promise<Outbox
     mutation_stamp: string;
   }>(
     `SELECT id, entity_type, entity_id, mutation_stamp FROM mutation_outbox
-     WHERE entity_type != 'habit_action' ORDER BY id LIMIT ?`,
+     WHERE entity_type IN ('board', 'check_in', 'reminder', 'activity_period', 'settings')
+     ORDER BY id LIMIT ?`,
     [limit],
   );
   return rows.map((row) => ({

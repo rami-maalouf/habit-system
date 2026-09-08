@@ -51,6 +51,12 @@ describe('logical dates', () => {
     expect(startOfIsoWeek(date('0001-01-03'))).toBe('0001-01-01');
   });
 
+  it('keeps year zero when an accepted instant has a BC era label', () => {
+    const instant = Date.parse('0000-02-29T01:00:00Z');
+    expect(currentLogicalDate(instant, 'UTC', 0)).toBe('0000-02-29');
+    expect(currentLogicalDate(instant, 'UTC', 120)).toBe('0000-02-28');
+  });
+
   it('derives the logical date from the start-of-day shift', () => {
     // 2026-08-30 01:30 in new york, shift 120 minutes -> still 2026-08-29
     const nowUtc = Date.UTC(2026, 7, 30, 5, 30); // 01:30 edt

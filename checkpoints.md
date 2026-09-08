@@ -2,6 +2,83 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T15 - coin evidence foundations and writer integration (2026-09-08, in progress)
+
+1. The first bounded foundation adds schema 8, immutable ledger storage and
+   matching Swift schema gate/checksum `14ff0dae`. Released migrations 1-7 stay
+   unchanged. Ledger rows retain absent historical parents, explicit role fields,
+   exact one-coin awards, safe integers and immutable claim title snapshots.
+   Direct SQL update, delete and replacement fail. Equal canonical payloads replay
+   without insertion; conflicting payloads, including canonically equivalent but
+   byte-distinct Unicode titles, fail without overwriting evidence.
+2. Three injected migration failures prove complete table/index/trigger/settings
+   rollback and successful retry. A version-7 fixture preserves its boards,
+   checks, actions, receipts, outbox, widgets and sync state with an empty ledger.
+   Before-LIMIT outbox filtering retains staged action, ledger and reward rows
+   until T19 while supported v1 records continue to upload without starvation.
+3. Command time and zone are now captured inside the acquired transaction after
+   receipt replay. Six public-command tests reproduce queued day/zone changes,
+   clock/zone failures with full rollback, and saved success/failure replay with
+   unavailable clocks. No second-connection race is claimed for this envelope
+   test; it exercises the real SQL connection and held transaction queue.
+4. Pure TS/Swift check rules preserve source-bound awards, configured caps for
+   both kinds, non-earning baseline/move/policy facts and captured close times.
+   Canonical rows, policies, UUIDv5 names, SHA-256 proofs and complete dependency
+   validation are pinned by shared literal fixtures. Corrections and strict-subset
+   cancellations append immutable rows and settle to a fixed point under duplicate
+   and reordered evidence. Claims remain outside earning reconciliation.
+5. The transaction-scoped economic-close resolver selects the first actual
+   crossing of the following date's shift, including gaps, folds, second-level
+   historical offsets and proleptic years 0-9999. It is distinct from widget/UI
+   refresh deadlines and Date + Time gap-component preservation. Actual Hermes
+   public commands reproduced wrong year-0, year-1 and 1582 dates from Apple's
+   civil formatter. The TS helper now uses cached exact-offset readers and UTC
+   arithmetic, preserving Date TimeClip and explicit invalid/range failures.
+   Public tests also reproduce historical offset-second loss. Independent
+   native comparison caught a new gap-start regression; the corrected resolver
+   eliminates all 60 introduced differences across 2,016 comparisons.
+6. Independent review approves the calendar, command timing, storage and coin
+   source. Separate oracles cover 176 replay cases, 53 reconciliation runs,
+   seven rejected proofs, 16 real plus 210 synthetic economic boundaries, and
+   the native compatibility sweep. Durable protocol details and the action-date
+   eligibility horizon are recorded in `docs/ledger-reconciliation.md`.
+7. Final `bun run validate` exits 0: 85 suites / 1,219 tests, global coverage
+   97.36/96.04/95.52/97.71 and all 57 core files at 100 percent. Native gates pass
+   9 plugin and 87 Swift tests. `git diff --check` passes. Jest uses direct
+   filesystem discovery and explicitly excludes preserved `.artifacts` worktrees
+   from module/test discovery, avoiding shared Watchman warnings and old copied
+   suites without changing product assertions or coverage. Evidence:
+   `.artifacts/t15/validate-verified.log`, `native-final.log` and
+   `independent-foundations-acceptance.md`.
+8. A generic simulator build initially exposed a stale generated Pods source
+   list; `pod install` adds the new local Swift files through the existing
+   podspec glob. No generated source was edited. The final build succeeds and
+   its signing-only copy passes 20-target/team and deep-strict verification,
+   retaining code, entitlements and App Intents metadata. Final artifact:
+   `.artifacts/t15/signed-sim-final/habitsystem.app`. The existing Expo dev-launcher
+   build-phase warning remains recorded; the first full build also reported a
+   duplicate `-lc++` link warning. Neither is claimed fixed here.
+9. Non-author Migration QA verifies an in-place schema-8 upgrade with an empty
+   ledger and every original board/check/action/period/outbox/widget row intact.
+   Actual Hermes passes four civil controls, three exact offsets and all 16
+   economic-close vectors. The otherwise unreachable resolver is compiled from
+   the exact frozen source with loaded production dependencies and recorded
+   hashes, explicitly identified as source evaluation. Fresh public commands
+   persist the three corrected historical dates and exact instants. Actual
+   Today in Shortcuts returns the preserved original Count's two checks and 12
+   total; the installed executable matches the final signed artifact. Runtime
+   proof and detailed preservation comparisons are under `.artifacts/t15/qa/`.
+   Final 17 boards / 48 checks / 57 actions contain only one added synthetic
+   calendar board and six red/green historical checks; all original 16/42/51
+   rows remain exact. Additional QA and startup/foreground receipts are recorded,
+   and the ledger stays empty. Final Home is clean, console has zero entries,
+   and the dedicated simulator is shut down with identical before/after backups.
+10. T15a foundations are complete; T15 remains in progress. Production earning
+   writers, policy changes,
+   non-earning restore integration and Earn Coins/Daily Coin Cap controls follow
+   this foundation. T16 owns stack-bonus production integration. Intermediate
+   builds remain development-only until the T19/T20 compatibility gates pass.
+
 ### T14 - stack screens and calendar refresh (2026-09-08)
 
 1. The Boards header opens `/stacks`. A virtualized stack list shows the ordered

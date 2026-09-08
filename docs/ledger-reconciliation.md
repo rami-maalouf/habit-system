@@ -36,13 +36,17 @@ Single-history deletion and Undo target only their check id. Switching kind chan
 preserves retained history, and never reinterprets earlier targeted removals as whole-day clears.
 
 `policy_json` is null in T3 and for legacy baselines; these facts cannot invent historical coins.
-Once coins are enabled, validated version-1 policy JSON carries `boardKind`, `earnsCoins`,
+Once coins are enabled, validated policy JSON carries `version: 1`, `boardKind`, `earnsCoins`,
 `coinCapPerDay`, `checkClosesAtUtc`, nullable `rootId`, sorted `requiredBoardIds`,
 nullable `bonusClosesAtUtc`, and `bonusEnabled`. Empty required membership earns no bonus.
-Capture policy and close instants in the command transaction; later clocks do not rewrite them.
+Capture policy and close instants in the acquired command transaction, after receipt replay;
+later clocks do not rewrite them. Close instants are signed safe integers because valid
+backdated history can precede the Unix epoch. A genuine backdated check is distinct from
+an import or move-in; its captured close can precede its live action's creation timestamp.
 Policies apply prospectively and never mint or remove past coins merely because settings change.
 Scopes: `check:<boardId>:<logicalDate>` and, when a snapshot names a root, `bonus:<rootId>:<logicalDate>`.
-A root change writes two policy actions: old snapshot with `bonusEnabled=false`, new with true.
+A root change writes two policy actions: old snapshot with `bonusEnabled=false`, new enabled
+only when its required eligible set is nonempty. Empty/optional-only scopes remain disabled.
 The old scope retains prior entitlement but cannot earn new bonuses; neither policy mints coins.
 All bonus members use the exact scope date. Future genuine completions can earn under the new scope.
 
@@ -51,11 +55,28 @@ All bonus members use the exact scope date. Future genuine completions can earn 
 Replay immutable actions in total order; resolve daily state as above and count state by check id.
 A qualifying new completion earns only when the outstanding awarded count is below its cap.
 Cap-blocked checks do not gain coins retroactively when another check is removed.
+A check award belongs to its source action and check id. A later concurrent Daily token
+can be the visible canonical completion without owning that award. Timely targeted removal
+of the awarded token revokes its coin even if another token keeps the date checked; the
+survivor does not inherit or gain a retroactive award. Removing only the non-awarded token
+does not revoke the other's coin.
 A timely uncheck removes its current entitlement; a later recheck is a new earning opportunity.
+The configured cap applies to both kinds; Daily does not introduce a separate hard coin cap
+of one. A late removal can retain an old award while a fresh genuine check earns under the
+configured cap if the Daily active set is empty. Retained closed awards consume cap slots.
+Cap reductions, kind conversion and earning-toggle edits never confiscate earlier valid
+awards merely because policy changed. Each new genuine check uses its captured policy;
+existing awards retain their own policy and source-bound reversal rules.
 Date/time edits never mint check coins or bonuses. `move_in` updates completion but cannot earn.
 `move_out` can revoke its original entitlement before captured close; after close it retains it.
 For check coins, compare the uncheck's instant with the earned action's `checkClosesAtUtc`.
 For bonuses use the completion's `bonusClosesAtUtc`; equality is already closed.
+For earning date D, resolve the first actual crossing of the wall-clock threshold at the
+following date's start-of-day minute, in the captured time zone. A missing threshold closes
+at the first real instant after the gap; a repeated threshold closes at its first occurrence.
+Once captured, a backward clock recrossing cannot reopen that earning. The check uses its
+own board's shift and a bonus uses its structural root's shift. Conservative widget/display
+expiry and informational times never supply an economic close.
 A late uncheck still changes visible history but does not revoke that historical entitlement.
 Duplicate/cap corrections survive close. Never gate reconciliation by current time; replay derives target `T`.
 Each earning incomplete-to-complete transition needs a genuine check cause: its final required action
@@ -71,6 +92,58 @@ User claims remain UUIDv4 and outside earning scopes. Command receipts prevent l
 Canonical payloads use fixed key order, sorted unique ids, integers, explicit nulls, and UTF-8.
 Generated timestamps/stamps derive from source facts, never the reconciling device's clock.
 Equal ids require byte-equivalent canonical payloads; mismatches fail validation and never overwrite.
+
+### Canonical check-ledger protocol
+
+Required-member policy capture evaluates the action's stored logical date against
+current membership and stored activity periods, including start and excluding closed
+end. It does not use the stack screen's current-date horizon. A midnight-based member
+can already be on the following date while its 04:00-shifted root still displays the
+previous date; that valid check retains its own date and eligible required-member
+snapshot. The root's shift supplies the bonus close for that same stored date.
+
+The shared TypeScript/Swift fixtures in `src/core/automations/fixtures/check-coins.json`
+pin complete rows, hashes and ids. Canonical JSON has no insignificant whitespace and is
+encoded as UTF-8. Preserve the bytes and case of existing immutable identifiers.
+The UUIDv5 namespace is `4d96f757-73e0-561c-99b9-16b7ef2d1903`, also used by legacy
+baselines. UUIDv5 uses SHA-1; evidence fingerprints and reconciliation keys use SHA-256.
+
+Policy objects serialize keys in this order: `version`, `boardKind`, `earnsCoins`,
+`coinCapPerDay`, `checkClosesAtUtc`, `rootId`, `requiredBoardIds`, `bonusClosesAtUtc`,
+`bonusEnabled`. A habit action retains this canonical JSON as a string in its existing
+canonical tuple. It is not embedded as an unordered object.
+
+Ledger payloads serialize as an array beginning with `"habit-ledger-row-v1"`, followed by
+`id`, `kind`, `delta`, `boardId`, `checkInId`, `runKey`, `rewardId`,
+`rewardTitleSnapshot`, `reversesId`, `scopeKey`, `sourceActionId`, `reconciliationKey`,
+`adjustsId`, `provenanceJson`, `logicalDate`, `createdAt`, `mutationStamp`, `deletedAt`.
+All fields are present; unused references and `deletedAt` are null. Check and run-bonus
+awards are exactly +1. Reversals and claims are negative; adjustments are signed and
+nonzero. Every stored delta and creation timestamp is a safe integer, and creation
+timestamps are nonnegative. Historical parent rows need not exist.
+
+Check-award UUID names are the canonical tuple
+`["habit-ledger-v1","check",scopeKey,sourceActionId]`. Reversal names are
+`["habit-ledger-v1","reversal",awardId,removalActionId]`. Correction names are
+`["habit-ledger-v1","adjustment",scopeKey,reconciliationKey]`. Cancellation names
+are the literal string `cancel:<oldCorrectionId>`.
+
+Provenance serializes as `{"version":1,"facts":[...]}`. Each fact is
+`["habit_action"|"ledger_entry",id,lowercaseSha256Hex]`; facts are strictly sorted
+lexicographically by their tuple and unique by type/id. Habit-action fingerprints
+accept UUIDv4 live actions and UUIDv5 baselines; ledger fingerprints require UUIDv5
+because UUIDv4 claims are excluded from evidence. The reconciliation key is the
+SHA-256 of that full canonical provenance string. A correction copies its creation
+timestamp and mutation stamp from the greatest `(mutationStamp,id,factType)` evidence
+fact. A cancellation copies the old correction's metadata, proof and reconciliation
+key. The strict-superset witness authorizes cancellation but never enters its payload.
+
+Limits apply before acceptance: policy JSON 196,608 UTF-8 bytes, canonical ledger row
+786,432 bytes, provenance JSON 524,288 bytes, and 4,096 facts per proof. Both byte and
+count limits apply. Reject oversize evidence with a recoverable size failure; do not
+truncate it. T19 must preserve these budgets across native transport and deferred
+validation. A repository's intrinsic shape validation does not replace the reconciler's
+validation of the source action, derived id, proof dependencies and economic delta.
 
 ## Corrections and convergence
 

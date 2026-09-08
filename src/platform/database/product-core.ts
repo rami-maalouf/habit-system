@@ -24,6 +24,7 @@ const deviceIds: IdGenerator = {
 
 const deviceHashing: Hashing = {
   sha1: async (bytes) => new Uint8Array(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA1, new Uint8Array(bytes))),
+  sha256: async (bytes) => new Uint8Array(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, new Uint8Array(bytes))),
 };
 
 let corePromise: Promise<DomainResult<ProductCore>> | null = null;

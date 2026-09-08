@@ -151,11 +151,11 @@ describe('habit fields migration', () => {
     try {
       const tables = ['boards', 'widget_board_rows', 'check_ins', 'mutation_outbox', 'command_receipts', 'sync_state'];
       const before = await Promise.all(tables.map(table => db.getAllAsync(`SELECT * FROM ${table}`)));
-      expect(await migrateDatabase(db)).toEqual({ ok: true, value: 7 });
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await db.getAllAsync('SELECT * FROM habit_actions')).toEqual([]);
       for (const [index, table] of tables.entries()) expect(await db.getAllAsync(`SELECT * FROM ${table}`)).toEqual(before[index]);
-      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 7 });
-      expect(await db.getFirstAsync('SELECT schema_revision FROM app_settings')).toEqual({ schema_revision: 7 });
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: latestSchemaVersion });
+      expect(await db.getFirstAsync('SELECT schema_revision FROM app_settings')).toEqual({ schema_revision: latestSchemaVersion });
       expect(migrations.slice(0, 6).map(migrationChecksum)).toEqual(['c459cef6', '34363ca0', 'bac085e2', 'dcbb9394', '633f8fb7', '0191110b']);
     } finally { await db.closeAsync(); }
   });
@@ -175,4 +175,60 @@ describe('habit fields migration', () => {
     } finally { await db.closeAsync(); }
   });
 
+  it('upgrades version 7 with empty ledger storage and preserves immutable history and receipts', async () => {
+    const db = await priorDatabase(7);
+    try {
+      const boardId = '00000000-0000-4000-8000-000000000001';
+      const checkId = '00000000-0000-4000-8000-000000000002';
+      const commandId = '00000000-0000-4000-8000-000000000003';
+      const actionId = '00000000-0000-4000-8000-000000000004';
+      const stamp = '00000000000100-00000-legacy';
+      await db.runAsync('UPDATE boards SET id = ?', [boardId]);
+      await db.runAsync('UPDATE widget_board_rows SET board_id = ?', [boardId]);
+      await db.runAsync(`INSERT INTO check_ins VALUES (
+        ?, ?, '2026-09-08', NULL, NULL, NULL, 2.5,
+        'preserved note', 'app', ?, 100, 100, ?, NULL)`, [checkId, boardId, commandId, stamp]);
+      await db.runAsync(`INSERT INTO habit_actions VALUES (
+        ?, ?, ?, '2026-09-08', ?, 'check', 100, ?, NULL)`, [actionId, commandId, boardId, checkId, stamp]);
+      await db.runAsync('INSERT INTO command_receipts VALUES (?, ?, ?)', [
+        commandId, JSON.stringify({ ok: true, value: { created: true, checkInId: checkId, logicalDate: '2026-09-08' } }), 100,
+      ]);
+      await db.runAsync(`INSERT INTO mutation_outbox (entity_type, entity_id, mutation_stamp, created_at)
+        VALUES ('habit_action', ?, ?, 100)`, [actionId, stamp]);
+      const tables = ['boards', 'check_ins', 'habit_actions', 'command_receipts', 'mutation_outbox', 'widget_board_rows', 'sync_state'];
+      const before = await Promise.all(tables.map(table => db.getAllAsync(`SELECT * FROM ${table}`)));
+      expect(migrations.find(({ version }) => version === 8)).toBeDefined();
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
+      expect(await db.getAllAsync('SELECT * FROM coin_ledger')).toEqual([]);
+      for (const [index, table] of tables.entries()) expect(await db.getAllAsync(`SELECT * FROM ${table}`)).toEqual(before[index]);
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: latestSchemaVersion });
+      expect(await db.getFirstAsync('SELECT schema_revision FROM app_settings')).toEqual({ schema_revision: latestSchemaVersion });
+      expect(migrations.slice(0, 7).map(migrationChecksum)).toEqual([
+        'c459cef6', '34363ca0', 'bac085e2', 'dcbb9394', '633f8fb7', '0191110b', 'a901fb95',
+      ]);
+      expect(await db.getAllAsync('PRAGMA foreign_key_list(coin_ledger)')).toEqual([]);
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
+    } finally { await db.closeAsync(); }
+  });
+
+  it.each(['CREATE INDEX idx_coin_ledger_history', 'CREATE TRIGGER coin_ledger_no_delete',
+    'UPDATE app_settings SET schema_revision = 8'])('rolls back migration 8 when %s fails and permits a clean retry', async failure => {
+    const db = await priorDatabase(7);
+    try {
+      const tables = ['boards', 'check_ins', 'habit_actions', 'command_receipts', 'mutation_outbox', 'app_settings', 'schema_migrations'];
+      const before = await Promise.all(tables.map(table => db.getAllAsync(`SELECT * FROM ${table}`)));
+      const run = db.runAsync.bind(db);
+      const spy = jest.spyOn(db, 'runAsync').mockImplementation((sql, params) => {
+        if (sql.includes(failure)) return Promise.reject(new Error('simulated disk failure'));
+        return run(sql, params);
+      });
+      expect(await migrateDatabase(db)).toMatchObject({ ok: false, error: { code: 'migration' } });
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 7 });
+      expect(await db.getAllAsync("SELECT name FROM sqlite_master WHERE name LIKE '%coin_ledger%'")).toEqual([]);
+      for (const [index, table] of tables.entries()) expect(await db.getAllAsync(`SELECT * FROM ${table}`)).toEqual(before[index]);
+      spy.mockRestore();
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
+      expect(await db.getAllAsync('SELECT * FROM coin_ledger')).toEqual([]);
+    } finally { await db.closeAsync(); }
+  });
 });
