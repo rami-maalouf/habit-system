@@ -1,0 +1,18 @@
+{
+  "description": "stack horizons change with the root calendar, but checked dates remain the exact stored dates",
+  "cases": [
+    { "id": "before-midnight", "nowUtc": "2026-09-08T03:59:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 0, "today": "2026-09-07", "storedDates": ["2026-09-07", "2026-09-08"], "completeDates": ["2026-09-07"] },
+    { "id": "midnight", "nowUtc": "2026-09-08T04:00:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 0, "today": "2026-09-08", "storedDates": ["2026-09-07", "2026-09-08"], "completeDates": ["2026-09-07", "2026-09-08"] },
+    { "id": "before-shift", "nowUtc": "2026-09-08T07:59:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 240, "today": "2026-09-07", "storedDates": ["2026-09-07", "2026-09-08"], "completeDates": ["2026-09-07"] },
+    { "id": "shift-boundary", "nowUtc": "2026-09-08T08:00:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 240, "today": "2026-09-08", "storedDates": ["2026-09-07", "2026-09-08"], "completeDates": ["2026-09-07", "2026-09-08"] },
+    { "id": "before-spring-gap", "nowUtc": "2026-03-08T06:59:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 150, "today": "2026-03-07", "storedDates": ["2026-03-07", "2026-03-08"], "completeDates": ["2026-03-07"] },
+    { "id": "spring-gap-crossed", "nowUtc": "2026-03-08T07:00:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 150, "today": "2026-03-08", "storedDates": ["2026-03-07", "2026-03-08"], "completeDates": ["2026-03-07", "2026-03-08"] },
+    { "id": "first-fall-hour", "nowUtc": "2026-11-01T05:45:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 90, "today": "2026-11-01", "storedDates": ["2026-10-31", "2026-11-01"], "completeDates": ["2026-10-31", "2026-11-01"] },
+    { "id": "fall-hour-repeated", "nowUtc": "2026-11-01T06:00:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 90, "today": "2026-10-31", "storedDates": ["2026-10-31", "2026-11-01"], "completeDates": ["2026-10-31"] },
+    { "id": "fall-boundary-recrossed", "nowUtc": "2026-11-01T06:30:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 90, "today": "2026-11-01", "storedDates": ["2026-10-31", "2026-11-01"], "completeDates": ["2026-10-31", "2026-11-01"] },
+    { "id": "zone-west", "nowUtc": "2026-09-08T02:00:00Z", "timeZoneId": "America/New_York", "rootStartOfDayMinute": 0, "today": "2026-09-07", "storedDates": ["2026-09-07", "2026-09-08"], "completeDates": ["2026-09-07"] },
+    { "id": "zone-east", "nowUtc": "2026-09-08T02:00:00Z", "timeZoneId": "Pacific/Auckland", "rootStartOfDayMinute": 0, "today": "2026-09-08", "storedDates": ["2026-09-07", "2026-09-08"], "completeDates": ["2026-09-07", "2026-09-08"] },
+    { "id": "leap-day", "nowUtc": "2028-02-29T12:00:00Z", "timeZoneId": "UTC", "rootStartOfDayMinute": 0, "today": "2028-02-29", "storedDates": ["2028-02-28", "2028-02-29", "2028-03-01"], "completeDates": ["2028-02-28", "2028-02-29"] },
+    { "id": "after-leap-day", "nowUtc": "2028-03-01T12:00:00Z", "timeZoneId": "UTC", "rootStartOfDayMinute": 0, "today": "2028-03-01", "storedDates": ["2028-02-28", "2028-02-29", "2028-03-01"], "completeDates": ["2028-02-28", "2028-02-29", "2028-03-01"] }
+  ]
+}

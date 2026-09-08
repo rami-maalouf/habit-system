@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T11 and T12a topology are done; T12's exact-date runs and eligibility remain, with archive-date eligibility awaiting clarification. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T12 are done; T13 analytics is next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -90,9 +90,10 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: anchor picker, board form/state, feature tests.
   - Depends on: T10.
 
-- [ ] **T12: Pure same-day stack derivation**
-  - T12a complete: pure topology, stable roots, explicit sibling precedence, archived structural links and active filtering, and informational first-active time hints. Forty-five focused tests, independent generated-forest comparison and all aggregate/native gates pass; see checkpoints.md. No run eligibility API has landed yet.
-  - Pending clarification: the spec says archived members are absent from completion requirements, while inherited activity periods include their archive date. Rami has been asked whether stack eligibility excludes that stored date or includes it. Do not finalize this boundary until answered; topology and exact-date grouping are independent.
+- [x] **T12: Pure same-day stack derivation**
+  - T12a complete: pure topology, stable roots, explicit sibling precedence, archived structural links and active filtering, and informational first-active time hints. Forty-five focused tests and independent generated-forest comparison pass; see checkpoints.md.
+  - T12b complete: exact stored-date runs and stack-specific eligibility, with 13 calendar vectors, four real-command archive/restore/history cases, independent 3,200-date oracle, full validation and native gates. No derivation writes or non-stack eligibility changes.
+  - Approved archive boundary: stack eligibility includes the stored period start and excludes a closed end date. Archiving removes the habit from requirements on that date; same-day restore reopens the period and requires it again. Preserve inherited non-stack analytics and avoid inferred intraday/current-day-only filtering.
   - Acceptance: `deriveStacks` produces deterministic before/after order, sibling home order, stable structural root ids, and informational times. `assignRuns` uses exact stored logical dates: `<rootId>|<logicalDate>`. No occurrence instant, usual time, preset time, or adjacent calendar date moves a check between runs. Completeness uses required members eligible under inherited date-based activity periods; zero required eligible members means incomplete and no bonus.
   - Verify: mixed directions, preset/text roots, isolated/unanchored boards, root archive, optional members, same-day archive/restore, defensive cycle error, midnight/shifted-day/DST/time-zone fixtures proving stored dates stay fixed, leap day. Explicitly prove evening Tuesday plus morning Wednesday cannot complete one run.
   - Ownership scope: `src/core/domain/stacks.ts`, domain tests, queries/repository inputs needed for activity periods.

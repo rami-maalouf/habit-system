@@ -158,15 +158,15 @@ A stack is derived. It is the set of boards reachable from one another through `
 - Usual start minute: use the first active displayed board's own usual time, otherwise its directly attached After-preset's configured time, otherwise 0. A Before-preset or a preset attached to a later displayed board does not supply a leading time. Text anchors use their anchoring board's own usual time. This is a display hint only, not a run boundary. Presentation distinguishes an absent hint from an explicitly configured midnight.
 - A run means one stack day, keyed by `<rootId>|<logicalDate>`. Only check-ins whose stored logical date equals that date participate, for both timed and untimed boards. Never reassign by occurrence instant, creation time, usual time, or the next day's checks. Each following date has its own independent run.
 - The structural root's inherited `startOfDayMinute` determines the current stack date and when a stack day closes in the device's current time zone. It does not change any member's stored logical date. A member's own board day still governs its individual daily toggle and check-coin boundary.
-- Completion uses the inherited date-based activity periods and current anchor membership. A run is complete only when at least one required eligible member exists and every required eligible member has a check with that exact date. There is no inferred intraday activity history. Root/membership edits recompute stack analytics; they do not create a cross-date stack or mint retroactive historical bonuses.
+- Completion uses stored date-based activity periods and current anchor membership. For stacks, a period includes its start date and excludes its closed end date: archiving removes the habit from requirements on the stored archive logical date. Restoring on that same date reopens the period and makes the habit required again. Earlier dates retain historical eligibility, archived gaps remain unavailable, and inherited non-stack analytics keep their inclusive end-date rule. A run is complete only when at least one required eligible member exists and every required eligible member has a check with that exact date. There is no inferred intraday activity history. Root/membership edits recompute stack analytics; they do not create a cross-date stack or mint retroactive historical bonuses.
 - A stack with one member is still a stack. A board with no anchors and nothing anchored to it is not in any stack.
 
 Stack metrics (all derived, none stored):
 
 - complete runs per ISO week
 - longest consecutive complete-run streak
-- per-member checks per ISO week
-- stack heatmap: one cell per run for the rolling 365 runs, shaded by the fraction of required members checked; four steps: none, some, most, all. Every cell has a text alternative.
+- per-member checks per ISO week: Daily contributes one per eligible checked date; Count contributes every live eligible check-in, using the stack's current ISO week and logical-date horizon
+- stack heatmap: one cell per stored logical date for the rolling 365 dates ending on the current stack date, shaded by the fraction of required eligible members checked. The four steps are none (zero), some (positive through one half), most (more than one half but incomplete), and all (every required eligible member checked). Dates without required eligible members are unavailable, never complete. Every cell has a text alternative.
 
 ### 4.4 Coins
 
@@ -406,14 +406,14 @@ New coverage that this spec requires:
 
 ## 10. Open questions
 
-Items 1 through 5 were resolved on 2026-09-08. The post-review correction supersedes the original single overnight stack recommendation: stacks only group one logical date, so morning and night routines do not bridge consecutive dates. Bonus restoration and offline latest-action reconciliation are approved. Identifiers, constant 09:00, cap 1 through 10, and cosmetic rename order remain approved. Items 1 through 5 below are historical. Item 6 is a new implementation clarification awaiting Rami's answer.
+Items 1 through 6 are resolved. The post-review correction supersedes the original single overnight stack recommendation: stacks only group one logical date, so morning and night routines do not bridge consecutive dates. Bonus restoration and offline latest-action reconciliation are approved. Identifiers, constant 09:00, cap 1 through 10, and cosmetic rename order remain approved. Items 1 through 5 below are historical. Rami also approved excluding the archive date from stack requirements in item 6.
 
 1. **Stack date scope, resolved.** Stacks exist within one day only. The proposed bedtime-to-next-morning run was rejected. Separate night and morning anchors retain the source design without a cross-date dependency.
 2. **Exact identifiers.** Proposed: name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, App Group `group.studio.orbitlabs.habitsystem`, container `iCloud.studio.orbitlabs.habitsystem`, zone `habit-system`, scheme `habitsystem`, new EAS project via `eas init`. Confirm or change.
 3. **Miss alert time.** 09:00 local as a constant, or editable in Settings next to the preset anchors? Recommendation: constant now.
 4. **Coin cap range.** 1 through 10 per day. Is 10 enough for a count board like water?
 5. **Public name.** The README still says Ripples. The rename of the README, the native module, and the widget display name is cosmetic and can be its own task after the first build. Confirm that order.
-6. **Archive-date stack eligibility, pending.** Section 4.3 excludes archived members from completion requirements, but inherited activity periods close on the habit's archive logical date and include that date. Archiving an unchecked member can therefore hide it while it still blocks that stack date. Rami has been asked whether stack requirements should exclude the archive date (recommended; same-day restore requires it again) or remain inclusive through that date. This is a stored-date eligibility choice, not a new intraday history model. T11 and independent topology work can proceed; do not silently choose the T12 boundary or change inherited non-stack analytics.
+6. **Archive-date stack eligibility, resolved.** Rami approved removing an archived habit from that date's stack requirements immediately, with same-day restore requiring it again. Stack eligibility excludes a period's stored closed end date and includes its start date; reopening the period restores eligibility. This remains a stored-date model, without inferred archive instants or a current-day-only filter. Inherited non-stack analytics retain their existing inclusive end-date behavior.
 
 ## 11. What happens after approval
 

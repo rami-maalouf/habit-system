@@ -14,10 +14,10 @@ export type StackBoard = Pick<Board,
 export type DerivedStack = {
   rootId: BoardId;
   rootStartOfDayMinute: number;
-  orderedMemberIds: BoardId[];
-  activeMemberIds: BoardId[];
+  orderedMemberIds: readonly BoardId[];
+  activeMemberIds: readonly BoardId[];
   // structural required flags only; date eligibility is a separate operation.
-  requiredMemberIds: BoardId[];
+  requiredMemberIds: readonly BoardId[];
   usualStartMinute: number;
 };
 

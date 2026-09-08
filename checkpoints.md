@@ -2,7 +2,7 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
-### T12 - same-day stack derivation (in progress, 2026-09-08)
+### T12 - same-day stack derivation (2026-09-08)
 
 1. T12a adds pure `deriveStacks` with stable structural roots and root shifts,
    before/after ordering, same-parent/same-relation sibling precedence, binary
@@ -37,11 +37,33 @@
    day shifts; its corrected 30-minute shifts through noon pass. Root reviewed the
    public contract and aggregate evidence. The independent acceptance record is
    `.artifacts/t12/independent-topology-acceptance.md`.
-7. T12 remains incomplete: `assignRuns`, exact-date evidence and activity-period
-   eligibility have not been implemented. The archive-date requirement conflict
-   awaits Rami's answer in spec section 10, item 6. Read-only T13/T14 preparation
-   records query/UI boundaries and the need to refresh visible stacks at an
-   archived structural root's day boundary while preserving widget timing parity.
+7. T12a was committed separately while the archive-date requirement conflict
+   awaited Rami's answer. Rami then approved removing the habit from that stored
+   date's stack requirements, with same-day restore requiring it again. The spec
+   and plan now record the resolved rule; no product decision remains pending.
+8. T12b adds `stack-runs.ts` with `assignRuns` and the reusable
+   `isStackDateEligible`: start <= date < closed end, date <= root today, and an
+   open end has no period upper bound. Required ids are sorted once from full
+   structural membership. Only positive live counts at the exact stored board/date
+   count, once per member. Optional-only, missing-period and future dates cannot
+   complete a run. The inherited inclusive period helper and archive/restore
+   persistence commands remain unchanged.
+9. Twenty-three new cases include 13 reusable calendar vectors and four real-SQL
+   public-command cases. They prove durable archive exclusion, actual same-day
+   period reopening, member/root shift differences, opposite wall-date instants
+   with matching stored dates, and retained Count-to-Daily duplicates. Eight-table
+   before/after snapshots show derivation has no writes. Calendar vectors cover
+   midnight, shifted days, DST gap/fold/recross, time zones and leap days.
+10. Non-author data_contract_review approved the final source/tests/spec and an
+    independent numeric-day-set oracle passing 400 cases / 3,200 run dates. Final
+    `bun run validate` exits 0: 71 suites / 953 tests, global coverage
+    97.09/95.56/95.33/97.55, all 46 core files at 100 percent. Native checks pass:
+    9 plugin tests and 74 Swift tests. Lint/typecheck and diff checks pass. Evidence:
+    `.artifacts/t12/validate-runs.log`, `native-runs.log`, `domain-runs.log`, and
+    `independent-runs-acceptance.md`.
+11. T12 is complete. T13/T14 preparation records compact query snapshots, the
+    surfaced heatmap/weekly-count interpretations now in the spec, and refresh at
+    archived structural roots' day boundaries without changing widget timing.
 
 ### T11 - anchor selection and optional habit timing (2026-09-08)
 
