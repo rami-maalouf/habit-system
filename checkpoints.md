@@ -2,6 +2,54 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T11 - anchor selection and optional habit timing (2026-09-08)
+
+1. The board form now has an Anchor sheet with habits in home order, archived
+   labels, self exclusion, the four current preset times, text and Before/After.
+   Selection markers and a sentence summary show the chosen relation. The sheet
+   keeps its draft until Done; the board's Save remains the persistence boundary.
+   Domain validation rejects cycles and deleted targets without substituting a link.
+2. Usual Time reuses the quarter-hour wheel moved from Settings into the anchors
+   feature. Its local draft has Use time, Cancel and Clear, so an unchanged centered
+   midnight can be explicitly accepted without dirtying the form on open. A native
+   Required in stack toggle works for both kinds. Draft hydration/save preserves
+   null, false, nested Options navigation and the existing outer discard guard.
+3. `getAnchorPickerOptions` reads undeleted choices and saved preset minutes from
+   one read transaction. Three real-SQL tests cover ordering, archived/deleted data,
+   missing settings, no writes and a two-connection WAL snapshot during concurrent
+   preset/archive commands. It does not invent defaults on read failure. The sheet
+   and saved-target summary expose recovery; confirmed selection refreshes the label.
+4. Query author plan_review and UI author simulator_readiness received independent
+   review from data_contract_review; plan_review also reviewed final UI and root
+   reviewed integration. Ten new routed cases and inherited Settings/kind tests
+   cover all target kinds/directions, text bounds, cycles, save/reopen, time clearing,
+   false membership, draft cancellation and query recovery. Midnight acceptance
+   and summary-retry corrections have recorded failing/passing tests.
+5. Native larger-text QA reproduced an inherited Tinted Background switch clipping
+   beyond its row and a new Required switch failing to use the row width. A flexible
+   label and vertical-only native Host measurement fix both. Settled cold-launch
+   screenshots verify wrapping and visible controls. No style-mirroring tests or
+   native source changes were introduced; relevant existing feature tests still pass.
+6. Final post-layout `bun run validate`: exit 0, 68 suites / 885 tests, global
+   coverage 96.99/95.42/95.22/97.48, all 44 core files at 100 percent across all
+   metrics. Native gate: 9 plugin checks and 74 Swift tests pass. Lint/typecheck pass.
+   Logs: `.artifacts/t11/validate.log`, `native.log`, `ui-layout.log` and
+   `typecheck-layout.log`.
+7. Independent native QA passed on signed Migration QA with Metro 8082: preset
+   After, archived-habit Before and text Before save/reopen, midnight/false
+   persistence, keyboard access, local cancellation, explicit clear and outer
+   discard. A final cold reopen confirms null anchor/time and Required off. All
+   existing board rows, 18 checks and 27 actions remain exact, including the original
+   Count board and its three stored checks/two live checks. Root also visually
+   reviewed the final cold normal/large captures. Evidence and exact device scope:
+   `.artifacts/t11/qa/qa-proof.md`, `verification.json`, `final-cold-reopen.png`
+   and `required-large-cold-after.png`; `verify.py` reproduces the data assertions.
+   The scoped connected console reports zero entries. Intermediate premature
+   snapshots and stale HMR measurements remain labeled as superseded evidence.
+8. T11 is complete. T12's separate archive-date conflict is recorded in spec
+   section 10, item 6, and awaits Rami's answer. Independent topology/date-grouping
+   preparation proceeds; no unapproved eligibility rule is silently implemented.
+
 ### T10 - validated habit anchors and transactional link cleanup (2026-09-08)
 
 1. Create/update accepts a discriminated anchor, optional usual time and required

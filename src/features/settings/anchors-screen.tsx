@@ -11,7 +11,7 @@ import { semanticColor, spacing } from '@/theme';
 import { useProduct, useProductQuery } from '../product-store';
 import { formatMinuteOfDay } from '../reminders/weekdays';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
-import { AnchorMinutePicker } from './anchor-minute-picker';
+import { AnchorMinutePicker } from '../anchors/anchor-minute-picker';
 import { SettingsGroup, SettingsRow } from './rows';
 
 const anchors = [

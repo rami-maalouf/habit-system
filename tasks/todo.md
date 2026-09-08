@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T10 done; T11 next. Revised planning documents were pushed; implementation continues through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T11 done; T12 next, with archive-date eligibility awaiting clarification. Revised planning documents were pushed; implementation continues through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -84,13 +84,14 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: validation/commands/queries, board repository as needed, anchor domain tests.
   - Depends on: T9.
 
-- [ ] **T11: Anchor form controls**
+- [x] **T11: Anchor form controls**
   - Acceptance: Anchor sheet has Habits in home order, four Built-in anchors with informational times, and text input; After/Before selection; sentence summary; optional Usual Time picker; Required in Stack control. Editing times does not imply a run window or deadline.
   - Verify: accessible feature tests and simulator evidence for each anchor kind and direction.
   - Ownership scope: anchor picker, board form/state, feature tests.
   - Depends on: T10.
 
 - [ ] **T12: Pure same-day stack derivation**
+  - Pending clarification: the spec says archived members are absent from completion requirements, while inherited activity periods include their archive date. Rami has been asked whether stack eligibility excludes that stored date or includes it. Do not finalize this boundary until answered; topology and exact-date grouping are independent.
   - Acceptance: `deriveStacks` produces deterministic before/after order, sibling home order, stable structural root ids, and informational times. `assignRuns` uses exact stored logical dates: `<rootId>|<logicalDate>`. No occurrence instant, usual time, preset time, or adjacent calendar date moves a check between runs. Completeness uses required members eligible under inherited date-based activity periods; zero required eligible members means incomplete and no bonus.
   - Verify: mixed directions, preset/text roots, isolated/unanchored boards, root archive, optional members, same-day archive/restore, defensive cycle error, midnight/shifted-day/DST/time-zone fixtures proving stored dates stay fixed, leap day. Explicitly prove evening Tuesday plus morning Wednesday cannot complete one run.
   - Ownership scope: `src/core/domain/stacks.ts`, domain tests, queries/repository inputs needed for activity periods.

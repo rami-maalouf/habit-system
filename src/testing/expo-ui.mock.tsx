@@ -66,16 +66,18 @@ export function Button({ label, onPress, disabled, children }: ButtonProps) {
 
 type SwitchProps = {
   label?: string;
+  testID?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
 };
 
-export function Switch({ label, value, onValueChange, disabled }: SwitchProps) {
+export function Switch({ label, value, onValueChange, disabled, testID }: SwitchProps) {
   return (
     <Row>
       <RNText>{label}</RNText>
       <RNSwitch
+        testID={testID}
         accessibilityLabel={label}
         accessibilityState={{ disabled: disabled === true }}
         value={value}

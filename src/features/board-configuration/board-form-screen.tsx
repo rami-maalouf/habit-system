@@ -23,6 +23,7 @@ import { getBoardIcon } from '../boards/board-icon-catalog';
 import { BoardIconPicker } from './board-icon-picker';
 import { BoardKindPicker } from './board-kind-picker';
 import { DailyStrip } from '../boards/daily-strip';
+import { BoardAnchorFields } from '../anchors/board-anchor-fields';
 import type { BoardDraft } from './draft-store';
 import {
   draftFromBoard,
@@ -58,6 +59,9 @@ function draftToCommandFields(draft: BoardDraft) {
     tracksTime: draft.kind === 'count' && draft.tracksTime,
     startOfDayMinute: draft.startOfDayMinute,
     metricsEnabled: draft.metricsEnabled,
+    anchor: draft.anchor,
+    usualTimeMinute: draft.usualTimeMinute,
+    requiredInStack: draft.requiredInStack,
   };
 }
 
@@ -157,8 +161,8 @@ function ToggleRow({
   testID?: string;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <AppText>{label}</AppText>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+      <AppText style={{ flex: 1 }}>{label}</AppText>
       <Switch
         accessibilityLabel={label}
         value={value}
@@ -530,6 +534,10 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
           <AppText variant="footnote">
             {draft.kind === 'daily' ? 'Mark each day complete once.' : 'Record each check-in, with optional amounts and times.'}
           </AppText>
+        </FormRow>
+
+        <FormRow>
+          <BoardAnchorFields draft={draft} onChange={updateDraft} disabled={saving} />
         </FormRow>
 
         {draft.kind === 'count' ? <FormRow>

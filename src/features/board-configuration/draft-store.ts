@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
+import type { BoardAnchorInput } from '@/core/domain/board-anchor';
+
 import type { Board, BoardKind } from '@/core/domain/entities';
 import { boardPalette, boardSymbolAllowlist } from '@/core/domain/entities';
 import type { BoardId } from '@/core/domain/ids';
@@ -29,6 +31,9 @@ export type BoardDraft = {
   tracksTime: boolean;
   startOfDayMinute: number;
   metricsEnabled: boolean;
+  anchor: BoardAnchorInput | null;
+  usualTimeMinute: number | null;
+  requiredInStack: boolean;
   // populated only while boardId is null (a new, unsaved board)
   reminders: DraftReminder[];
   dirty: boolean;
@@ -59,6 +64,9 @@ export function newBoardDraft(): BoardDraft {
     tracksTime: false,
     startOfDayMinute: 0,
     metricsEnabled: true,
+    anchor: null,
+    usualTimeMinute: null,
+    requiredInStack: true,
     reminders: [],
     dirty: false,
   };
@@ -79,6 +87,15 @@ export function draftFromBoard(board: Board): BoardDraft {
     tracksTime: board.tracksTime,
     startOfDayMinute: board.startOfDayMinute,
     metricsEnabled: board.metricsEnabled,
+    anchor: board.anchorKind === 'board' && board.anchorBoardId && board.anchorRelation
+      ? { kind: 'board', relation: board.anchorRelation, boardId: board.anchorBoardId }
+      : board.anchorKind === 'preset' && board.anchorPreset && board.anchorRelation
+        ? { kind: 'preset', relation: board.anchorRelation, preset: board.anchorPreset }
+        : board.anchorKind === 'text' && board.anchorText && board.anchorRelation
+          ? { kind: 'text', relation: board.anchorRelation, text: board.anchorText }
+          : null,
+    usualTimeMinute: board.usualTimeMinute,
+    requiredInStack: board.requiredInStack,
     reminders: [],
     dirty: false,
   };

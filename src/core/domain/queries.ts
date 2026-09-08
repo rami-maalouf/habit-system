@@ -24,6 +24,7 @@ import { readWidgetRows } from '../persistence/projections/widget-rows';
 import {
   getBoardById,
   listBoardAnchorDependents,
+  listUndeletedBoards,
   listActiveBoards as listActiveBoardRows,
   listArchivedBoards as listArchivedBoardRows,
 } from '../persistence/repositories/boards';
@@ -49,7 +50,7 @@ import {
   listRemindersForReconcile,
 } from '../persistence/repositories/reminders';
 import { getSettings, getSyncState, listBoardPeriods } from '../persistence/repositories/support';
-import type { Board, CheckIn, Reminder, WidgetBoardRow } from './entities';
+import type { AnchorPreset, Board, CheckIn, Reminder, WidgetBoardRow } from './entities';
 import type { BoardId, CheckInId, LogicalDate, ReminderId } from './ids';
 import type { Clock } from './ports';
 import type { ExpectedCheckIn } from './check-in-commands';
@@ -661,6 +662,25 @@ export function getMetricsEducationDismissed(
   return runQuery(deps, async (tx) => {
     const settings = await getSettings(tx);
     return settings?.metricsEducationDismissed ?? [];
+  });
+}
+
+export type AnchorPickerOptions = {
+  boards: Board[];
+  presetMinutes: Record<AnchorPreset, number>;
+};
+
+export function getAnchorPickerOptions(deps: QueryDeps): Promise<DomainResult<AnchorPickerOptions>> {
+  return runQuery(deps, async (tx) => {
+    const settings = await getSettings(tx);
+    if (!settings) throw new Error('Anchor settings are unavailable.');
+    return {
+      boards: await listUndeletedBoards(tx),
+      presetMinutes: {
+        wake: settings.wakeMinute, lunch: settings.lunchMinute,
+        dinner: settings.dinnerMinute, sleep: settings.sleepMinute,
+      },
+    };
   });
 }
 

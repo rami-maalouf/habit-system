@@ -406,13 +406,14 @@ New coverage that this spec requires:
 
 ## 10. Open questions
 
-Resolved on 2026-09-08. The post-review correction supersedes the original single overnight stack recommendation: stacks only group one logical date, so morning and night routines do not bridge consecutive dates. Bonus restoration and offline latest-action reconciliation are approved. Identifiers, constant 09:00, cap 1 through 10, and cosmetic rename order remain approved. Earlier questions below are historical, not pending decisions.
+Items 1 through 5 were resolved on 2026-09-08. The post-review correction supersedes the original single overnight stack recommendation: stacks only group one logical date, so morning and night routines do not bridge consecutive dates. Bonus restoration and offline latest-action reconciliation are approved. Identifiers, constant 09:00, cap 1 through 10, and cosmetic rename order remain approved. Items 1 through 5 below are historical. Item 6 is a new implementation clarification awaiting Rami's answer.
 
 1. **Stack date scope, resolved.** Stacks exist within one day only. The proposed bedtime-to-next-morning run was rejected. Separate night and morning anchors retain the source design without a cross-date dependency.
 2. **Exact identifiers.** Proposed: name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, App Group `group.studio.orbitlabs.habitsystem`, container `iCloud.studio.orbitlabs.habitsystem`, zone `habit-system`, scheme `habitsystem`, new EAS project via `eas init`. Confirm or change.
 3. **Miss alert time.** 09:00 local as a constant, or editable in Settings next to the preset anchors? Recommendation: constant now.
 4. **Coin cap range.** 1 through 10 per day. Is 10 enough for a count board like water?
 5. **Public name.** The README still says Ripples. The rename of the README, the native module, and the widget display name is cosmetic and can be its own task after the first build. Confirm that order.
+6. **Archive-date stack eligibility, pending.** Section 4.3 excludes archived members from completion requirements, but inherited activity periods close on the habit's archive logical date and include that date. Archiving an unchecked member can therefore hide it while it still blocks that stack date. Rami has been asked whether stack requirements should exclude the archive date (recommended; same-day restore requires it again) or remain inclusive through that date. This is a stored-date eligibility choice, not a new intraday history model. T11 and independent topology work can proceed; do not silently choose the T12 boundary or change inherited non-stack analytics.
 
 ## 11. What happens after approval
 
