@@ -1,12 +1,13 @@
-# Capability Map: Ripples Rebuild
+# Capability Map: Habit System (forked from Ripples)
 
 Status: Approved  
-Approved: 2026-08-30
+Approved: 2026-08-30 (Ripples), amended 2026-09-08 (habit-system fork)
 
-This initiative contains independently testable capabilities with stable module ids. The complete implementation is governed by exactly two specifications:
+This initiative contains independently testable capabilities with stable module ids. The complete implementation is governed by exactly three specifications:
 
 1. `SPEC-native-foundation.md` owns `native-foundation`.
-2. `SPEC-ripples-product.md` owns every remaining module from `tracking-core` through `android-readiness`.
+2. `SPEC-ripples-product.md` owns every inherited module from `tracking-core` through `android-readiness`.
+3. `SPEC-habit-system.md` owns the fork modules from `fork-identity` through `sample-mode`.
 
 Module ids remain useful planning, ownership, checkpoint, and dependency units. They do not create additional specification gates.
 
@@ -26,6 +27,13 @@ Module ids remain useful planning, ownership, checkpoint, and dependency units. 
 | `cloud-sync` | Private iCloud synchronization, deterministic conflict handling, reconciliation, and a provider-neutral sync boundary | `board-configuration`, `reminders`, `check-in-history`, `journal`, `settings` |
 | `automations` | iOS Shortcuts and Siri commands for creating, removing, and querying check-ins through shared domain commands | `board-configuration`, `check-in-history` |
 | `android-readiness` | Verify the shared core is platform-neutral and define Compose, Android notification, App Actions, and Glance adapter seams without shipping the Android UI in the iOS-first release | `board-configuration`, `reminders`, `check-in-history`, `journal`, `analytics`, `settings`, `data-export`, `widgets` |
+| `fork-identity` | New bundle, group, container, zone, scheme, EAS project, and name; the FORK.md table applied | `native-foundation` |
+| `daily-habits` | `daily` board kind, toggle semantics, home card, widget and intent behavior | `boards`, `board-configuration`, `widgets`, `automations` |
+| `stacks` | anchors, preset anchor settings, derived stacks and runs, stacks screens and analytics | `daily-habits`, `analytics` |
+| `coins` | append-only ledger, earning, cap, claw-back, run bonus, balance, history, sync and export of ledger rows | `stacks`, `cloud-sync`, `data-export` |
+| `rewards` | reward records, claim flow, reward screens | `coins` |
+| `miss-alerts` | never-miss-twice reconciler and notification | `daily-habits`, `reminders` |
+| `sample-mode` | in-memory database, deterministic generator, sample modal | `coins`, `rewards`, `stacks` |
 
 ## Dependency rules
 
@@ -43,6 +51,7 @@ Module ids remain useful planning, ownership, checkpoint, and dependency units. 
 4. Dependent interactions in parallel: `reminders`, `journal`
 5. Ownership and portability: `settings` -> `data-export` -> `android-readiness`
 6. Product parity extensions in parallel: `cloud-sync`, `automations`
+7. Fork (2026-09-08): `fork-identity` -> `daily-habits` -> `stacks` -> `coins` -> `rewards` in sequence; then `miss-alerts` and `sample-mode` in parallel
 
 `native-foundation` runs first because every later implementation task requires an operational iOS simulator, an Argent checkpoint, and an independent verification pass. Both foundation modules must be implemented before `boards` begins.
 
@@ -64,6 +73,6 @@ The build order is one implementation sequence under the two approved specificat
 2. `cloud-sync` and `automations` remain post-visual-release extensions.
 3. `android-readiness` covers architecture and adapter verification, not a shipping Android UI in the iOS-first release.
 4. `native-foundation` is the first module, followed by `tracking-core`.
-5. The project uses exactly two specifications. No per-module specification is required after `SPEC-ripples-product.md`.
+5. The project used exactly two specifications through the Ripples release. The 2026-09-08 fork adds `SPEC-habit-system.md` as the third and last. No per-module specification is required after it.
 
 Approval of this map and the two specification documents authorizes Fable 5 to maintain one implementation plan and task list for the complete project. It does not authorize this specification session to install packages or change application code.

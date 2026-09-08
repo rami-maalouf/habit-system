@@ -6,9 +6,9 @@ Prerequisites: SPEC-native-foundation.md, SPEC-ripples-product.md (both inherite
 
 Capability map: CAPABILITY-MAP.md (amendment proposed in section 12 of this document)
 
-Covered module ids: daily-habits, stacks, coins, rewards, miss-alerts, sample-mode, starter-stack, fork-identity
+Covered module ids: fork-identity, daily-habits, stacks, coins, rewards, miss-alerts, sample-mode
 
-Status: Phase 1 draft - awaiting Rami's review. No plan, tasks, or code until approved.
+Status: Approved by Rami on 2026-09-08 with one correction: no starter stack in code (see assumption 9 and section 4.11). Phase 2 plan is `tasks/plan.md`; task list is `tasks/todo.md`.
 
 Date: 2026-09-08
 
@@ -36,10 +36,10 @@ Rami: correct any of these now. Each one is a decision I filled in because it wa
 6. **"Next morning" for the never-miss-twice alert means 09:00 local**, adjustable later. The alert is scheduled by the same reconciler that schedules reminders (cold start, foreground, significant time change). It cannot fire from a background that iOS does not give us.
 7. **Daily boards do not track amounts or exact time.** Enabling `daily` hides Track Amounts and Track Check-In Time. A daily check-in stores amount null and time null, plus the logical date.
 8. **Sample mode runs the real UI on a throwaway in-memory database.** Every screen works inside it. Sync, widgets, notifications, export, import, and intents are disabled inside it. Closing it discards everything.
-9. **The starter stack is a constant in code**, `src/core/templates/daily-stack.ts`, applied by one Settings action. Its contents are whatever habits-v2 says at build time and can be empty. Removal is normal board deletion.
+9. **No starter stack.** Corrected on review. The only habit-related constants in code are the four built-in anchors and their default times. A prepared set of habits reaches a fresh install through the existing import of the app's own export JSON.
 10. **Identifiers use the `studio.orbitlabs.habitsystem` family** (open question 2 confirms the exact strings). Ripples' identifiers are never reused.
 
--> Correct me now or I proceed with these.
+Reviewed by Rami on 2026-09-08. Assumption 9 was corrected; the rest stand.
 
 ## 1. Objective
 
@@ -59,7 +59,6 @@ Rami first. He runs the six-habit night-to-morning chain from habits-v2 and the 
 - Get one alert when the same habit is missed two runs in a row, and nothing else new.
 - See the home screen show, per daily habit, the fourteen-day strip, checks this week, and the streak.
 - Open a sample of the app as if used for three years, then close it without a trace.
-- Apply a starter stack in one tap.
 
 ### Success looks like
 
@@ -255,10 +254,7 @@ New root-level route `/stacks`, reached from a Boards header icon. It lists deri
 
 ### 4.11 Starter stack
 
-- Settings > Utilities gains "Create my daily stack". It applies `src/core/templates/daily-stack.ts` in one exclusive transaction: boards with kinds, anchors, usual times, coin settings, and preset anchors.
-- The template is versioned product data. Its contents are decided in habits-v2 and can change between builds. An empty template hides the action.
-- Applying twice is refused when any board with the same template key exists; the confirmation names the boards.
-- Removal is normal board deletion. No special path.
+Removed on review, 2026-09-08. No template constant, no Settings action. The four built-in anchors in 4.2 are the only habit-related constants in code. Import of the app's own export JSON is the path for a prepared set of habits.
 
 ### 4.12 Widgets, intents, sync, export
 
@@ -286,8 +282,6 @@ src/
       stacks.ts            complete runs per week, run streak, stack heatmap
     persistence/
       repositories/        ledger.ts, rewards.ts, miss-alerts.ts
-    templates/
-      daily-stack.ts
     sample/
       generator.ts         deterministic sample data
   features/
@@ -339,7 +333,7 @@ New coverage that this spec requires:
 - Migrations: version 5 fixture migrates to 6 with defaults; every earlier fixture still opens.
 - Sync: ledger and rewards records round-trip; a version 1 peer ignores them; out-of-order ledger delivery converges to one balance.
 - Contracts: daily-board cases in `intent-contract.json`, executed by both the TypeScript and Swift executors.
-- Features: toggle behavior and accessibility labels; anchor picker with all three kinds and both directions; stacks screen states; coins screens; sample mode isolation (real database checksum unchanged); starter stack apply and refuse-twice.
+- Features: toggle behavior and accessibility labels; anchor picker with all three kinds and both directions; stacks screen states; coins screens; sample mode isolation (real database checksum unchanged).
 - Device: Argent evidence for toggle, anchor picker, stacks screen, claim, sample mode open and close, and the miss alert firing on a simulator with the clock advanced.
 
 ## 8. Boundaries
@@ -366,7 +360,7 @@ New coverage that this spec requires:
 **Never**
 
 - Tombstone or delete a ledger row.
-- Seed data into a real user's database outside the starter-stack action.
+- Seed data into a real user's database. Data enters only through the user's own actions and import.
 - Let sample mode touch the App Group database.
 - Reuse a Ripples bundle id, App Group, CloudKit container, EAS project, or scheme.
 - Weaken tests, coverage, or accessibility to pass a gate.
@@ -384,12 +378,14 @@ New coverage that this spec requires:
 8. Schema 6 migrates from every earlier fixture; export version 2 round-trips; import accepts versions 1 and 2 and the Ripples CSV.
 9. The never-miss-twice alert schedules exactly once per missed pair, deep-links to the board, and never prompts for permission on its own.
 10. Sample mode opens with three years of generated data, every screen works, and the real database checksum is unchanged after closing.
-11. The starter stack applies once and refuses a second application by name.
+11. Removed on review (starter stack).
 12. Home shows fourteen cells, checks this week, and streak for daily boards; the balance pill reads correctly to VoiceOver.
 13. All gates pass: `bun run validate`, `bun run test:native`, `bunx expo-doctor`, iOS and Android exports.
 14. The app runs under its own identifiers on a signed device and never appears in Ripples' CloudKit container or EAS project.
 
 ## 10. Open questions
+
+Resolved on 2026-09-08 by Rami's approval of the recommendations: (1) one stack, handled in habits-v2 by anchoring wake after bed; (2) identifiers as proposed; (3) constant 09:00; (4) cap 1 through 10; (5) rename after the first build. The original questions remain below for the record.
 
 1. **One stack or two.** With anchors as written in habits-v2 (wake after the alarm), your six habits form a night stack and a morning stack. Do you want that, or should wake anchor "after bed" so the whole night-to-morning chain is one run? Recommendation: one stack. "Full chain" is the number you care about, and two stacks give you two smaller numbers instead.
 2. **Exact identifiers.** Proposed: name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, App Group `group.studio.orbitlabs.habitsystem`, container `iCloud.studio.orbitlabs.habitsystem`, zone `habit-system`, scheme `habitsystem`, new EAS project via `eas init`. Confirm or change.
@@ -403,7 +399,7 @@ Per the spec-driven-development skill: Phase 2 writes `tasks/plan.md` (component
 
 ## 12. Proposed CAPABILITY-MAP.md amendment
 
-On approval, CAPABILITY-MAP.md changes as follows. Not applied yet.
+Applied to CAPABILITY-MAP.md on 2026-09-08.
 
 - Rule "The project uses exactly two specifications" becomes three: SPEC-native-foundation.md, SPEC-ripples-product.md, SPEC-habit-system.md.
 - New module rows:
@@ -417,6 +413,5 @@ On approval, CAPABILITY-MAP.md changes as follows. Not applied yet.
 | `rewards` | reward records, claim flow, reward screens | `coins` |
 | `miss-alerts` | never-miss-twice reconciler and notification | `daily-habits`, `reminders` |
 | `sample-mode` | in-memory database, deterministic generator, sample modal | `coins`, `rewards`, `stacks` |
-| `starter-stack` | template constant and one-tap apply | `stacks`, `coins` |
 
-- Build order appended: `fork-identity` -> `daily-habits` -> `stacks` -> `coins` -> `rewards` in sequence; then `miss-alerts`, `sample-mode`, `starter-stack` in parallel.
+- Build order appended: `fork-identity` -> `daily-habits` -> `stacks` -> `coins` -> `rewards` in sequence; then `miss-alerts` and `sample-mode` in parallel.

@@ -1,90 +1,174 @@
-# Todo: Native Foundation
+# Tasks: Habit System
 
-Module id: `native-foundation`. Plan: `tasks/plan.md`. Spec: `SPEC-native-foundation.md`.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: awaiting approval; no task started.
 
-Status legend: `[ ]` not started, `[~]` in progress, `[x]` done (all gates passed, committed, pushed).
+Definition of done for every task: tests first, `bun run validate` exit 0, `src/core` at 100 percent, Argent evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry, lowercase conventional commit without co-author lines.
 
-Every task ends with: full validation suite, independent GPT-5.6 Sol pass, Argent checkpoint, `checkpoints.md` entry, lowercase conventional commit, push to `origin/main`.
+## Phase 0: fork identity
 
-## T1 - simulator toolchain repair and Argent preflight
+- [ ] **T1: Apply fork identifiers and create the EAS project**
+  - Acceptance: `app.json` name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`, scheme `habitsystem`, widget name and display name renamed; `CloudKitTransport.swift` zone `habit-system`; podspec URLs point at `rami-maalouf/habit-system`; `extra.eas.projectId` and `updates.url` come from a new `eas init`; `package.json` name `habit-system`; FORK.md table marked applied.
+  - Verify: `bun run test:native:config`; `bunx expo-doctor`; `bunx expo prebuild --platform ios --clean` then `bunx expo run:ios`; the built app's bundle id is the new one; `git status` shows no generated `ios/`.
+  - Files: `app.json`, `package.json`, `modules/ripples-apple/ios/CloudKitTransport.swift`, `modules/ripples-apple/ios/RipplesApple.podspec`, `modules/ripples-apple/tests/plugin/config.test.cjs`, `FORK.md`.
+  - Depends on: none. Size: M.
 
-- [x] HUMAN: accepted the Xcode license (plus `xcrun --kill-cache` cleared the stale cache)
-- [x] verify `xcode-select -p`, `xcodebuild -version`, `xcrun --find simctl` all succeed
-- [x] HUMAN approved documented equivalent: iPhone 17 Pro on iOS 27.0 (no iOS 26.6 runtime installed); viewport verified 402 x 874 pt
-- [x] Argent `list-devices` lists the target; boot succeeded; UDID `93EEF062-B4DC-4989-AF77-CF47EE2A9816` recorded in `checkpoints.md`
-- [x] create `checkpoints.md` with the T1 checkpoint
-- [x] gates: Sol pass (after one remediation), Argent evidence (device list, boot), commit `chore: establish simulator toolchain and argent preflight`, push
+### Checkpoint 0
+- [ ] Simulator build runs under the new identifiers; plugin tests and doctor pass; entry in `checkpoints.md`.
 
-## T2 - dependencies, test harness, repository hygiene
+## Phase 1: daily habits
 
-- [x] `bunx expo install @expo/ui expo-blur expo-glass-effect expo-haptics expo-image expo-dev-client`
-- [x] `bunx expo install jest-expo jest @testing-library/react-native @types/jest --dev` (RNTL pinned to v13 line, human approved)
-- [x] add scripts: `lint`, `typecheck`, `test`, `test:coverage`, `validate`
-- [x] `jest.config.js`: jest-expo preset, Bun transform ignore pattern, 90 percent global thresholds, minimal reviewed exclusions
-- [x] `.gitignore`: add `.artifacts/` and `dist-validation/`
-- [x] `src/testing/render.tsx` helper plus first harness test (plus matcher type shim)
-- [x] `bun run validate`, `bunx expo-doctor` 21/21, `git diff --check` pass; dev client built and installed (moved up from T7)
-- [x] gates: Sol pass (after remediation), Argent smoke (launch, describe, clean log registry), commit `chore: add foundation dependencies and jest harness`, push
+- [ ] **T2: Migration version 6 and entity types**
+  - Acceptance: version 6 adds board columns `kind`, `anchor_relation`, `anchor_kind`, `anchor_board_id`, `anchor_preset`, `anchor_text`, `usual_time_minute`, `required_in_stack`, `earns_coins`, `coin_cap_per_day`; settings columns for the four preset minutes with defaults 420, 720, 1080, 1380; tables `coin_ledger`, `rewards`, `miss_alerts` with indexes; existing boards get `kind = 'count'`; `Board`, `AppSettings`, `LedgerEntry`, `Reward` types and branded ids exist; board repository reads and writes the new columns.
+  - Verify: `bun run test:migrations` with a new version 5 fixture; every earlier fixture still opens; checksum test updated.
+  - Files: `src/core/persistence/schema.ts`, `src/core/domain/entities.ts`, `src/core/domain/ids.ts`, `src/core/persistence/repositories/boards.ts`, `tests/product/migrations/`.
+  - Depends on: T1. Size: M.
 
-## T3 - route migration to src/app and starter removal
+- [ ] **T3: `daily` kind rules and the toggle dispatcher**
+  - Acceptance: `validateBoardFields` accepts `kind` and forces `tracksAmount` and `tracksTime` false for `daily`; `createCheckIn` on a `daily` board with an existing check-in for the date returns that id with `ok: true` and no mutation, recorded in the receipt; `toggleDailyCheckIn` command creates or removes today's check-in; `count` behavior unchanged.
+  - Verify: `bun run test:domain` with new cases for both kinds, idempotent create, toggle both ways, kind switch preserving history.
+  - Files: `src/core/domain/validation.ts`, `src/core/domain/commands.ts`, `tests/product/domain/commands.test.ts`, `tests/product/domain/daily.test.ts`.
+  - Depends on: T2. Size: M.
 
-- [x] red: router tests for `/` (title `Ripples`, selectable `Native foundation ready`) and `+not-found` recovery (behavioral press asserts return to `/`)
-- [x] `src/app/_layout.tsx` native stack, `src/app/index.tsx`, `src/app/+not-found.tsx`
-- [x] tsconfig alias `@/*` -> `./src/*`; jest moduleNameMapper; `app.json` `ios.deploymentTarget: "18.6"`
-- [x] deleted `app/`, `components/`, `constants/`, Space Mono font; removed expo-font, expo-web-browser, expo-symbols, expo-status-bar (packages and plugin entries)
-- [x] no dead imports, routes, assets; `git diff --check` clean; validate 4/4 at 100 percent coverage
-- [x] gates: Sol pass (after behavioral-test remediation), Argent navigation evidence (deep link, recovery tap, clean logs), commit `feat: replace starter with minimal expo router stack in src/app`, push
+- [ ] **T4: Board form Kind control**
+  - Acceptance: Create and Edit Board show a Kind control (Daily, Count) defaulting to Daily for new boards; selecting Daily hides Track Amounts, Unit, Quick Check-In Amount, and Track Check-In Time; live preview reflects the kind; saving persists it.
+  - Verify: `bun run test:features` board form cases by role and name; Argent screenshot of both states.
+  - Files: `src/features/board-configuration/board-form.tsx` (or the existing form file), related form state, `tests/product/features/boards-slice.test.tsx`.
+  - Depends on: T3. Size: S.
 
-## T4 - semantic theme tokens
+- [ ] **T5: Home card for `daily` boards**
+  - Acceptance: card shows fourteen two-state cells ending today, "N/7 this week" using ISO Monday weeks and the board's logical day, the current streak label, and a toggle whose label is "Checked, double tap to uncheck" or "Not checked, double tap to check"; `getHomeBoardProjection` returns the needed fields; un-check of a check-in with a note asks for confirmation.
+  - Verify: `bun run test:features` and `test:domain`; Argent evidence of check and un-check with Undo.
+  - Files: `src/core/domain/queries.ts`, `src/features/boards/board-card.tsx`, `src/features/boards/boards-home.tsx`, `tests/product/features/boards-slice.test.tsx`, `tests/product/domain/queries.test.ts`.
+  - Depends on: T3. Size: M.
 
-- [x] red: token completeness and invariant tests (semantic colors with web-safe fallbacks, brand accent boundary, 4-pt spacing, Dynamic Type ramp, continuous radii, boxShadow only, motion plus reduced-motion policy, 4.5:1 contrast pairs)
-- [x] implement `src/theme/{colors,spacing,typography,radius,shadows,motion,index}.ts`
-- [x] only `@/theme` is imported by non-theme code (eslint no-restricted-imports guard); no legacy shadow props
-- [x] gates: Sol pass (after cosmetic remediation), Argent smoke, commit `feat: add semantic theme tokens`, push
+- [ ] **T6: Heatmap two-state rendering for `daily` boards**
+  - Acceptance: `daily` boards render checked and unchecked cells only, with labels "checked" or "not checked" plus the date; `count` boards unchanged.
+  - Verify: `bun run test:features`; Argent screenshot in light and dark.
+  - Files: `src/features/boards/heatmap-view.tsx`, `src/features/boards/board-detail.tsx`, `tests/product/features/boards-detail-states.test.tsx`.
+  - Depends on: T3. Size: S.
 
-## T5 - foundation components
+- [ ] **T7: Widget rows and TypeScript intents for `daily` boards**
+  - Acceptance: `widget_board_rows` carries `kind` and checked state; the widget row shows the checked state; Check In on a `daily` board is idempotent for the day; Remove Latest un-checks; Get Today's Check-Ins reports checked or not; `intent-contract.json` gains cases for all three.
+  - Verify: `bun run test:contracts`; widget renders on the simulator with a `daily` board.
+  - Files: `src/core/persistence/projections/widget-rows.ts`, `src/platform/widgets/ripples-boards-widget.tsx`, `src/core/automations/contract.ts`, `src/core/automations/fixtures/intent-contract.json`, `tests/product/contracts/automations.test.ts`.
+  - Depends on: T5. Size: M.
 
-- [x] red: component tests (roles, labels, 44-pt targets, icon mapping, adaptive-material fallback selection with identical geometry, glass-probe failure, scheme normalization)
-- [x] `app-text.tsx`, `icon.tsx`, `material-geometry.ts`, `adaptive-material{,-opaque,.ios,.android}.tsx`, `src/foundation/accessibility/`
-- [x] iOS-only imports only in `.ios.tsx`; missing or throwing glass capability degrades to blur, never an invisible control
-- [x] gates: Sol pass (after role-query remediation), Argent smoke, commit `feat: add foundation text, icon, and adaptive material components`, push
+- [ ] **T8: Swift intents executor for `daily` boards**
+  - Acceptance: the Swift executor passes the new fixture cases verbatim; idempotent daily create replays the same receipt shape as TypeScript.
+  - Verify: `bun run test:native`; Shortcuts on a simulator with a `daily` board.
+  - Files: `modules/ripples-apple/ios/` intent executor sources and their tests.
+  - Depends on: T7. Size: M.
 
-## T6 - foundation preview route
+### Checkpoint A
+- [ ] `daily` board created, toggled from Home, widget, Shortcuts; `count` boards unchanged; all gates and review recorded.
 
-- [x] red: tests for seven ordered sections, labeled fixtures, `Action count` behavior, `material=fallback` param, production redirect to `/`
-- [x] `src/app/(dev)/foundation-preview.tsx` (guard plus composition only); fixtures and sections in `src/foundation/validation/`; haptic policy module; reduced-motion hook
-- [x] `@expo/ui` Host controls: `Primary action`, `Habit enabled`, `Intensity`, `Frequency`, `Note` (plus disabled states and action counter)
-- [x] `e2e/argent/native-foundation/foundation-preview-flow.md` flow definitions
-- [x] coverage 97.1/93.1/93.0/100 - all four at or above 90
-- [x] gates: Sol pass (after three remediation rounds), Argent interactive evidence (deep link, describe, activate, `Action count: 1`, clean logs), commit `feat: add development foundation preview route`, push
+## Phase 2: stacks
 
-## T7 - development client build and full device validation
+- [ ] **T9: Preset anchor minutes**
+  - Acceptance: settings hold four preset minutes with defaults; `setPresetAnchorMinute` validates 0 through 1439 in 15-minute steps; Settings > Anchors lists Waking up, Lunch, Dinner, Sleeping with native time pickers stepping by 15 minutes; values sync as settings fields.
+  - Verify: `bun run test:domain`, `test:features`; Argent screenshot.
+  - Files: `src/core/domain/commands.ts`, `src/core/domain/queries.ts`, `src/features/settings/anchors-screen.tsx`, `src/app/settings/anchors.tsx`, `tests/product/features/settings-flows.test.tsx`.
+  - Depends on: T2. Size: M.
 
-- [x] dev client built and installed in T2 (`bunx expo run:ios --device <approved UDID>`); rebuild with final config re-verified in T8
-- [x] Argent describe of root and preview matches the contract (five controls, states, `Action count` 0 -> 1, at default and AXXL scales)
-- [x] light and dark full-resolution captures (top and bottom regions) plus fallback, AXXL, and contrast/motion captures
-- [x] HUMAN approved all seven captures as baselines (recorded in `checkpoints.md`)
-- [x] `material=fallback` comparison: blur branch, identical geometry, `Material mode: fallback forced`
-- [x] Dynamic Type at accessibility-extra-extra-large (font scale 3.143): all sections reachable, operable, no clipping after the line-height fix; restored to large
-- [x] Reduce Motion and Increase Contrast via Settings app (discovery-driven taps); re-checkpointed in-app; both restored and re-verified
-- [x] debugger log registry: 0 entries at every checkpoint
-- [x] screenshot diff: 0.46 percent, two explained regions, none unexplained
-- [x] two visible refinement iterations (dark-mode text color; dynamic type line heights) each with tests and re-captured evidence
-- [x] gates: Sol pass, commit, push
+- [ ] **T10: Anchor fields and rules**
+  - Acceptance: `updateBoard` and `createBoard` accept the anchor fields and `usualTimeMinute`, `requiredInStack`; validation rejects self-anchor, cycles, and inconsistent field sets; `deleteBoard` clears dependents' anchors in the same transaction and `getBoardDependentCounts` reports the number.
+  - Verify: `bun run test:domain` with chain, sibling, before/after, cycle, and delete cases.
+  - Files: `src/core/domain/validation.ts`, `src/core/domain/commands.ts`, `src/core/domain/queries.ts`, `tests/product/domain/anchors.test.ts`.
+  - Depends on: T9. Size: M.
 
-## T8 - exports, coverage gate, module closure
+- [ ] **T11: Anchor picker and usual time in the board form**
+  - Acceptance: an Anchor row opens a bottom sheet with three sections: Habits (default, active boards in home order), Built-in (four presets with their times), and a text input; a segmented After/Before control; the row renders the sentence "After Bed" or "Before Lunch"; a Usual Time row with a native picker in 15-minute steps; Required in Stack toggle.
+  - Verify: `bun run test:features` by role and name; Argent evidence of all three anchor kinds.
+  - Files: `src/features/anchors/anchor-picker-sheet.tsx`, board form file, `tests/product/features/anchors.test.tsx`.
+  - Depends on: T10. Size: M.
 
-- [x] `bunx expo export --platform ios --output-dir dist-validation/ios` succeeds
-- [x] `bunx expo export --platform android --output-dir dist-validation/android` succeeds with no iOS-only module resolution
-- [x] final `bunx expo run:ios` with `ios.deploymentTarget` 18.6 builds and installs; Argent smoke clean
-- [x] `bun run validate` (39/39, coverage 97.19/93.54/93.18/100), `bunx expo-doctor` 21/21, `git diff --check` pass
-- [x] `git ls-files` has no private image, `.artifacts/`, `dist-validation/`, `ios/`, or `android/` entry
-- [x] all 22 success criteria confirmed in `checkpoints.md`
-- [x] gates: Sol pass, Argent smoke, closure commit, push
+- [ ] **T12: Stack derivation and runs (pure)**
+  - Acceptance: `deriveStacks(boards)` returns ordered stacks with root and run start minute; `assignRuns(stack, checkIns, window)` returns runs keyed by start date with member check-ins and completeness honoring `requiredInStack` and archived members; cycles never reach it (validated upstream) but a defensive guard returns an error result.
+  - Verify: `bun run test:domain` covering chains, siblings, before/after mixes, preset and text roots, midnight crossing, DST both directions, zone change, leap day, optional members, archived members.
+  - Files: `src/core/domain/stacks.ts`, `tests/product/domain/stacks.test.ts`.
+  - Depends on: T10. Size: M.
 
-## Standing human gates
+- [ ] **T13: Stack analytics**
+  - Acceptance: complete runs per ISO week, longest complete-run streak, per-member checks per week, and stack heatmap data for the rolling 365 runs with four shade steps and text alternatives.
+  - Verify: `bun run test:domain` at 100 percent branches.
+  - Files: `src/core/analytics/stacks.ts`, `src/core/domain/queries.ts`, `tests/product/domain/stack-analytics.test.ts`.
+  - Depends on: T12. Size: M.
 
-- [x] T1 privileged step (Xcode license) completed by the human
-- [x] simulator equivalence approved: iPhone 17 Pro, iOS 27.0
-- [x] T7 visual baselines approved (all seven captures)
-- [x] plan execution approved ("Let's run it", plus the goal directive to complete the specification)
+- [ ] **T14: Stacks screens**
+  - Acceptance: Boards header gains a Stacks icon; `/stacks` lists stacks with members, today's run state, run start time, complete runs this week, current run streak; `/stacks/[rootId]` shows the stack heatmap and per-member counts; empty state explains anchors and links to Create Board; every metric has a text alternative.
+  - Verify: `bun run test:features`; Argent screenshots light and dark.
+  - Files: `src/app/stacks/index.tsx`, `src/app/stacks/[rootId].tsx`, `src/features/stacks/stacks-screen.tsx`, `src/features/stacks/stack-detail.tsx`, `tests/product/features/stacks-slice.test.tsx`.
+  - Depends on: T13. Size: M.
+
+### Checkpoint B
+- [ ] Six habits entered by hand form one stack; run window across midnight correct; gates and review recorded.
+
+## Phase 3: coins and rewards
+
+- [ ] **T15: Ledger, coin rules, earning and claw-back**
+  - Acceptance: ledger repository with append-only writes; `coins.ts` pure rules for cap and claw-back window; `createCheckIn` on an `earnsCoins` board writes a `check` row inside the same transaction when under the cap; `removeCheckIn` and the toggle write a `reversal` row when before the next run start (or next logical day when unstacked); `earned_total`, `spent_total`, balance queries.
+  - Verify: `bun run test:domain` with cap, inside and outside window, idempotent replay, and atomicity (row and check-in commit together or not at all).
+  - Files: `src/core/domain/coins.ts`, `src/core/persistence/repositories/ledger.ts`, `src/core/domain/commands.ts`, `src/core/domain/queries.ts`, `tests/product/domain/coins.test.ts`.
+  - Depends on: T12. Size: M.
+
+- [ ] **T16: Run bonus**
+  - Acceptance: the check that completes a run writes one `run_bonus` row keyed by `rootId|runDate`; un-checking a required member inside the window writes its reversal; idempotent under replay.
+  - Verify: `bun run test:domain`.
+  - Files: `src/core/domain/coins.ts`, `src/core/domain/commands.ts`, `tests/product/domain/coins.test.ts`.
+  - Depends on: T15. Size: S.
+
+- [ ] **T17: Coins screens and balance pill**
+  - Acceptance: Boards header shows a balance pill with a VoiceOver label; `/coins` shows balance, earned, spent, and the reward list placeholder; `/coins/history` is a virtualized ledger grouped by logical date showing kind, delta, and the board, run, or reward.
+  - Verify: `bun run test:features`; Argent screenshots.
+  - Files: `src/app/coins/index.tsx`, `src/app/coins/history.tsx`, `src/features/coins/coins-screen.tsx`, `src/features/coins/ledger-history.tsx`, `src/features/boards/boards-home.tsx`.
+  - Depends on: T16. Size: M.
+
+- [ ] **T18: Rewards**
+  - Acceptance: rewards repository and commands create, update, reorder, archive, delete; `claimReward` reads balance in the transaction, refuses below cost with `validation`, writes a `claim` row with `rewardTitleSnapshot`; `/coins/rewards/new` and `/coins/rewards/[rewardId]` form sheets; Claim with confirmation stating cost and balance after; empty state offers Create Reward.
+  - Verify: `bun run test:domain`, `test:features`; Argent evidence of create, claim, refuse, delete with history intact.
+  - Files: `src/core/persistence/repositories/rewards.ts`, `src/core/domain/commands.ts`, `src/app/coins/rewards/new.tsx`, `src/app/coins/rewards/[rewardId].tsx`, `src/features/coins/reward-form.tsx`, `tests/product/domain/rewards.test.ts`, `tests/product/features/coins-slice.test.tsx`.
+  - Depends on: T17. Size: L, split into T18a (domain and repository) and T18b (screens) when scheduled.
+
+- [ ] **T19: Sync schema 2**
+  - Acceptance: `SyncEntityType` gains `ledger_entry` and `reward`; `SPECS` gains their tables and the new board and settings columns; `SYNC_SCHEMA_VERSION = 2`; a version 1 fake peer ignores unknown types and fields; Swift mapping accepts the new types and columns; the shared fixture round-trips through both.
+  - Verify: `bun run test:sync`; `bun run test:native`; two-simulator convergence including a double claim at checkpoint C.
+  - Files: `src/core/sync/records.ts`, `src/core/sync/transport.ts`, `modules/ripples-apple/ios/` mapping sources and tests, `tests/product/sync/`.
+  - Depends on: T18. Size: M.
+
+- [ ] **T20: Export version 2 and import**
+  - Acceptance: export adds `rewards` and `coinLedger` with `exportVersion: 2`; import accepts versions 1 and 2 of this app and the Ripples CSV; forbidden-key scan covers new tables; `miss_alerts` never exported.
+  - Verify: `bun run test:domain` import-export suite; device round trip.
+  - Files: `src/core/export/serialize.ts`, `src/core/export/import-parsers.ts`, `src/core/domain/commands.ts` (`importSnapshotInTransaction`), `tests/product/domain/import-export.test.ts`.
+  - Depends on: T19. Size: M.
+
+### Checkpoint C
+- [ ] Balance converges across two simulators after offline writes; export round-trips; gates and review recorded.
+
+## Phase 4: tails
+
+- [ ] **T21: Never-miss-twice alerts**
+  - Acceptance: reconciler (cold start, foreground, significant time change) finds `daily` boards whose two most recent closed windows are misses and have no `miss_alerts` row for the pair; schedules one local notification at the next 09:00 local, or fires now in the foreground; body and deep link per spec 4.6; denied permission records `denied` without prompting; Settings > Notifications shows pending miss alerts.
+  - Verify: `bun run test:domain`, `test:features`; Argent evidence with the simulator clock advanced.
+  - Files: `src/core/domain/miss-alerts.ts`, `src/core/persistence/repositories/miss-alerts.ts`, `src/features/product-store/provider.tsx`, `src/features/settings/notifications-screen.tsx`, `tests/product/domain/miss-alerts.test.ts`.
+  - Depends on: T15. Size: M.
+
+- [ ] **T22: Sample generator and in-memory database**
+  - Acceptance: `generateSample(seed)` produces eight habits, one four-habit stack with a preset root, one count board, three years of check-ins with weekly rhythm and gaps, ledger rows including reversals, four rewards with claims; deterministic for a fixed seed; in-memory database factory runs the real migrations.
+  - Verify: `bun run test:domain` snapshot of counts and a determinism test.
+  - Files: `src/core/sample/generator.ts`, `src/platform/database/in-memory.ts`, `tests/product/domain/sample-generator.test.ts`.
+  - Depends on: T18. Size: M.
+
+- [ ] **T23: Sample mode modal**
+  - Acceptance: Settings > Utilities "Try a sample" opens `/sample` full-screen; the real route tree mounts against the in-memory database with sync, widgets, notifications, export, import, intents, iCloud, and App Icon disabled with one-line explanations; persistent banner with Close in the trailing corner; Close discards; a test asserts the real database file checksum is unchanged across a session.
+  - Verify: `bun run test:features`; Argent evidence of open, navigate, claim, close.
+  - Files: `src/app/sample.tsx`, `src/features/sample-mode/sample-host.tsx`, `src/features/settings/settings-screen.tsx`, `tests/product/features/sample-mode.test.tsx`.
+  - Depends on: T22. Size: M.
+
+- [ ] **T24: Cosmetic rename**
+  - Acceptance: README describes Habit System; native module display strings, widget display name, and podspec names no longer say Ripples where user-visible; code identifiers may keep `ripples` internally.
+  - Verify: `bun run validate`; `bun run test:native`.
+  - Files: `README.md`, `app.json`, `modules/ripples-apple/expo-module.config.json`, module strings.
+  - Depends on: T23. Size: S.
+
+### Checkpoint D
+- [ ] All fourteen success criteria in `SPEC-habit-system.md` section 9 recorded true in `checkpoints.md`.
