@@ -2,6 +2,40 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T6 - binary Daily heatmaps and aligned accessible sizing (2026-09-08)
+
+1. Detail passes explicit board kind into the heatmap. Eligible Daily cells use a binary
+   fill/checkmark and date plus checked/not-checked accessibility labels. Eligible Count
+   cells retain intensity and dot/ring markers. Future and unavailable labels remain distinct.
+2. Routed tests first reproduced retained checks incorrectly lighting archived gaps for both
+   kinds. Availability now takes rendering precedence while raw counts, notes, amounts,
+   times, and activity periods remain unchanged. Count-to-Daily conversion and boundary
+   tests prove binary rendering does not rewrite the underlying history.
+3. Simulator inspection reproduced an inherited large-text defect: weekday labels grew
+   beyond the fixed grid and aligned with incorrect dates. Shared row/cell sizing now
+   follows natural native text measurement and the current font scale; markers scale too.
+   Returning to normal text shrinks correctly. Initial scrolling waits for matching grid
+   dimensions, ignores queued old-size events, then preserves position on later updates.
+4. Six new tests cover routed gaps/conversion, future/padding/today, scroll stability,
+   measured growth/reset, and event ordering. Red/green evidence is retained. Independent
+   review approved initial rendering and the measured sizing/scroll corrections.
+5. Final gates: `bun run validate` exit 0, 55 suites and 692 tests, global coverage
+   97.46/95.81/95.6/97.55, all 40 core files at 100 percent on all four metrics. Native:
+   9 plugin and 64 Swift tests pass. Lint, typecheck, and diff hygiene are clean.
+6. Independent simulator QA verifies checked/unchecked Daily cells in light/dark appearance,
+   all seven enlarged weekday rows aligned, readable glyphs, normal-size restoration,
+   and a cold launch opening the latest week. The original Count board still shows two
+   checks; both complete historical rows remain byte-for-byte unchanged. No QA data was
+   mutated in this task. Settled final navigation logs contain zero entries.
+7. Evidence under `.artifacts/t6/`: `qa-proof.md`, `validate.log`, `native.log`,
+   `large-text-axis-before.png`, `large-text-axis-after.png`,
+   `daily-checked-light-final.png`, `daily-checked-dark.png`,
+   `daily-unchecked-dark.png`, and `count-light-final.png`.
+8. T7 preparation identified stale cached widget dates, fixed-24-hour DST expiry, and
+   missed shifted-day refreshes. T7 acceptance now records fresh projections and matching
+   TS/native deadlines. The explicit widget fallback action avoids mutation on repeated
+   route opening. Shortcuts is installed on QA; its actual execution remains T8 evidence.
+
 ### T5 - Daily Home cards and guarded toggles (2026-09-08)
 
 1. Daily cards show fourteen binary cells, an ISO-week completion count, optional current

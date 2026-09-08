@@ -170,7 +170,7 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
               padding: spacing.lg,
             }}
           >
-            <HeatmapView weeks={heatmap.value.weeks} colors={colors} testID="board-heatmap" />
+            <HeatmapView kind={record.kind} weeks={heatmap.value.weeks} colors={colors} testID="board-heatmap" />
           </View>
         ) : null}
 

@@ -84,6 +84,7 @@ describe('heatmap view', () => {
       }) as unknown as HeatmapWeek['days'][number];
     renderComponent(
       <HeatmapView
+        kind="count"
         weeks={[
           {
             days: [
