@@ -2,6 +2,7 @@
 
 Approved engineering contract under Rami's 2026-09-08 authorization of the pre-T2 review fixes.
 This supplements SPEC-habit-system.md. Stacks group exactly one stored logical date.
+
 ## Immutable evidence
 
 T3 migration 7 adds `habit_actions`: `id TEXT PRIMARY KEY`, `command_id TEXT`,
@@ -18,10 +19,16 @@ its stamp is `00000000000000-00000-baseline`, and command/policy are null.
 This metadata is synthetic; original event times remain on the check-in. It never depends on
 import time, importer identity, or fields absent from a legacy export.
 Baselines rank below live actions; no matching evidence means unchecked. Reimport is idempotent.
+From schema 11, only the checksummed legacy migration and validated version-1/CSV admission
+create compatibility baselines. Ordinary TS/Swift writers and settlement never infer legacy
+status from a raw row lacking actions. Version-2 payloads can arrive before their actions;
+they remain suppressed and never receive fabricated baseline authority. Migration establishes
+real legacy evidence, queues it once, settles existing economic scopes and derives visibility
+inside the same transaction before schema markers become visible.
 Replay into an active check-id set, baselines first and then live actions by `(mutation_stamp, id)`.
 `check` and `move_in` add their check id; `move_out` removes only its check id.
 An `uncheck` with a check id removes only that id; an `uncheck` with null check id clears the date.
-Daily state is checked when that set is nonempty, with the latest remaining completion canonical.
+Daily action state is checked when that set is nonempty, with the latest remaining completion canonical.
 Thus a whole-day uncheck wins over earlier checks, while a later check restores completion.
 The canonical completion identifies replay state. A local no-op check returns an existing row using
 inherited history order, with `created=false`; its receipt cannot authorize Undo. It adds no
@@ -30,12 +37,23 @@ Materialize that state in check-ins atomically; merge cleanup never manufactures
 Preserve every active token's check-in, including concurrent offline checks and retained Count history.
 Daily projections and entitlement replay expose one effective completion without pruning active history.
 A whole-day clear suppresses earlier checks even when those rows arrive after the clear.
+Visible checks intersect these accepted tokens with current nondeleted payloads on the exact
+board/date. A missing payload or a payload currently at another date is display absence, not
+a missing economic cause. Store derived suppression locally; never rewrite raw synchronized
+payload fields under their original stamp to encode it. User-facing queries, native reads,
+widgets and export use this effective state, while immutable economics retain source evidence.
 Keep count history and note contents in check-ins; actions contain no titles, notes, or amounts.
 Daily uncheck applies to the board/date; count uncheck targets its `check_in_id`.
 Single-history deletion and Undo target only their check id. Switching kind changes the projection,
 preserves retained history, and never reinterprets earlier targeted removals as whole-day clears.
 
 `policy_json` is null in T3 and for legacy baselines; these facts cannot invent historical coins.
+Rami approved on 2026-09-08 that version-1/CSV restore may append deterministic corrections
+to existing entitlements. For example, a distinct earlier legacy token can show that an
+existing Daily award was superseded; retain its +1 row and append the justified -1 correction.
+An imported baseline never becomes a fresh earning action. Migration and import settle these
+effects atomically with evidence and visibility; there is no delayed inconsistent balance.
+`remote-fact-admission.md` defines the shared bounded admission and recovery boundary.
 Once coins are enabled, validated policy JSON carries `version: 1`, `boardKind`, `earnsCoins`,
 `coinCapPerDay`, `checkClosesAtUtc`, nullable `rootId`, sorted `requiredBoardIds`,
 nullable `bonusClosesAtUtc`, and `bonusEnabled`. Empty required membership earns no bonus.

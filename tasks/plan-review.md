@@ -2,7 +2,7 @@
 
 Date: 2026-09-08. Scope: product spec, inherited behavior, T2 through T24, and existing implementation boundaries.
 
-Status: findings incorporated into the amended spec and task plan after Rami authorized the changes, document push, and completion of the remaining tasks. His latest correction replaces the earlier overnight-stack assumption. This review records planning decisions; it does not claim the implementation is complete.
+Status: findings incorporated into the amended spec and task plan after Rami authorized the changes, document push, and completion of the remaining tasks. His same-day correction replaces the earlier overnight-stack assumption. Later T19 compatibility findings and the approved legacy-import correction rule are incorporated below. This review records planning decisions; it does not claim the implementation is complete.
 
 Pre-T2 baseline reported by the coordinating agent: 570 Jest tests, 51 Swift tests, and 9 plugin checks green.
 
@@ -18,7 +18,7 @@ The detailed action/adjustment protocol is `docs/ledger-reconciliation.md`. Gene
 
 ## Incorporated migration and sequence corrections
 
-- Split migrations by dependency: T2/schema 6 for board/settings/widget kind; T3/schema 7 for immutable habit actions; T15/schema 8 for ledger; T16/schema 9 for exact-date action lookup; T18/schema 10 for rewards; T21/schema 11 for local miss alerts. The action migration reserves a nullable policy snapshot so the later coin slice can add policy evidence without rewriting earlier history. The T16 index is a later measured amendment: Expo SQLite 3.50.3 scans 321,842 stress-fixture actions without statistics, versus 292 date-matching actions with the index. Host median query time drops from 37.730 ms to 0.197 ms; this does not claim device latency. Evidence: `.artifacts/t16/reverse-policy-benchmark/`.
+- Split migrations by dependency: T2/schema 6 for board/settings/widget kind; T3/schema 7 for immutable habit actions; T15/schema 8 for ledger; T16/schema 9 for exact-date action lookup; T18/schema 10 for rewards; T19/schema 11 for immutable remote admission and effective visibility; T21/schema 12 for local miss alerts. The action migration reserves a nullable policy snapshot so the later coin slice can add policy evidence without rewriting earlier history. The T16 index is a later measured amendment: Expo SQLite 3.50.3 scans 321,842 stress-fixture actions without statistics, versus 292 date-matching actions with the index. Host median query time drops from 37.730 ms to 0.197 ms; this does not claim device latency. Evidence: `.artifacts/t16/reverse-policy-benchmark/`.
 - Every new migration updates the Swift schema version/checksum map in the same commit. Versions 1 through 5 remain immutable.
 - Explicit Count defaults preserve legacy imports, existing boards, and compatibility callers. New board forms explicitly choose Daily.
 - Intermediate builds are development checkpoints until native, sync, and export compatibility through T20 is complete. Earlier slices are no longer described as independently release-ready for real multi-device use.
@@ -48,6 +48,10 @@ The detailed action/adjustment protocol is `docs/ledger-reconciliation.md`. Gene
 - Restore anchors in two passes, validate the imported graph, and handle valid existing parents.
 - Export omits deleted checks/rewards but retains their ledger history. Import cannot require all historical parents to appear as live exported records. Preserve title snapshots, action evidence, provenance, deterministic identities, and safe repeated restore.
 - Narrowly allow the approved action/provenance export fields; unrelated command receipts, outbox, device state, and local notification details remain excluded.
+- T19 review found that the inherited one-payload LWW deferred table cannot retain conflicting immutable variants. Schema 11 therefore adds a bounded local inbox and effective-check suppression, moving alerts/sample initialization to schema 12. `docs/remote-fact-admission.md` defines atomic admission, settlement, visibility, finite capacity and deferred import upload intent; no persistent scope-work queue is needed.
+- Raw mutable payloads and action-derived visibility have separate authority. A newer note edit cannot undo an earlier clear, and derived suppression must not counterfeit a raw mutation stamp. Export effective-live payloads and complete note-free immutable evidence, excluding cleared notes even when their raw sync rows survive.
+- A public-source probe showed that treating a v2 payload awaiting its action as legacy can create a baseline and wrongly suppress that action's later earning. Establish true legacy evidence explicitly during migration and validated v1/CSV admission; remove general raw-row legacy inference from app/native writers and settlement. Version-2 payloads remain suppressed until their evidence arrives.
+- A real public create/export1/import1 trace also showed a mixed legacy import retaining a Daily +1 that accepted replay must correct by -1. Rami explicitly approved allowing corrections to existing coins on 2026-09-08. Legacy imports still never earn fresh coins from restored checks. Migration must settle existing ledger scopes as well as newly established legacy scopes because schema 10 can already contain this mixed state.
 
 ### Stacks, widgets, alerts, and sample mode
 

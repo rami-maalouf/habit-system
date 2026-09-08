@@ -25,7 +25,7 @@ Work through task numbers in order. Bounded substeps keep large tasks reviewable
 
 ## Architecture decisions
 
-- **Migrate with the feature.** T2 adds board/settings fields and widget kind support in schema 6. T3 adds immutable `habit_actions` evidence in schema 7, including a nullable policy snapshot reserved for later coin rules. T15 adds the ledger in schema 8; T16 adds the exact-date action index in schema 9; T18 adds rewards in schema 10; T21 adds local miss alerts in schema 11. Each migration updates the Swift schema gate/checksum map in the same commit. Released migrations never change. Future tables are not frozen in T2.
+- **Migrate with the feature.** T2 adds board/settings fields and widget kind support in schema 6. T3 adds immutable `habit_actions` evidence in schema 7, including a nullable policy snapshot reserved for later coin rules. T15 adds the ledger in schema 8; T16 adds the exact-date action index in schema 9; T18 adds rewards in schema 10; T19 adds immutable remote admission and effective check visibility in schema 11; T21 adds local miss alerts in schema 12. Each migration updates the Swift schema gate/checksum map in the same commit. Released migrations never change. Future tables are not frozen in T2.
 - **Stacks group one stored date.** `deriveStacks` orders anchor-connected boards. The stable stack id is the structural anchor-root board id, independent of whichever member displays first. `assignRuns` groups by exact stored `logicalDate`; `rootId|logicalDate` identifies a run. Occurrence instants and usual times never move a check to an adjacent date. Usual times and preset times are informational.
 - **Eligibility uses date-based activity periods.** Stack requirements include the stored start date and exclude a closed end date, as approved in spec section 10, item 6. Archiving removes the habit from requirements on its archive logical date; same-day restore reopens the period and requires it again. A run is complete only when at least one required eligible member exists and every such member is checked for that date. There is no inferred intraday activity history or current-day-only archive filter; inherited non-stack analytics retain inclusive closed ends.
 - **Daily mutation state is atomic and has durable evidence.** The toggle resolves current state and writes inside one command transaction. Check is idempotent for a checked date. Uncheck clears all live checks for that selected date, including preserved Count history, with UI confirmation when notes would be removed. Individual history deletion remains a single-record operation. Immutable `habit_actions` retain checked and unchecked action evidence so offline daily state follows the greatest valid mutation stamp with a deterministic tie-break. Evidence is written by all TS/native mutation paths and later syncs/exports as its own record type.
@@ -52,10 +52,10 @@ T1 identity (done)
   -> T16 schema 9 exact-date index + bonus restoration and reconciliation
   -> T17 coins screens
   -> T18 schema 10 + rewards domain + screens
-  -> T19 sync 2 integration and offline conflict convergence
+  -> T19 schema 11 + sync 2 integration and offline conflict convergence
   -> T20 export 2 and complete import compatibility
   -> checkpoint C: complete data/native compatibility
-  -> T21 schema 11 + miss alerts
+  -> T21 schema 12 + miss alerts
   -> T22 sample generator -> T23 isolated sample UI
   -> T24 cosmetics and final closure
   -> checkpoint D: every current success criterion
@@ -92,14 +92,14 @@ Checkpoint B: user-entered habits derive the expected topology, while evening ch
 - T16: schema 9 exact-date action index, one net bonus per complete same-day run, reversal/restoration, and deterministic reconciliation for merged-only completion and conflicts.
 - T17: balance pill, totals, Coins, and virtualized history, including negative balances and compensation explanations.
 - T18: schema 10, reward commands, confirmed claims with title snapshots, forms, and history surviving reward deletion.
-- T19: coordinated sync schema 2 across TS/native, immutable action evidence, old-record defaults, minimum peer policy, deterministic daily conflict resolution, immutable ledger union, and compensation convergence.
-- T20: export 2 including action evidence/provenance, version 1/2 and CSV import, two-pass anchor restore, repeated restore safety, historical ledger references to omitted deleted parents, and complete round-trip coverage.
+- T19: schema 11 for bounded immutable admission and effective visibility, explicit legacy baseline initialization, coordinated sync schema 2 across TS/native, old-record defaults, minimum peer policy, deterministic daily conflict resolution, immutable ledger union, and compensation convergence. The shared boundary is `docs/remote-fact-admission.md`; a separate persistent scope-work queue is unnecessary when admission and settlement are atomic.
+- T20: export 2 including effective-live payloads and complete note-free action/ledger evidence, version 1/2 and CSV import, two-pass anchor restore, repeated restore safety, historical ledger references to omitted deleted parents, and complete round-trip coverage. Legacy imports never create fresh earnings but may atomically correct existing entitlements, as approved by Rami on 2026-09-08.
 
 Checkpoint C: two signed devices/simulators converge after duplicate checks, check/uncheck races, cap races, duplicate bonuses/reversals, a run completed only by merged checks, and offline double claims. Repeated/out-of-order delivery remains stable. Export/import round-trips, native fixtures, all automated gates, and independent review pass before real multi-device use.
 
 ### Phase 4: alerts, sample mode, and closure
 
-- T21: schema 11, local miss-alert status and identifiers, date-based reconciler, existing notification permission, deduplication, deep links, and pending count.
+- T21: schema 12, local miss-alert status and identifiers, date-based reconciler, existing notification permission, deduplication, deep links, and pending count.
 - T22: deterministic three-year sample and in-memory factory using all current migrations.
 - T23: modal navigation, injectable disabled adapters, persistent banner, working internal commands, teardown, and real-database/effect isolation.
 - T24: user-visible rename completion, final regression, exports, doctor, and evidence ledger.
@@ -135,7 +135,7 @@ Checkpoint D: every current success criterion in spec section 9 is supported by 
 
 ## Parallel work
 
-Task dependencies stay sequential. Agents may independently inspect, test, or review bounded work without sharing file ownership. T21 and T22 preparation can be explored independently, but T22's final factory tests must include schema 11. Keep code commits and checkpoint entries in task order. T24 follows completion of both tails.
+Task dependencies stay sequential. Agents may independently inspect, test, or review bounded work without sharing file ownership. T21 and T22 preparation can be explored independently, but T22's final factory tests must include schema 12. Keep code commits and checkpoint entries in task order. T24 follows completion of both tails.
 
 ## Resolved review decisions
 
