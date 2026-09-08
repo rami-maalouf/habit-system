@@ -34,6 +34,7 @@ final class IntentExecutorTests: XCTestCase {
     var instant: Double
     var timeZone: String
     var counter = 0
+    var generatedIds: [String]?
     lazy var executor = IntentExecutor(database: database, now: { self.instant }, zone: { self.timeZone }, uuid: { self.id() })
 
     init(seed: [String: Any], migrations: [[String: Any]], path: String = ":memory:") throws {
@@ -54,6 +55,7 @@ final class IntentExecutorTests: XCTestCase {
         let archived = board["archived"] as! Bool
         let id = board["id"] as! String
         let title = board["title"] as! String
+        let kind = board["kind"] as? String ?? "count"
         let date = try IntentCalendar.logicalDate(utcMs: instant, zone: timeZone, startMinute: board["startOfDayMinute"] as! Int)
         try database.run("""
           INSERT INTO boards (id, title, symbol, accent_hex, uses_tinted_background, tracks_amount,
@@ -65,14 +67,42 @@ final class IntentExecutorTests: XCTestCase {
                  .integer(board["tracksTime"] as! Bool ? 1 : 0), .integer(Int64(board["startOfDayMinute"] as! Int)),
                  .text(String(index)), archived ? .integer(Int64(instant)) : .null,
                  .integer(Int64(instant)), .integer(Int64(instant))])
+        try database.run("UPDATE boards SET kind = ? WHERE id = ?", [.text(kind), .text(id)])
         try database.run("INSERT INTO board_activity_periods (board_id, start_date, end_date, mutation_stamp) VALUES (?, ?, ?, 'seed')", [.text(id), .text(date), archived ? .text(date) : .null])
         if !archived {
-          try database.run("INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind) VALUES (?, ?, ?, 'star.fill', '#70A7FF', '[0,0,0,0,0,0,0]', ?, 'count')", [.text(id), .integer(Int64(index)), .text(title), .text(date)])
+          try database.run("INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind) VALUES (?, ?, ?, 'star.fill', '#70A7FF', '[0,0,0,0,0,0,0]', ?, ?)", [.text(id), .integer(Int64(index)), .text(title), .text(date), .text(kind)])
         }
+      }
+      for row in seed["checkIns"] as? [[String: Any]] ?? [] {
+        let id = try XCTUnwrap(row["id"] as? String, "fixture check id")
+        let boardId = try XCTUnwrap(row["boardId"] as? String, "fixture check boardId")
+        let logicalDate = try XCTUnwrap(row["logicalDate"] as? String, "fixture check logicalDate")
+        let source = try XCTUnwrap(row["source"] as? String, "fixture check source")
+        let idempotencyKey = try XCTUnwrap(row["idempotencyKey"] as? String, "fixture check idempotencyKey")
+        let createdAt = try XCTUnwrap(row["createdAt"] as? Double, "fixture check createdAt")
+        let updatedAt = try XCTUnwrap(row["updatedAt"] as? Double, "fixture check updatedAt")
+        let mutationStamp = try XCTUnwrap(row["mutationStamp"] as? String, "fixture check mutationStamp")
+        try database.run("""
+          INSERT INTO check_ins (id, board_id, logical_date, occurred_at_utc, time_zone_id,
+            offset_minutes, amount, note, source, idempotency_key, created_at, updated_at, mutation_stamp, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          """, [.text(id), .text(boardId), .text(logicalDate),
+                 .number(row["occurredAtUtc"] as? Double), .string(row["timeZoneId"] as? String),
+                 .number(row["offsetMinutes"] as? Double), .number(row["amount"] as? Double),
+                 .string(row["note"] as? String), .text(source), .text(idempotencyKey),
+                 .real(createdAt), .real(updatedAt), .text(mutationStamp), .number(row["deletedAt"] as? Double)])
       }
     }
 
     func id() -> String {
+      if let queued = generatedIds {
+        guard let next = queued.first else {
+          XCTFail("fixture uuid queue exhausted")
+          return "invalid-exhausted-fixture-uuid"
+        }
+        generatedIds = Array(queued.dropFirst())
+        return next
+      }
       counter += 1
       return String(format: "00000000-0000-4000-8000-%012d", counter)
     }
@@ -105,6 +135,33 @@ final class IntentExecutorTests: XCTestCase {
   private func harness() throws -> Harness {
     let source = try fixture()
     return try Harness(seed: source["seed"] as! [String: Any], migrations: migrations())
+  }
+
+  func testRemovalValidatesDatesBeforeSelectingRowsAndReplaysStoredOutcomesFirst() throws {
+    for kind in ["count", "daily"] {
+      let harness = try harness()
+      let board = "00000000-0000-4000-8000-00000000a001"
+      try harness.database.run("UPDATE boards SET kind = ? WHERE id = ?", [.text(kind), .text(board)])
+      let current = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).get()
+      let before = try harness.database.rows("SELECT * FROM check_ins ORDER BY id")
+      let clock = try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings")
+      let outbox = try harness.database.rows("SELECT * FROM mutation_outbox")
+      for date in ["2026-02-30", "2026-8-30", "2026-08-31"] {
+        let command = harness.id()
+        let result = harness.executor.removeLatest(commandId: command, boardId: board, logicalDate: date)
+        XCTAssertEqual(result.error?.code, "validation", "\(kind) \(date)")
+        XCTAssertEqual(result.error?.field, "logicalDate")
+        XCTAssertEqual(harness.executor.removalCandidate(boardId: board, logicalDate: date).error?.code, "validation")
+        let replay = harness.executor.removeLatest(commandId: command, boardId: board, logicalDate: current.logicalDate)
+        XCTAssertEqual(replay.error, result.error)
+      }
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins ORDER BY id"), before)
+      XCTAssertEqual(try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings"), clock)
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox"), outbox)
+      let command = harness.id()
+      let removed = try harness.executor.removeLatest(commandId: command, boardId: board).get()
+      XCTAssertEqual(try harness.executor.removeLatest(commandId: command, boardId: board, logicalDate: "invalid").get(), removed)
+    }
   }
 
   func testDailyCheckIsPureAndIdempotentAcrossCommands() throws {
@@ -322,6 +379,70 @@ final class IntentExecutorTests: XCTestCase {
       if expected["excludesNoteText"] as? Bool == true {
         XCTAssertFalse(String(describing: result).contains("private thought"), name)
         XCTAssertFalse(String(describing: result).contains("note"), name)
+      }
+    }
+  }
+
+  func testSharedExactReceiptScenarios() throws {
+    let source = try fixture()
+    let schema = try migrations()
+    let scenarios = try XCTUnwrap(source["scenarios"] as? [[String: Any]])
+    XCTAssertFalse(scenarios.isEmpty)
+    for scenario in scenarios {
+      let name = try XCTUnwrap(scenario["name"] as? String)
+      let harness = try Harness(seed: XCTUnwrap(scenario["seed"] as? [String: Any]), migrations: schema)
+      let steps = try XCTUnwrap(scenario["steps"] as? [[String: Any]])
+      for (index, step) in steps.enumerated() {
+        let context = "\(name), step \(index + 1)"
+        if let instant = step["nowUtcMs"] as? Double { harness.instant = instant }
+        if let zone = step["timeZoneId"] as? String { harness.timeZone = zone }
+        harness.generatedIds = try XCTUnwrap(step["generatedIds"] as? [String], context)
+        let intent = try XCTUnwrap(step["intent"] as? String, context)
+        let input = try XCTUnwrap(step["input"] as? [String: Any], context)
+        let expected = try XCTUnwrap(step["expectResult"] as? [String: Any], context)
+        let tables = ["check_ins", "habit_actions", "boards", "app_settings", "mutation_outbox"]
+        var before: [String: [[String: IntentSQLValue]]] = [:]
+        if step["expectUnchangedEvidence"] as? Bool == true {
+          for table in tables { before[table] = try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid") }
+        }
+        let receiptsBefore = try harness.database.rows("SELECT * FROM command_receipts ORDER BY rowid")
+        let commandId = step["commandId"] as? String
+        if intent == "checkIn" || intent == "removeLatest" { XCTAssertNotNil(commandId, context) }
+        // reads do not consume an invocation or executor uuid.
+        let result = try harness.run(intent, input, commandId: commandId ?? "00000000-0000-4000-8000-000000000000")
+        XCTAssertEqual(harness.generatedIds, [], context)
+        if expected["ok"] as? Bool == true {
+          XCTAssertTrue(NSDictionary(dictionary: result).isEqual(to: expected), context)
+        } else {
+          XCTAssertEqual(result["ok"] as? Bool, false, context)
+          XCTAssertEqual((result["error"] as? [String: Any])?["code"] as? String,
+                         (expected["error"] as? [String: Any])?["code"] as? String, context)
+        }
+        if let commandId {
+          let storedText = try XCTUnwrap(harness.database.rows("SELECT outcome FROM command_receipts WHERE command_id = ?",
+            [.text(commandId)]).first?["outcome"]?.string, context)
+          let stored = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(storedText.utf8)) as? [String: Any], context)
+          XCTAssertTrue(NSDictionary(dictionary: stored).isEqual(to: result), context)
+          if let expectedReceipt = step["expectStoredReceipt"] as? [String: Any] {
+            XCTAssertTrue(NSDictionary(dictionary: stored).isEqual(to: expectedReceipt), context)
+          }
+        } else {
+          XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts ORDER BY rowid"), receiptsBefore, context)
+        }
+        if let ids = step["expectLiveCheckIds"] as? [String] {
+          let live = try harness.database.rows("SELECT id FROM check_ins WHERE deleted_at IS NULL ORDER BY id").compactMap { $0["id"]?.string }
+          XCTAssertEqual(live, ids.sorted(), context)
+        }
+        if step["expectPureCreatedCheck"] as? Bool == true {
+          let value = try XCTUnwrap(result["value"] as? [String: Any], context)
+          let id = try XCTUnwrap(value["checkInId"] as? String, context)
+          let row = try XCTUnwrap(harness.database.rows("SELECT * FROM check_ins WHERE id = ?", [.text(id)]).first, context)
+          for field in ["amount", "occurred_at_utc", "time_zone_id", "offset_minutes"] { XCTAssertEqual(row[field], .null, context) }
+          XCTAssertEqual(row["source"]?.string, "shortcut", context)
+        }
+        for (table, rows) in before {
+          XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid"), rows, context)
+        }
       }
     }
   }

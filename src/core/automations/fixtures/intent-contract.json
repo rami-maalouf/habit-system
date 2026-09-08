@@ -1,6 +1,6 @@
 {
   "contractVersion": 1,
-  "description": "Shared automation contract fixtures. Every executor - the TypeScript one in src/core/automations/contract.ts, the future iOS AppIntents executor, and the future Android App Actions executor - must produce these outcomes from the same seeded store. The native executors read this file verbatim.",
+  "description": "Shared automation contract fixtures. The TypeScript and implemented iOS App Intents executors consume this file verbatim. Existing cases retain inherited Count behavior; scenarios compare complete successful results and persisted receipts with explicit command and generated UUIDs. A future Android executor must consume the same contract.",
   "seed": {
     "timeZoneId": "America/New_York",
     "nowUtcMs": 1788105600000,
@@ -144,6 +144,906 @@
       "intent": "checkIn",
       "input": { "boardId": "00000000-0000-4000-8000-00000000a001", "replayCommandId": true },
       "expect": { "ok": true, "recordedCount": 1 }
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "daily creation no-op and exact cross-midnight receipt replay",
+      "seed": {
+        "timeZoneId": "America/New_York",
+        "nowUtcMs": 1788105600000,
+        "boards": [
+          {
+            "id": "00000000-0000-4000-8000-00000000a001",
+            "title": "daily reading",
+            "kind": "daily",
+            "tracksAmount": false,
+            "tracksTime": false,
+            "startOfDayMinute": 0,
+            "quickAmount": 1,
+            "archived": false
+          }
+        ],
+        "checkIns": []
+      },
+      "steps": [
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001101",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002101",
+            "00000000-0000-4000-8000-000000002102"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "amount": 7.25,
+            "occurredAtUtc": 1788019200000,
+            "note": "private thought"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002101"
+          ],
+          "expectPureCreatedCheck": true
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001102",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "note": "must not replace the first note"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": false
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": false
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002101"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {},
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "daily reading",
+                  "count": 1
+                }
+              ],
+              "total": 1
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002101"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001101",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000dead",
+            "logicalDate": "not-a-date"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002101"
+          ],
+          "nowUtcMs": 1788192000000,
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001102",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-09-30"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": false
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002101",
+              "logicalDate": "2026-08-30",
+              "created": false
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002101"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "daily reading",
+                  "count": 0
+                }
+              ],
+              "total": 0
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002101"
+          ],
+          "expectUnchangedEvidence": true
+        }
+      ]
+    },
+    {
+      "name": "converted daily retained history binary today ordered removal and replay",
+      "seed": {
+        "timeZoneId": "America/New_York",
+        "nowUtcMs": 1788105600000,
+        "boards": [
+          {
+            "id": "00000000-0000-4000-8000-00000000a001",
+            "title": "daily reading",
+            "kind": "daily",
+            "tracksAmount": false,
+            "tracksTime": false,
+            "startOfDayMinute": 0,
+            "quickAmount": 1,
+            "archived": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000a002",
+            "title": "count water",
+            "kind": "count",
+            "tracksAmount": false,
+            "tracksTime": false,
+            "startOfDayMinute": 0,
+            "quickAmount": 1,
+            "archived": false
+          }
+        ],
+        "checkIns": [
+          {
+            "id": "00000000-0000-4000-8000-000000003101",
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-08-30",
+            "occurredAtUtc": 1788102000000,
+            "timeZoneId": "America/New_York",
+            "offsetMinutes": -240,
+            "amount": 3,
+            "note": "timed retained note",
+            "source": "import",
+            "idempotencyKey": "00000000-0000-4000-8000-000000004101",
+            "createdAt": 1788105597000,
+            "updatedAt": 1788105597000,
+            "mutationStamp": "01788105599000-00000-00000000-0000-4000-8000-000000009001",
+            "deletedAt": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000003102",
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-08-30",
+            "occurredAtUtc": null,
+            "timeZoneId": null,
+            "offsetMinutes": null,
+            "amount": 5,
+            "note": "newer untimed retained note",
+            "source": "import",
+            "idempotencyKey": "00000000-0000-4000-8000-000000004102",
+            "createdAt": 1788105599000,
+            "updatedAt": 1788105599000,
+            "mutationStamp": "01788105599000-00000-00000000-0000-4000-8000-000000009001",
+            "deletedAt": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000003103",
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-08-29",
+            "occurredAtUtc": null,
+            "timeZoneId": null,
+            "offsetMinutes": null,
+            "amount": null,
+            "note": "other date survives",
+            "source": "import",
+            "idempotencyKey": "00000000-0000-4000-8000-000000004103",
+            "createdAt": 1788105599000,
+            "updatedAt": 1788105599000,
+            "mutationStamp": "01788105599000-00000-00000000-0000-4000-8000-000000009001",
+            "deletedAt": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000003104",
+            "boardId": "00000000-0000-4000-8000-00000000a002",
+            "logicalDate": "2026-08-30",
+            "occurredAtUtc": null,
+            "timeZoneId": null,
+            "offsetMinutes": null,
+            "amount": null,
+            "note": null,
+            "source": "import",
+            "idempotencyKey": "00000000-0000-4000-8000-000000004104",
+            "createdAt": 1788105599000,
+            "updatedAt": 1788105599000,
+            "mutationStamp": "01788105599000-00000-00000000-0000-4000-8000-000000009001",
+            "deletedAt": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000003105",
+            "boardId": "00000000-0000-4000-8000-00000000a002",
+            "logicalDate": "2026-08-30",
+            "occurredAtUtc": null,
+            "timeZoneId": null,
+            "offsetMinutes": null,
+            "amount": null,
+            "note": null,
+            "source": "import",
+            "idempotencyKey": "00000000-0000-4000-8000-000000004105",
+            "createdAt": 1788105599000,
+            "updatedAt": 1788105599000,
+            "mutationStamp": "01788105599000-00000-00000000-0000-4000-8000-000000009001",
+            "deletedAt": null
+          }
+        ]
+      },
+      "steps": [
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {},
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "daily reading",
+                  "count": 1
+                },
+                {
+                  "title": "count water",
+                  "count": 2
+                }
+              ],
+              "total": 3
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000003101",
+            "00000000-0000-4000-8000-000000003102",
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001201",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000003101",
+              "logicalDate": "2026-08-30",
+              "created": false
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000003101",
+              "logicalDate": "2026-08-30",
+              "created": false
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000003101",
+            "00000000-0000-4000-8000-000000003102",
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001202",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002201"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000003101",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000003101",
+                "00000000-0000-4000-8000-000000003102"
+              ]
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000003101",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000003101",
+                "00000000-0000-4000-8000-000000003102"
+              ]
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ]
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "daily reading",
+                  "count": 0
+                }
+              ],
+              "total": 0
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001203",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002202",
+            "00000000-0000-4000-8000-000000002203"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002202",
+              "logicalDate": "2026-08-31",
+              "created": true
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002202",
+              "logicalDate": "2026-08-31",
+              "created": true
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002202",
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ],
+          "nowUtcMs": 1788192000000,
+          "expectPureCreatedCheck": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001202",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-02-30"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000003101",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000003101",
+                "00000000-0000-4000-8000-000000003102"
+              ]
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000003101",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000003101",
+                "00000000-0000-4000-8000-000000003102"
+              ]
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002202",
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "daily reading",
+                  "count": 1
+                }
+              ],
+              "total": 1
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002202",
+            "00000000-0000-4000-8000-000000003103",
+            "00000000-0000-4000-8000-000000003104",
+            "00000000-0000-4000-8000-000000003105"
+          ],
+          "expectUnchangedEvidence": true
+        }
+      ]
+    },
+    {
+      "name": "count exact receipts retain multiple checks and single latest removal",
+      "seed": {
+        "timeZoneId": "America/New_York",
+        "nowUtcMs": 1788105600000,
+        "boards": [
+          {
+            "id": "00000000-0000-4000-8000-00000000a002",
+            "title": "count water",
+            "kind": "count",
+            "tracksAmount": false,
+            "tracksTime": false,
+            "startOfDayMinute": 0,
+            "quickAmount": 1,
+            "archived": false
+          }
+        ],
+        "checkIns": []
+      },
+      "steps": [
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001301",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002301",
+            "00000000-0000-4000-8000-000000002302"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a002"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002301",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002301",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002301"
+          ]
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001302",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002303",
+            "00000000-0000-4000-8000-000000002304"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a002"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002303",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002303",
+              "logicalDate": "2026-08-30",
+              "created": true
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002301",
+            "00000000-0000-4000-8000-000000002303"
+          ],
+          "nowUtcMs": 1788105600001
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {},
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "count water",
+                  "count": 2
+                }
+              ],
+              "total": 2
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002301",
+            "00000000-0000-4000-8000-000000002303"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001303",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002305"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a002"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000002303",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000002303"
+              ]
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000002303",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000002303"
+              ]
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002301"
+          ]
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001303",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a002",
+            "logicalDate": "2026-09-30"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000002303",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000002303"
+              ]
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000002303",
+              "logicalDate": "2026-08-30",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000002303"
+              ]
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002301"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {},
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "count water",
+                  "count": 1
+                }
+              ],
+              "total": 1
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002301"
+          ],
+          "expectUnchangedEvidence": true
+        }
+      ]
+    },
+    {
+      "name": "daily explicit past date and invalid removal dates",
+      "seed": {
+        "timeZoneId": "America/New_York",
+        "nowUtcMs": 1788105600000,
+        "boards": [
+          {
+            "id": "00000000-0000-4000-8000-00000000a001",
+            "title": "daily reading",
+            "kind": "daily",
+            "tracksAmount": false,
+            "tracksTime": false,
+            "startOfDayMinute": 0,
+            "quickAmount": 1,
+            "archived": false
+          }
+        ],
+        "checkIns": []
+      },
+      "steps": [
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000001401",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002401",
+            "00000000-0000-4000-8000-000000002402"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-08-28"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002401",
+              "logicalDate": "2026-08-28",
+              "created": true
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-000000002401",
+              "logicalDate": "2026-08-28",
+              "created": true
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002401"
+          ],
+          "expectPureCreatedCheck": true
+        },
+        {
+          "intent": "today",
+          "generatedIds": [],
+          "input": {},
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "boards": [
+                {
+                  "title": "daily reading",
+                  "count": 0
+                }
+              ],
+              "total": 0
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002401"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001402",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectResult": {
+            "ok": false,
+            "error": {
+              "code": "not_found"
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002401"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001403",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-02-30"
+          },
+          "expectResult": {
+            "ok": false,
+            "error": {
+              "code": "validation"
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002401"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001404",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-09-30"
+          },
+          "expectResult": {
+            "ok": false,
+            "error": {
+              "code": "validation"
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002401"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001405",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "not-a-date"
+          },
+          "expectResult": {
+            "ok": false,
+            "error": {
+              "code": "validation"
+            }
+          },
+          "expectLiveCheckIds": [
+            "00000000-0000-4000-8000-000000002401"
+          ],
+          "expectUnchangedEvidence": true
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000001406",
+          "generatedIds": [
+            "00000000-0000-4000-8000-000000002403"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001",
+            "logicalDate": "2026-08-28"
+          },
+          "expectResult": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000002401",
+              "logicalDate": "2026-08-28",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000002401"
+              ]
+            }
+          },
+          "expectStoredReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-000000002401",
+              "logicalDate": "2026-08-28",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-000000002401"
+              ]
+            }
+          },
+          "expectLiveCheckIds": []
+        }
+      ]
     }
   ]
 }

@@ -119,7 +119,14 @@ final class IntentExecutor {
     read {
       guard let board = try self.board(id: boardId) else { throw IntentFailure.notFound }
       guard !board.archived else { throw IntentFailure.archived }
-      let date = try logicalDate ?? IntentCalendar.logicalDate(utcMs: self.now(), zone: self.zone(), startMinute: board.startOfDayMinute)
+      let today = try IntentCalendar.logicalDate(utcMs: self.now(), zone: self.zone(), startMinute: board.startOfDayMinute)
+      let date = logicalDate ?? today
+      guard IntentCalendar.isValidDate(date) else {
+        throw IntentFailure(code: "validation", message: "Dates use the YYYY-MM-DD form.", field: "logicalDate")
+      }
+      guard date <= today else {
+        throw IntentFailure(code: "validation", message: "Future dates cannot receive check-ins.", field: "logicalDate")
+      }
       let rows = try self.removalRows(boardId: boardId, date: date, kind: board.kind)
       guard let id = rows.first?["id"]?.string else { throw IntentFailure.noCheckIn }
       return IntentRemovalCandidate(checkInId: id, boardTitle: board.title, logicalDate: date,
@@ -135,7 +142,14 @@ final class IntentExecutor {
     command(commandId) { clock, instant, zone in
       guard let board = try self.board(id: boardId) else { return .failure(.notFound) }
       guard !board.archived else { return .failure(.archived) }
-      let date = try logicalDate ?? IntentCalendar.logicalDate(utcMs: instant, zone: zone, startMinute: board.startOfDayMinute)
+      let today = try IntentCalendar.logicalDate(utcMs: instant, zone: zone, startMinute: board.startOfDayMinute)
+      let date = logicalDate ?? today
+      guard IntentCalendar.isValidDate(date) else {
+        return .failure(IntentFailure(code: "validation", message: "Dates use the YYYY-MM-DD form.", field: "logicalDate"))
+      }
+      guard date <= today else {
+        return .failure(IntentFailure(code: "validation", message: "Future dates cannot receive check-ins.", field: "logicalDate"))
+      }
       let rows = try self.removalRows(boardId: boardId, date: date, kind: board.kind)
       let ids = rows.compactMap { $0["id"]?.string }
       guard let id = ids.first else { return .failure(.noCheckIn) }

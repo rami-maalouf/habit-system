@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T6 and T7a done; T7b next. Revised planning documents were pushed; implementation continues through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T7 done; T8 next. Revised planning documents were pushed; implementation continues through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -52,8 +52,8 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: heatmap/detail and feature tests.
   - Depends on: T5.
 
-- [ ] **T7: Widget fallback and shared daily intent integration**
-  - Status: T7a complete with independent review, full validation/native gates, and actual simulator widget/action evidence. T7b exact shared receipt integration remains pending.
+- [x] **T7: Widget fallback and shared daily intent integration**
+  - Status: T7a and T7b complete with independent review, full validation/native gates, actual simulator widget/action evidence, and exact shared receipt parity. T8 owns actual Shortcuts execution.
   - T7a acceptance: widget projection/props carries kind and checked state; row shows binary state for Daily. A daily quick-action deep link opens a dedicated flow that resolves current state, offers an explicit Check/Uncheck action, toggles through the command, and confirms removal when notes exist. Opening/remounting the route does not itself mutate. New checks retain widget provenance. Count keeps its Add Check-In fallback. Include the route and provider integration; do not pretend the existing Add Check-In link can uncheck. Refresh cached projections before publication and expire at the earliest relevant day boundary, including shifted board days and DST changes, with matching TS/native metadata. Derived refreshes do not create habit actions, HLC changes, receipts, or outbox entries.
   - T7b acceptance: add Check In, Remove Latest, and Get Today's Check-Ins Daily fixture cases together with their TS and Swift implementations. Check is idempotent, Remove Latest unchecks the selected date, and Today reports checked state. Shared receipt results match verbatim. Commit the fixture and both executors together so native checks never knowingly fail between T7 and T8.
   - Verify: widget/feature tests, contracts, native suite, simulator widget appearance and fallback action with fresh state.

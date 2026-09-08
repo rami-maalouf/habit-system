@@ -2,7 +2,7 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
-### T7 - fresh widget fallback and shared Daily receipts (in progress, 2026-09-08)
+### T7 - fresh widget fallback and shared Daily receipts (2026-09-08)
 
 1. T7a adds binary Daily widget rows and checked state, with Count intensity preserved.
    Daily links open a dedicated explicit Check/Uncheck screen. Opening, remounting, or
@@ -39,10 +39,38 @@
    The original Count board's complete historical rows remain byte-for-byte unchanged,
    including its two original live checks. Final scoped runtime logs contain zero entries.
    Evidence is retained under `.artifacts/t7/qa/`.
-7. T7b exact shared returned-receipt coverage remains pending. Existing T3 Daily intent
-   semantics are retained. T8 owns actual Shortcuts invocation and native-specific audit.
+7. Existing T3 Daily intent semantics are retained. T8 owns actual Shortcuts invocation
+   and the remaining native-specific audit.
    The SDK uses one timeline per widget kind, so an offscreen active board may conservatively
    expire a smaller family early; the opened action always resolves authoritative state.
+8. T7a was committed and pushed as `bde78df`. Its detailed device proof is
+   `.artifacts/t7/qa/qa-proof.md`; named images include `widget-light.png`,
+   `widget-dark.png`, `daily-open-dark.png`, and `notes-confirmation.png`.
+   The empty final debugger registry is bounded capture evidence, not a claim that
+   every earlier interaction was logged. The original Count fallback was verified
+   using the separate converted notes fixture, leaving the baseline Count rows intact.
+9. T7b preserves the thirteen inherited fixture cases and adds four scenarios with
+   twenty-six ordered steps. Both executors compare complete successful returned values
+   and stored receipts against literal fixture UUIDs. Strict per-step UUID queues reject
+   unexpected allocation. No-op/replay checks preserve complete checks, actions, settings,
+   boards, and outbox snapshots; Today preserves receipts and returns only names/counts.
+   Coverage includes retained multi-check Daily history, ordered group removal, Count
+   single removal, explicit past dates, and changed-input replay after midnight.
+10. Native red tests reproduced malformed/future removal dates returning `not_found`.
+    Both the real removal candidate path and command now validate before selecting rows.
+    Command receipt replay still precedes validation of new input. Full successful receipts
+    match across runtimes; inherited failure cases compare codes, while localized error
+    messages remain platform-specific. No schema or action inventory changed.
+11. T7b final gates: `bun run validate` exit 0, 61 suites and 777 tests, global coverage
+    97.01/95.26/95.48/97.5, all 42 core files at 100 percent on all four metrics. Native:
+    9 plugin and 73 Swift tests pass with zero failures/compiler warnings. Independent
+    non-author reviews approve both consumers, fixture semantics, and the native fix.
+    The simulator build succeeds at `.artifacts/t7b/qa-build/habitsystem.app` and retains
+    the inherited build-script warning. Lint, typecheck, and diff hygiene are clean.
+12. T7b evidence is under `.artifacts/t7b/`: `validate.log`, `native.log`,
+    `red-canonical-native.log`, `red-ts-scenarios.log`, `green-ts-scenarios.log`,
+    and `qa-native-build.log`. T8 has discovered the three real Shortcuts actions and
+    prepared a composed Daily check/check/Today shortcut; execution is recorded separately.
 
 ### T6 - binary Daily heatmaps and aligned accessible sizing (2026-09-08)
 

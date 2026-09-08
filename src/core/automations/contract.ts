@@ -1,7 +1,7 @@
 // the shared command contract every automation executor implements: the
-// typescript executor here and the future native App Intents / App Actions
-// executors. one json fixture suite drives all of them, so a native
-// implementation can never fork product semantics.
+// typescript and implemented ios app intents executors, plus a future
+// android app actions executor. one json fixture suite keeps their
+// product semantics aligned.
 import { currentLogicalDate } from '../calendar/logical-date';
 import { createCheckIn, removeLatestCheckIn, replayCommand } from '../domain/commands';
 import type { CommandDeps } from '../domain/commands';
