@@ -2,6 +2,47 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T12 - same-day stack derivation (in progress, 2026-09-08)
+
+1. T12a adds pure `deriveStacks` with stable structural roots and root shifts,
+   before/after ordering, same-parent/same-relation sibling precedence, binary
+   home-order/id tie breaking and deterministic component ordering. Iterative
+   root caching, sparse adjacent sibling edges and a local ready-node heap avoid
+   recursive depth limits and repeated sorting of wide ready sets.
+2. Archived undeleted members preserve links, identity and full ordering before
+   active display filtering. Structural required flags remain separate from date
+   eligibility. Preset/text singletons are stacks; isolated unanchored boards are
+   excluded and equal preset/text values do not join unrelated roots. Invalid
+   flat anchors, missing/deleted targets, duplicate ids and cycles fail explicitly.
+3. The informational hint uses the first active displayed member's own usual time,
+   then its own directly attached After-preset time, otherwise zero. Explicit
+   midnight takes precedence. The spec now spells out this rule and the sibling
+   precedence that ready-node priority alone cannot guarantee. T13/T14 must preserve
+   hint presence for display rather than treat every zero as configured midnight.
+4. Tests began with a missing-module failure, then 45 focused cases passed. They
+   include mirrored sibling counterexamples, root/display separation, archived
+   interiors, immutable input, invalid scalar/anchor shapes, 3,000-node deep/wide
+   cases and 80 seeded branching forests. Missing required/time fields received a
+   separate failing/passing correction because command-input omission defaults
+   must not silently validate malformed hydrated topology data.
+5. `bun run validate` exits 0: 69 suites / 930 tests, global coverage
+   97.08/95.54/95.30/97.55, all 45 core files at 100 percent across every metric.
+   Lint/typecheck pass. Native checks pass: 9 plugin tests and 74 Swift tests.
+   Evidence is under `.artifacts/t12/`, including `red-topology.log`,
+   `validate.log` and `native.log`. This slice has no visible UI or native change;
+   simulator screen acceptance belongs to T14.
+6. Non-author data_contract_review approved the frozen source, tests and spec.
+   A separate dense-constraint oracle matched production for 500 forests and
+   1,000 shuffled/frozen-input calls. An initial oracle setup used invalid inherited
+   day shifts; its corrected 30-minute shifts through noon pass. Root reviewed the
+   public contract and aggregate evidence. The independent acceptance record is
+   `.artifacts/t12/independent-topology-acceptance.md`.
+7. T12 remains incomplete: `assignRuns`, exact-date evidence and activity-period
+   eligibility have not been implemented. The archive-date requirement conflict
+   awaits Rami's answer in spec section 10, item 6. Read-only T13/T14 preparation
+   records query/UI boundaries and the need to refresh visible stacks at an
+   archived structural root's day boundary while preserving widget timing parity.
+
 ### T11 - anchor selection and optional habit timing (2026-09-08)
 
 1. The board form now has an Anchor sheet with habits in home order, archived
