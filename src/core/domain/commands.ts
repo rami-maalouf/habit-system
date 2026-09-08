@@ -25,14 +25,14 @@ import {
   appendOutbox,
   closeOpenPeriod,
   insertPeriod,
-  reopenPeriodEndingOn,
   saveICloudSyncEnabled,
   saveMetricsEducationDismissed,
   saveSelectedIcon,
   tombstoneBoardGraph,
 } from '../persistence/repositories/support';
 import { appendCheckAction, captureBoardDatePolicies, seedLegacyCheckActions } from './check-in-mutations';
-import { settleCheckCoinScope } from './coin-settlement';
+import { appendBoardPolicies, prepareBoardPolicyChange } from './board-policy-mutations';
+import { reopenBoardPolicyPeriod } from '../persistence/repositories/board-policy-evidence';
 import { EMPTY_BOARD_ANCHOR, normalizeBoardAnchorFields, validateBoardAnchorGraph, type BoardAnchorFields, type BoardAnchorOptions } from './board-anchor';
 import type { Board, BoardKind, CheckIn, Reminder, SelectedIcon } from './entities';
 import type { BoardId, CheckInId, CommandId, LogicalDate, ReminderId } from './ids';
@@ -64,6 +64,8 @@ export type { BoardAnchorInput, BoardAnchorOptions } from './board-anchor';
 
 export type CreateBoardInput = BoardAnchorOptions & {
   kind?: BoardKind;
+  earnsCoins?: boolean;
+  coinCapPerDay?: number;
   commandId: CommandId;
   title: string;
   symbol: string;
@@ -79,6 +81,7 @@ export type CreateBoardInput = BoardAnchorOptions & {
 
 type BoardFieldValidation = {
   anchorFields: Partial<BoardAnchorFields>;
+  coinFields: Partial<Pick<Board, 'earnsCoins' | 'coinCapPerDay'>>;
   title: string;
   symbol: string;
   accentHex: string;
@@ -90,6 +93,8 @@ type BoardFieldValidation = {
 export function validateBoardFields(
   input: BoardAnchorOptions & {
     kind?: BoardKind;
+    earnsCoins?: boolean;
+    coinCapPerDay?: number;
     title: string;
     symbol: string;
     accentHex: string;
@@ -107,6 +112,19 @@ export function validateBoardFields(
 ): DomainResult<BoardFieldValidation> {
   if (input.kind !== undefined && input.kind !== 'count' && input.kind !== 'daily') {
     return err('validation', 'Choose a valid habit kind.', { field: 'kind' });
+  }
+  const coinFields: BoardFieldValidation['coinFields'] = {};
+  if (input.earnsCoins !== undefined) {
+    if (typeof input.earnsCoins !== 'boolean') {
+      return err('validation', 'Choose whether this habit earns coins.', { field: 'earnsCoins' });
+    }
+    coinFields.earnsCoins = input.earnsCoins;
+  }
+  if (input.coinCapPerDay !== undefined) {
+    if (!Number.isInteger(input.coinCapPerDay) || input.coinCapPerDay < 1 || input.coinCapPerDay > 10) {
+      return err('validation', 'Choose a daily coin cap from 1 to 10.', { field: 'coinCapPerDay' });
+    }
+    coinFields.coinCapPerDay = input.coinCapPerDay;
   }
   const title = validateTitle(input.title);
   if (!title.ok) {
@@ -138,6 +156,7 @@ export function validateBoardFields(
   if (!anchorFields.ok) return anchorFields;
   return ok({
     anchorFields: anchorFields.value,
+    coinFields,
     title: title.value,
     symbol: symbol.value,
     accentHex: accent.value,
@@ -162,18 +181,18 @@ export function createBoard(
 // callers validate first; the shared envelope owns the receipt and transaction.
 export async function createBoardInTransaction(
   deps: CommandDeps,
-  { tx, now, timeZoneId, stamp }: CommandContext,
+  context: CommandContext,
   input: CreateBoardInput,
   fields: BoardFieldValidation,
 ): Promise<DomainResult<Board>> {
+  const { tx, now, timeZoneId, stamp } = context;
   if (fields.anchorFields.anchorKind === 'board') {
     const anchor = validateBoardAnchorGraph(null, fields.anchorFields.anchorBoardId!, await listUndeletedBoards(tx));
     if (!anchor.ok) return anchor;
   }
   const boardId = deps.ids.uuid() as BoardId;
-  const mutationStamp = stamp();
   const orderKey = orderKeyAfter(await lastActiveOrderKey(tx));
-  const board: Board = {
+  const prospective: Omit<Board, 'mutationStamp'> = {
     id: boardId,
     kind: input.kind ?? 'count',
     anchorRelation: null,
@@ -186,6 +205,7 @@ export async function createBoardInTransaction(
     ...fields.anchorFields,
     earnsCoins: false,
     coinCapPerDay: 1,
+    ...fields.coinFields,
     title: fields.title,
     symbol: fields.symbol,
     accentHex: fields.accentHex,
@@ -200,14 +220,18 @@ export async function createBoardInTransaction(
     archivedAt: null,
     createdAt: now,
     updatedAt: now,
-    mutationStamp,
     deletedAt: null,
   };
+  const today = currentLogicalDate(now, timeZoneId, prospective.startOfDayMinute);
+  const policies = await prepareBoardPolicyChange(deps, context, [prospective], { kind: 'create', boardId, logicalDate: today });
+  if (!policies.ok) return policies;
+  const mutationStamp = stamp();
+  const board: Board = { ...prospective, mutationStamp };
   await insertBoard(tx, board);
-  const today = currentLogicalDate(now, timeZoneId, board.startOfDayMinute);
   const periodId = await insertPeriod(tx, boardId, today, mutationStamp);
   await appendOutbox(tx, 'board', boardId, mutationStamp, now);
   await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
+  await appendBoardPolicies(deps, context, input.commandId, policies.value);
   await rebuildWidgetRows(tx, now, timeZoneId);
   return ok(board);
 }
@@ -241,13 +265,10 @@ export function updateBoard(
       const anchor = validateBoardAnchorGraph(board.id, anchored.anchorBoardId, await listUndeletedBoards(tx));
       if (!anchor.ok) return anchor;
     }
-    if (board.kind === 'count' && input.kind === 'daily') {
-      await seedLegacyCheckActions(deps, tx, await listBoardCheckIns(tx, board.id), now);
-    }
-    const mutationStamp = stamp();
     const updated: Board = {
       ...board,
       ...fields.value.anchorFields,
+      ...fields.value.coinFields,
       kind: input.kind ?? board.kind,
       title: fields.value.title,
       symbol: fields.value.symbol,
@@ -261,10 +282,17 @@ export function updateBoard(
       startOfDayMinute: fields.value.startOfDayMinute,
       metricsEnabled: input.metricsEnabled,
       updatedAt: now,
-      mutationStamp,
     };
+    const policies = await prepareBoardPolicyChange(deps, context, [updated]);
+    if (!policies.ok) return policies;
+    if (board.kind === 'count' && input.kind === 'daily') {
+      await seedLegacyCheckActions(deps, tx, await listBoardCheckIns(tx, board.id), now);
+    }
+    const mutationStamp = stamp();
+    updated.mutationStamp = mutationStamp;
     await updateBoardRow(tx, updated);
     await appendOutbox(tx, 'board', board.id, mutationStamp, now);
+    await appendBoardPolicies(deps, context, input.commandId, policies.value);
     await rebuildWidgetRows(tx, now, timeZoneId);
     return ok({ mutationStamp });
   });
@@ -304,7 +332,8 @@ export function archiveBoard(
   deps: CommandDeps,
   input: { commandId: CommandId; boardId: BoardId },
 ): Promise<DomainResult<void>> {
-  return runCommand(deps, input.commandId, async ({ tx, now, timeZoneId, stamp }) => {
+  return runCommand(deps, input.commandId, async (context) => {
+    const { tx, now, timeZoneId, stamp } = context;
     const board = await getBoardById(tx, input.boardId);
     if (!board) {
       return err('not_found', 'This board no longer exists.');
@@ -312,8 +341,11 @@ export function archiveBoard(
     if (board.archivedAt !== null) {
       return err('archived', 'This board is already archived.');
     }
-    const mutationStamp = stamp();
     const today = currentLogicalDate(now, timeZoneId, board.startOfDayMinute);
+    const policies = await prepareBoardPolicyChange(deps, context, [{ ...board, archivedAt: now }],
+      { kind: 'archive', boardId: board.id, logicalDate: today });
+    if (!policies.ok) return policies;
+    const mutationStamp = stamp();
     await updateBoardRow(tx, { ...board, archivedAt: now, updatedAt: now, mutationStamp });
     const closedPeriodIds = await closeOpenPeriod(tx, board.id, today, mutationStamp);
     // schedule rows survive the archive: they hold the native identifiers
@@ -322,6 +354,7 @@ export function archiveBoard(
     for (const periodId of closedPeriodIds) {
       await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
     }
+    await appendBoardPolicies(deps, context, input.commandId, policies.value);
     await rebuildWidgetRows(tx, now, timeZoneId);
     return ok(undefined);
   });
@@ -331,7 +364,8 @@ export function restoreBoard(
   deps: CommandDeps,
   input: { commandId: CommandId; boardId: BoardId },
 ): Promise<DomainResult<void>> {
-  return runCommand(deps, input.commandId, async ({ tx, now, timeZoneId, stamp }) => {
+  return runCommand(deps, input.commandId, async (context) => {
+    const { tx, now, timeZoneId, stamp } = context;
     const board = await getBoardById(tx, input.boardId);
     if (!board) {
       return err('not_found', 'This board no longer exists.');
@@ -339,10 +373,13 @@ export function restoreBoard(
     if (board.archivedAt === null) {
       return err('validation', 'This board is not archived.');
     }
-    const mutationStamp = stamp();
     const today = currentLogicalDate(now, timeZoneId, board.startOfDayMinute);
     // restored boards go to the end of the active order
     const orderKey = orderKeyAfter(await lastActiveOrderKey(tx));
+    const policies = await prepareBoardPolicyChange(deps, context, [{ ...board, archivedAt: null, orderKey }],
+      { kind: 'restore', boardId: board.id, logicalDate: today });
+    if (!policies.ok) return policies;
+    const mutationStamp = stamp();
     await updateBoardRow(tx, {
       ...board,
       archivedAt: null,
@@ -351,10 +388,12 @@ export function restoreBoard(
       mutationStamp,
     });
     // same-day close and reopen merge into one period
-    const reopenedId = await reopenPeriodEndingOn(tx, board.id, today, mutationStamp);
+    const reopenedId = policies.value.reopenedPeriodId;
+    if (reopenedId !== null) await reopenBoardPolicyPeriod(tx, reopenedId, mutationStamp);
     const periodId = reopenedId ?? (await insertPeriod(tx, board.id, today, mutationStamp));
     await appendOutbox(tx, 'board', board.id, mutationStamp, now);
     await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
+    await appendBoardPolicies(deps, context, input.commandId, policies.value);
     await rebuildWidgetRows(tx, now, timeZoneId);
     return ok(undefined);
   });
@@ -375,6 +414,10 @@ export function deleteBoard(
     const dates = [...new Set(checks.map((check) => check.logicalDate))];
     const policies = await captureBoardDatePolicies(context, board.id, dates);
     if (!policies.ok) return policies;
+    const boardPolicies = await prepareBoardPolicyChange(deps, context,
+      [{ ...board, deletedAt: now }, ...dependents.map(dependent => ({ ...dependent, ...EMPTY_BOARD_ANCHOR, updatedAt: now }))],
+      { kind: 'delete', boardId: board.id });
+    if (!boardPolicies.ok) return boardPolicies;
     await seedLegacyCheckActions(deps, tx, checks, now);
     const mutationStamp = stamp();
     for (const check of checks) {
@@ -397,7 +440,7 @@ export function deleteBoard(
     for (const periodId of descendants.periodIds) {
       await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
     }
-    for (const logicalDate of dates) await settleCheckCoinScope(deps, context, { boardId: board.id, logicalDate });
+    await appendBoardPolicies(deps, context, input.commandId, boardPolicies.value, dates.map(logicalDate => ({ boardId: board.id, logicalDate })));
     await rebuildWidgetRows(tx, now, timeZoneId);
     return ok(undefined);
   });

@@ -22,6 +22,7 @@ import { useProduct, useProductQuery } from '../product-store';
 import { getBoardIcon } from '../boards/board-icon-catalog';
 import { BoardIconPicker } from './board-icon-picker';
 import { BoardKindPicker } from './board-kind-picker';
+import { CoinFields } from './coin-fields';
 import { DailyStrip } from '../boards/daily-strip';
 import { BoardAnchorFields } from '../anchors/board-anchor-fields';
 import type { BoardDraft } from './draft-store';
@@ -62,6 +63,8 @@ function draftToCommandFields(draft: BoardDraft) {
     anchor: draft.anchor,
     usualTimeMinute: draft.usualTimeMinute,
     requiredInStack: draft.requiredInStack,
+    earnsCoins: draft.earnsCoins,
+    coinCapPerDay: draft.coinCapPerDay,
   };
 }
 
@@ -325,7 +328,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
     }
     const counts = await getBoardDependentCounts(core, boardId);
     const message = counts.ok
-      ? `This permanently deletes ${counts.value.checkIns} check-ins, ${counts.value.notes} notes, and ${counts.value.reminders} reminders.`
+      ? `This permanently deletes ${counts.value.checkIns} check-in${counts.value.checkIns === 1 ? '' : 's'}, ${counts.value.notes} note${counts.value.notes === 1 ? '' : 's'}, and ${counts.value.reminders} reminder${counts.value.reminders === 1 ? '' : 's'}.`
       : 'This permanently deletes the board and everything it contains.';
     const anchoredBoards = counts.ok ? counts.value.anchoredBoards : null;
     const anchorSummary = anchoredBoards === null
@@ -538,6 +541,10 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
 
         <FormRow>
           <BoardAnchorFields draft={draft} onChange={updateDraft} disabled={saving} />
+        </FormRow>
+
+        <FormRow>
+          <CoinFields draft={draft} onChange={updateDraft} disabled={saving} />
         </FormRow>
 
         {draft.kind === 'count' ? <FormRow>

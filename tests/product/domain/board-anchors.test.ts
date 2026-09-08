@@ -156,7 +156,7 @@ describe('board anchor inputs', () => {
     expect(await semanticSnapshot(h)).toEqual(before);
     expect(await h.db.getAllAsync('SELECT * FROM habit_actions')).toEqual([]);
     expect((await edit(current, { kind: 'daily', anchor: { kind: 'preset', relation: 'after', preset: 'lunch' } })).ok).toBe(true);
-    expect(await h.db.getAllAsync('SELECT kind FROM habit_actions')).toEqual([{ kind: 'baseline' }]);
+    expect(await h.db.getAllAsync('SELECT kind FROM habit_actions')).toEqual([{ kind: 'baseline' }, { kind: 'policy' }]);
     expect(await h.db.getFirstAsync('SELECT amount, note, occurred_at_utc FROM check_ins')).toEqual({ amount: 7, note: 'legacy note', occurred_at_utc: h.clock.utcMs });
   });
 

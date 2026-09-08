@@ -116,7 +116,9 @@ describe('coin consequences of history edits, deletion and restore', () => {
     expect((await ledger(rootId)).map(row => row.delta).sort()).toEqual([-1, -1, 1, 1]);
     const actions = await listHabitActions(h.db, rootId, today);
     expect(actions.filter(action => action.kind === 'uncheck')).toHaveLength(2);
-    for (const action of actions) expect(parseCoinPolicy(action.policyJson!)).toMatchObject({ rootId, requiredBoardIds: [rootId, childId].sort() });
+    for (const action of actions.filter(action => action.kind !== 'policy')) {
+      expect(parseCoinPolicy(action.policyJson!)).toMatchObject({ rootId, requiredBoardIds: [rootId, childId].sort() });
+    }
     const after = await snapshot(h);
     expect(await deleteBoard(h.deps, input)).toEqual({ ok: true, value: undefined });
     expect(await snapshot(h)).toEqual(after);

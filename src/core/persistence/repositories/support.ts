@@ -209,26 +209,6 @@ export async function closeOpenPeriod(
   return open.map((row) => row.id);
 }
 
-export async function reopenPeriodEndingOn(
-  tx: SqlExecutor,
-  boardId: BoardId,
-  endDate: LogicalDate,
-  mutationStamp: string,
-): Promise<number | null> {
-  const row = await tx.getFirstAsync<{ id: number }>(
-    'SELECT id FROM board_activity_periods WHERE board_id = ? AND end_date = ? AND deleted_at IS NULL LIMIT 1',
-    [boardId, endDate],
-  );
-  if (!row) {
-    return null;
-  }
-  await tx.runAsync(
-    `UPDATE board_activity_periods SET end_date = NULL, mutation_stamp = ? WHERE id = ?`,
-    [mutationStamp, row.id],
-  );
-  return row.id;
-}
-
 export async function tombstoneBoardGraph(
   tx: SqlExecutor,
   boardId: BoardId,

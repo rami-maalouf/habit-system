@@ -34,6 +34,8 @@ export type BoardDraft = {
   anchor: BoardAnchorInput | null;
   usualTimeMinute: number | null;
   requiredInStack: boolean;
+  earnsCoins: boolean;
+  coinCapPerDay: number;
   // populated only while boardId is null (a new, unsaved board)
   reminders: DraftReminder[];
   dirty: boolean;
@@ -67,6 +69,8 @@ export function newBoardDraft(): BoardDraft {
     anchor: null,
     usualTimeMinute: null,
     requiredInStack: true,
+    earnsCoins: false,
+    coinCapPerDay: 1,
     reminders: [],
     dirty: false,
   };
@@ -96,6 +100,8 @@ export function draftFromBoard(board: Board): BoardDraft {
           : null,
     usualTimeMinute: board.usualTimeMinute,
     requiredInStack: board.requiredInStack,
+    earnsCoins: board.earnsCoins,
+    coinCapPerDay: board.coinCapPerDay,
     reminders: [],
     dirty: false,
   };

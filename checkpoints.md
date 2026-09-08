@@ -2,7 +2,7 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
-### T15 - coin evidence foundations and writer integration (2026-09-08, in progress)
+### T15 - coin evidence foundations and writer integration (2026-09-08)
 
 1. The first bounded foundation adds schema 8, immutable ledger storage and
    matching Swift schema gate/checksum `14ff0dae`. Released migrations 1-7 stay
@@ -187,10 +187,43 @@
    all prior B3 data exactly. Before/after shutdown backups match SHA256
    `44295aa67f66ffdbf88cb50a872ecab6b07dee2fa04fd049f01500655bc23cee`;
    console remains empty and all four fork QA simulators are shut down.
-22. T15 remains in progress. Prospective configuration and Earn Coins/Daily Coin
-   Cap controls follow the writer integration. T16 owns
-   stack-bonus production integration. Intermediate builds remain development-only
-   until T19/T20 compatibility.
+22. The final T15b4 slice validates and persists earning opt-in and integer caps
+   1-10 for both board kinds. Defaults remain disabled/cap 1; omitted updates
+   preserve stored values. A pure before/after policy planner emits ordered
+   retired-root, surviving-root and own-setting observations on sparse affected
+   dates. Configuration never creates a check or retroactive award. Exact period
+   identities make same-date reopening agree with captured eligibility. Bulk
+   evidence reads retain historical dependencies, validate canonical hashes and
+   reject missing, unsafe or cross-scope evidence atomically.
+23. Native earning controls preserve drafts through Options, kind changes,
+   disabling, discard and failed Save/retry. Queued callbacks cannot change
+   values during Save. iOS exposes native labels, values and numeric choices;
+   Android uses a native TextField label and controlled dropdown. Actual B3 QA
+   found singular deletion copy, now corrected for one check-in/note/reminder.
+   Independent non-author reviews approve the planner, evidence reader,
+   command integration and both platform controls. Shared planner fixtures,
+   public SQL commands, adversarial evidence and pending-save tests pass.
+24. Final integrated `bun run validate` passes 96 suites / 1,475 tests, global
+   coverage 97.53/96.23/95.59/97.84 and all 63 core files at 100 percent.
+   Native gates pass 9 plugin / 107 Swift tests; diff hygiene is clean.
+   Evidence: `.artifacts/t15b4/validate-main.log`, `native-main.log`,
+   `planner-independent-acceptance.md`, domain and controls acceptance reports.
+25. Actual signed iOS verification creates Daily cap 3 and Count cap 4 through
+   normal forms and reopens the saved values. A note-bearing app check earns
+   with cap 3; off/on retains the cap and original award exactly. Adding an
+   After/Waking up anchor records its policy without a retroactive bonus.
+   Native Shortcuts Check earns with the saved Count cap 4. The singular Delete
+   dialog reports one check-in and one note; Cancel preserves the full database.
+   Light, dark and large-text cap rows pass visual inspection. All 25 baseline
+   boards, 63 checks, 80 actions and eight ledger rows remain byte-exact.
+   Final totals are 27 boards / 65 checks / 85 actions / 10 ledger rows,
+   283 receipts and 271 outbox rows, with zero runtime-console entries. Backup
+   SHA256 is `8f81f0108e3adbf78e03c29b8c5ebca00965586ed0b50a6c8a7c15f306887ae0`.
+   Evidence: `.artifacts/t15b4/qa/`. The signed executable remains the verified
+   B2 binary; both apps are terminated and all four owned QA simulators shut
+   down. Android component/native-label review does not claim device TalkBack
+   verification. T16 owns stack-bonus production integration; intermediate
+   builds remain development-only until T19/T20 compatibility.
 
 ### T14 - stack screens and calendar refresh (2026-09-08)
 

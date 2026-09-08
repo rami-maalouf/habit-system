@@ -120,7 +120,7 @@ describe('daily commands and action evidence', () => {
     await updateBoard(h.deps, { ...boardInput(h), boardId, expectedMutationStamp: board.mutationStamp });
     expect(await getCheckInById(h.db, first.id)).toEqual(first);
     const actions = await listHabitActions(h.db, boardId, today);
-    expect(actions.map(x => x.kind)).toEqual(['baseline', 'baseline']);
+    expect(actions.map(x => x.kind)).toEqual(['baseline', 'baseline', 'policy']);
     expect(foldDailyActions(actions).checked).toBe(true);
     const daily = (await getBoardById(h.db, boardId))!;
     const { kind: omitted, ...input } = boardInput(h);

@@ -73,7 +73,11 @@ describe('deleting anchor boards', () => {
     expect(await getBoardById(h.db, grandchild.id)).toEqual(grandchild);
     expect(await h.db.getFirstAsync('SELECT * FROM boards WHERE id = ?', [deleted.id])).toEqual(tombstone);
     expect(await getBoardById(h.db, root.id)).toBeNull();
-    expect(await Promise.all(historyTables.map((table) => h.db.getAllAsync(`SELECT * FROM ${table} WHERE board_id IN (?, ?) ORDER BY rowid`, [active.id, archived.id])))).toEqual(history);
+    const retained = await Promise.all(historyTables.map((table) => h.db.getAllAsync<Record<string, unknown>>(`SELECT * FROM ${table} WHERE board_id IN (?, ?) ORDER BY rowid`, [active.id, archived.id])));
+    const newPolicies = retained[1].filter(row => row.kind === 'policy' && row.command_id === commandId);
+    expect(newPolicies).toHaveLength(1);
+    expect(newPolicies[0]).toMatchObject({ board_id: active.id, check_in_id: null });
+    expect(retained.map((rows, index) => index === 1 ? rows.filter(row => row.id !== newPolicies[0].id) : rows)).toEqual(history);
     const added = (await h.db.getAllAsync<{ entity_type: string; entity_id: string; mutation_stamp: string; created_at: number }>('SELECT entity_type, entity_id, mutation_stamp, created_at FROM mutation_outbox ORDER BY id')).slice(outboxBefore);
     expect(added.filter((row) => row.entity_type === 'board')).toEqual([active.id, archived.id, root.id].map((entity_id) => ({ entity_type: 'board', entity_id, mutation_stamp: cleared.mutationStamp, created_at: h.clock.utcMs })));
     expect(await getBoardDependentCounts(h.deps, root.id)).toMatchObject({ ok: true, value: { anchoredBoards: 0 } });

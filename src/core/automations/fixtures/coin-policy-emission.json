@@ -1,0 +1,970 @@
+{
+  "description": "literal prospective policy drafts; defaults are only input expansion, expected canonical payloads are complete",
+  "boardDefaults": {
+    "anchorKind": null,
+    "anchorRelation": null,
+    "anchorBoardId": null,
+    "anchorPreset": null,
+    "anchorText": null,
+    "usualTimeMinute": null,
+    "startOfDayMinute": 0,
+    "requiredInStack": true,
+    "orderKey": "a",
+    "archivedAt": null,
+    "deletedAt": null,
+    "kind": "daily",
+    "earnsCoins": false,
+    "coinCapPerDay": 1
+  },
+  "defaultPeriod": {
+    "startDate": "2026-09-01",
+    "endDate": null
+  },
+  "timeZoneId": "UTC",
+  "cases": [
+    {
+      "name": "moving a member between two living roots updates both after snapshots",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000005\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000002\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000002\",\"00000000-0000-4000-8000-000000000003\",\"00000000-0000-4000-8000-000000000004\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "detaching a singleton root retires its old scope without a rootless observation",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        }
+      ]
+    },
+    {
+      "name": "an existing child cap edit emits only its own check policy observation",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "coinCapPerDay": 3
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":3,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "informational ordering relation and usual time edits emit nothing",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "usualTimeMinute": 0,
+          "orderKey": "z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "before",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "usualTimeMinute": 1425,
+          "orderKey": "a"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": []
+    },
+    {
+      "name": "default rootless creation has no prior policy to change",
+      "before": [],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": []
+    },
+    {
+      "name": "merging an entire root retires only that root before the surviving root snapshot",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000002\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000002\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "a new optional-only text stack gets an explicit disabled empty snapshot",
+      "before": [],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "text",
+          "anchorRelation": "after",
+          "anchorText": "Coffee",
+          "requiredInStack": false
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        }
+      ]
+    },
+    {
+      "name": "simultaneous root membership and coin edits collapse the identical own observation",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "requiredInStack": false,
+          "earnsCoins": true
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "deleting a structural parent discovers split child roots and preserves grandchildren",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000003"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "deletedAt": 1788868800000
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000004"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000003"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000004"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\",\"00000000-0000-4000-8000-000000000004\",\"00000000-0000-4000-8000-000000000005\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000003\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000003\",\"00000000-0000-4000-8000-000000000005\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "split closure includes a new root reached through an old component member",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000003"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "deletedAt": 1788868800000
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000003"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\",\"00000000-0000-4000-8000-000000000005\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000003\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000003\",\"00000000-0000-4000-8000-000000000005\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "empty eligible membership disables the current root without a retirement pair",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "requiredInStack": false
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "requiredInStack": false
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        }
+      ]
+    },
+    {
+      "name": "retiring an already disabled root still records ordered scope retirement",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "requiredInStack": false
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "requiredInStack": false
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+        }
+      ]
+    },
+    {
+      "name": "deleted rootless boards have no post-edit observer",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "earnsCoins": true
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "deletedAt": 1788868800000
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": []
+    },
+    {
+      "name": "an archived root keeps structural identity while exact archive date loses its requirement",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "archivedAt": 1788868800000
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ],
+      "afterPeriods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": "2026-09-08"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ]
+    },
+    {
+      "name": "same-date restoration reintroduces the requirement without earning",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "archivedAt": 1788868800000
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ],
+      "beforePeriods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": "2026-09-08"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ]
+    },
+    {
+      "name": "a root shift covers both explicit root and member dates once in date order",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "startOfDayMinute": 240
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "2026-09-08",
+        "2026-09-07",
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-07",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788825600000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788825600000,\"bonusEnabled\":true}"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "a member shift changes only check closes across both candidate dates",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "startOfDayMinute": 240
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "candidateDates": [
+        "2026-09-08",
+        "2026-09-07"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "logicalDate": "2026-09-07",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788840000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788825600000,\"bonusEnabled\":true}"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ]
+    },
+    {
+      "name": "required changes emit only on dates where the member is eligible",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "requiredInStack": false
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "candidateDates": [
+        "2026-09-07",
+        "2026-09-08"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "2026-09-08",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000003\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+        }
+      ],
+      "beforePeriods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "startDate": "2026-09-08",
+          "endDate": null
+        }
+      ],
+      "afterPeriods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000003",
+          "startDate": "2026-09-08",
+          "endDate": null
+        }
+      ]
+    },
+    {
+      "name": "an explicit historical date retains its signed close and does not expand into other dates",
+      "before": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "coinCapPerDay": 1
+        }
+      ],
+      "after": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorPreset": "wake",
+          "coinCapPerDay": 2
+        }
+      ],
+      "changedBoardIds": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "candidateDates": [
+        "0000-02-28"
+      ],
+      "expected": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "logicalDate": "0000-02-28",
+          "kind": "policy",
+          "checkInId": null,
+          "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":2,\"checkClosesAtUtc\":-62162121600000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\"],\"bonusClosesAtUtc\":-62162121600000,\"bonusEnabled\":true}"
+        }
+      ],
+      "beforePeriods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "0000-01-01",
+          "endDate": null
+        }
+      ],
+      "afterPeriods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "0000-01-01",
+          "endDate": null
+        }
+      ]
+    }
+  ]
+}
