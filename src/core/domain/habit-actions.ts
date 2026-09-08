@@ -1,6 +1,7 @@
 import { isValidLogicalDate } from '../calendar/logical-date';
 import type { CheckIn } from './entities';
 import { uuidV5 } from './deterministic-ids';
+import { COIN_RECORD_BYTES, CoinContractError, parseCoinPolicy } from './coin-policy';
 import type { BoardId, CheckInId, CommandId, HabitActionId, LogicalDate } from './ids';
 import { isUuidV4, isUuidV5 } from './ids';
 import type { Hashing } from './ports';
@@ -40,10 +41,21 @@ export function validateHabitAction(action: HabitAction): DomainResult<HabitActi
     (action.kind === 'policy' && action.checkInId !== null) ||
     !Number.isSafeInteger(action.createdAt) || action.createdAt < 0 ||
     !/^\d{14}-[0-9a-z]{5}-[A-Za-z0-9_-]+$/.test(action.mutationStamp) ||
-    action.policyJson !== null ||
+    (action.policyJson !== null && Object.is(action.createdAt, -0)) ||
     (baseline && (action.mutationStamp !== BASELINE_STAMP ||
-      action.createdAt !== 0))
+      action.createdAt !== 0 || action.policyJson !== null))
   ) return err('validation', 'Invalid habit action.');
+  try {
+    if (action.policyJson !== null) parseCoinPolicy(action.policyJson);
+    if (new TextEncoder().encode(canonicalHabitAction(action)).length > COIN_RECORD_BYTES) {
+      throw new CoinContractError('size');
+    }
+  } catch (cause) {
+    if ((cause as CoinContractError).reason === 'size') {
+      return err('capacity', 'Habit evidence exceeds the supported record size.', { retryable: true });
+    }
+    return err('validation', 'Invalid habit action.');
+  }
   return ok(action);
 }
 

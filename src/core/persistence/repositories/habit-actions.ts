@@ -1,5 +1,6 @@
 import type { HabitAction } from '../../domain/habit-actions';
 import { canonicalHabitAction, validateHabitAction } from '../../domain/habit-actions';
+import { CoinContractError } from '../../domain/coin-policy';
 import type { BoardId, LogicalDate } from '../../domain/ids';
 import type { SqlExecutor } from '../database';
 
@@ -16,7 +17,11 @@ function fromRow(row: ActionRow): HabitAction {
 }
 
 export async function appendHabitAction(tx: SqlExecutor, action: HabitAction): Promise<boolean> {
-  if (!validateHabitAction(action).ok) throw new Error('Invalid habit action.');
+  const validated = validateHabitAction(action);
+  if (!validated.ok) {
+    if (validated.error.code === 'capacity') throw new CoinContractError('size');
+    throw new Error('Invalid habit action.');
+  }
   const existing = await tx.getFirstAsync<ActionRow>('SELECT * FROM habit_actions WHERE id = ?', [action.id]);
   if (existing) {
     if (canonicalHabitAction(fromRow(existing)) !== canonicalHabitAction(action)) {

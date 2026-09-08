@@ -38,6 +38,7 @@ The detailed action/adjustment protocol is `docs/ledger-reconciliation.md`. Gene
 - Use immutable action/policy evidence for coin replay, including historical edits and delayed delivery. Check-award identity includes scope and source check action. Date moves emit `move_out`/`move_in`: only timely move-out revokes an old entitlement; neither date nor time edits mint rewards. Root changes emit separate old/new policy actions, never retroactive earnings. Check-coin close uses its board's logical-day boundary; bonus close uses the structural root's boundary. Usual times control neither.
 - Include shared Swift cap/earning/reversal/bonus/adjustment coverage in T15/T16. Tests verify action, check, receipt, outbox, projection, and ledger atomicity.
 - Restoring old checks does not mint new coins. Restored action and ledger evidence preserve the exported state; deterministic adjustment settles only the approved entitlements.
+- T15 policy capture validates activity-period date shapes and preserves the existing empty interpretation of a reversed closed interval. The inherited archive writer stores the current logical date directly, so a backward day/time-zone change can produce such an interval. Reproduce archive/export/import through the public commands during T15 configuration/T20 before imposing stronger interval ordering; do not make otherwise valid stored evidence unreadable or silently rewrite it.
 
 ### Sync and import
 

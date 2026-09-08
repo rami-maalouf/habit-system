@@ -57,7 +57,7 @@ struct IntentHabitAction: Codable, Equatable, Sendable {
   }
 
   @discardableResult func append(to database: IntentDatabase) throws -> Bool {
-    guard isValid else { throw IntentStorageError.unavailable }
+    try validate()
     let row: [String: IntentSQLValue] = ["id": .text(id), "command_id": .string(commandId),
       "board_id": .text(boardId), "logical_date": .text(logicalDate), "check_in_id": .string(checkInId),
       "kind": .text(kind), "created_at": .integer(createdAt), "mutation_stamp": .text(mutationStamp), "policy_json": .string(policyJson)]
@@ -73,6 +73,14 @@ struct IntentHabitAction: Codable, Equatable, Sendable {
     try database.run("INSERT INTO mutation_outbox (entity_type, entity_id, mutation_stamp, created_at) VALUES ('habit_action', ?, ?, ?)",
       [.text(id), .text(mutationStamp), .integer(createdAt)])
     return true
+  }
+
+  func validate() throws {
+    guard isValid else { throw IntentStorageError.unavailable }
+    if let policyJson { _ = try IntentCoinPolicy.parse(policyJson) }
+    guard try IntentCoinProvenance.actionCanonical(self).utf8.count <= IntentCoinJSON.recordBytes else {
+      throw IntentCoinError.size
+    }
   }
 
   private var isValid: Bool {
@@ -91,8 +99,7 @@ struct IntentHabitAction: Codable, Equatable, Sendable {
       && (kind != "policy" || checkInId == nil)
       && createdAt >= 0 && createdAt <= 9_007_199_254_740_991
       && matches(mutationStamp, "^[0-9]{14}-[0-9a-z]{5}-[A-Za-z0-9_-]+$")
-      && policyJson == nil
-      && (!baseline || (createdAt == 0 && mutationStamp == Self.baselineStamp))
+      && (!baseline || (createdAt == 0 && mutationStamp == Self.baselineStamp && policyJson == nil))
   }
 
 }

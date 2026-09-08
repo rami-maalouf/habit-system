@@ -1,0 +1,877 @@
+{
+  "description": "literal policy capture parity; exact stored dates and structural roots determine policy, independent of display times and current root date",
+  "cases": [
+    {
+      "name": "unanchored count",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "name": "unanchored daily earning disabled",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "daily",
+          "earnsCoins": false,
+          "coinCapPerDay": 1,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "daily",
+        "earnsCoins": false,
+        "coinCapPerDay": 1,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":false,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "name": "member date ahead of shifted root at 02:00",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 240,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": false,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": false,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001",
+          "00000000-0000-4000-8000-000000000002"
+        ],
+        "bonusClosesAtUtc": 1788926400000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":false,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000002\"],\"bonusClosesAtUtc\":1788926400000,\"bonusEnabled\":true}",
+      "capturedAtUtc": 1788832800000,
+      "displayedRootDate": "2026-09-07"
+    },
+    {
+      "name": "archived structural root",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 240,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": 1788832800000,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": "2026-09-08"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000002"
+        ],
+        "bonusClosesAtUtc": 1788926400000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000002\"],\"bonusClosesAtUtc\":1788926400000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "closed member archive date excluded",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": 1788832800000,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": "2026-09-08"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "same-date reopened member required again",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": "2026-09-08"
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-08",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001",
+          "00000000-0000-4000-8000-000000000002"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000002\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "optional-only stack",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": false,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": false,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": false
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+    },
+    {
+      "name": "missing period evidence",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": false
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":false}"
+    },
+    {
+      "name": "singleton preset root",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "preset",
+          "anchorRelation": "after",
+          "anchorBoardId": null,
+          "anchorPreset": "wake",
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "singleton text root",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "text",
+          "anchorRelation": "after",
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": "Coffee",
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "equal text labels remain separate roots",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "text",
+          "anchorRelation": "after",
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": "Coffee",
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "text",
+          "anchorRelation": "after",
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": "Coffee",
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000002",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000002"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000002\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000002\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "display-first member does not replace root",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 240,
+          "requiredInStack": true,
+          "orderKey": "z",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "before",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": 0,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "a",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001",
+          "00000000-0000-4000-8000-000000000002"
+        ],
+        "bonusClosesAtUtc": 1788926400000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000002\"],\"bonusClosesAtUtc\":1788926400000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "own check shift differs from bonus root",
+      "boardId": "00000000-0000-4000-8000-000000000002",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "board",
+          "anchorRelation": "after",
+          "anchorBoardId": "00000000-0000-4000-8000-000000000001",
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 240,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000002",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        },
+        {
+          "boardId": "00000000-0000-4000-8000-000000000002",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788926400000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001",
+          "00000000-0000-4000-8000-000000000002"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788926400000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\",\"00000000-0000-4000-8000-000000000002\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    },
+    {
+      "name": "historical signed close",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "0000-02-28",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": null,
+          "anchorRelation": null,
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": null,
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": -62162121600000,
+        "rootId": null,
+        "requiredBoardIds": [],
+        "bonusClosesAtUtc": null,
+        "bonusEnabled": false
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":-62162121600000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    },
+    {
+      "name": "text root preserving leading U+0085",
+      "boardId": "00000000-0000-4000-8000-000000000001",
+      "logicalDate": "2026-09-08",
+      "timeZoneId": "UTC",
+      "boards": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "kind": "count",
+          "earnsCoins": true,
+          "coinCapPerDay": 2,
+          "anchorKind": "text",
+          "anchorRelation": "after",
+          "anchorBoardId": null,
+          "anchorPreset": null,
+          "anchorText": "Coffee",
+          "usualTimeMinute": null,
+          "startOfDayMinute": 0,
+          "requiredInStack": true,
+          "orderKey": "00000000-0000-4000-8000-000000000001",
+          "archivedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "periods": [
+        {
+          "boardId": "00000000-0000-4000-8000-000000000001",
+          "startDate": "2026-09-01",
+          "endDate": null
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "boardKind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 2,
+        "checkClosesAtUtc": 1788912000000,
+        "rootId": "00000000-0000-4000-8000-000000000001",
+        "requiredBoardIds": [
+          "00000000-0000-4000-8000-000000000001"
+        ],
+        "bonusClosesAtUtc": 1788912000000,
+        "bonusEnabled": true
+      },
+      "expectedJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":2,\"checkClosesAtUtc\":1788912000000,\"rootId\":\"00000000-0000-4000-8000-000000000001\",\"requiredBoardIds\":[\"00000000-0000-4000-8000-000000000001\"],\"bonusClosesAtUtc\":1788912000000,\"bonusEnabled\":true}"
+    }
+  ]
+}

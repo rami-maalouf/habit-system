@@ -1,5 +1,5 @@
 import { isValidLogicalDate } from '../calendar/logical-date';
-import { COIN_RECORD_BYTES, CoinContractError, parseCoinPolicy } from './coin-policy';
+import { CoinContractError, parseCoinPolicy } from './coin-policy';
 import { checkCoinRow } from './coin-ledger';
 import type { CoinLedgerRow } from './coin-ledger';
 import { baselineAction, canonicalHabitAction, validateHabitAction } from './habit-actions';
@@ -15,10 +15,10 @@ export function orderedCoinActions(scope: CheckCoinScope, actions: readonly Habi
   if (typeof scope.boardId !== 'string' || !isUuidV4(scope.boardId) || !isValidLogicalDate(scope.logicalDate)) throw new CoinContractError('invalid');
   const unique = new Map<string, HabitAction>();
   for (const action of actions) {
-    if (!validateHabitAction({ ...action, policyJson: null }).ok || action.boardId !== scope.boardId ||
-      action.logicalDate !== scope.logicalDate || Object.is(action.createdAt, -0) || (action.kind === 'baseline' && action.policyJson !== null)) throw new CoinContractError('invalid');
-    if (action.policyJson !== null) parseCoinPolicy(action.policyJson);
-    if (new TextEncoder().encode(canonicalHabitAction(action)).length > COIN_RECORD_BYTES) throw new CoinContractError('size');
+    const validated = validateHabitAction(action);
+    if (!validated.ok) throw new CoinContractError(validated.error.code === 'capacity' ? 'size' : 'invalid');
+    if (action.boardId !== scope.boardId || action.logicalDate !== scope.logicalDate ||
+      Object.is(action.createdAt, -0)) throw new CoinContractError('invalid');
     const prior = unique.get(action.id);
     if (prior && canonicalHabitAction(prior) !== canonicalHabitAction(action)) throw new CoinContractError('invalid');
     unique.set(action.id, action);

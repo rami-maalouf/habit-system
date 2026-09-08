@@ -73,11 +73,36 @@
    rows remain exact. Additional QA and startup/foreground receipts are recorded,
    and the ledger stays empty. Final Home is clean, console has zero entries,
    and the dedicated simulator is shut down with identical before/after backups.
-10. T15a foundations are complete; T15 remains in progress. Production earning
-   writers, policy changes,
-   non-earning restore integration and Earn Coins/Daily Coin Cap controls follow
-   this foundation. T16 owns stack-bonus production integration. Intermediate
-   builds remain development-only until the T19/T20 compatibility gates pass.
+10. T15b1 adds prepared TS/Swift policy capture and transaction-local settlement.
+   Capture snapshots structural topology and scoped activity periods, uses each
+   action's exact stored date, and resolves separate member/root close instants.
+   Fifteen shared literal cases include shifted roots, archived roots, optional
+   members and exact JavaScript text trimming. Malformed date endpoints fail;
+   valid reversed intervals remain empty under inherited eligibility semantics.
+   Native WAL tests preserve the captured snapshot across a second connection's
+   concurrent board/period edit. An independent oracle checks 256 snapshots and
+   768 policies.
+11. Canonical live policies now round-trip through both action stores. Legacy
+   null policies and null-policy baselines retain their existing meaning. Invalid
+   or oversized evidence fails before insertion. Settlement reads only the exact
+   check scope, appends immutable derived rows, and enqueues newly inserted rows
+   using causal stamps and the supplied local enqueue time. Repeated settlement
+   allocates no clock, id, HLC or receipt. Real SQL fault tests prove transaction
+   rollback and one successful retry.
+12. T15b1 passes independent non-author review and the full gates: 88 suites /
+   1,294 tests, global coverage 97.4/96.1/95.59/97.75, all 60 core files at
+   100 percent, plus 9 plugin and 100 Swift tests. Evidence is under
+   `.artifacts/t15b1/`, including `validate.log`, `native-final.log`,
+   `green-settlement-final.log` and `independent-acceptance.md`. UTF-8
+   `pod install` refreshes both new Swift sources, and the generic simulator
+   build succeeds at `.artifacts/t15b1/qa-build/habitsystem.app`. Its inherited
+   Expo dev-launcher script and duplicate `-lc++` warnings are recorded. No device runtime
+   claim is made for helpers that no live writer calls yet.
+13. T15 remains in progress. The next bounded slices connect app/native check
+   and removal writers, moves/deletion/non-earning restore, then prospective
+   configuration and Earn Coins/Daily Coin Cap controls. No live earning writer
+   invokes the new helpers yet. T16 owns stack-bonus production integration.
+   Intermediate builds remain development-only until T19/T20 compatibility.
 
 ### T14 - stack screens and calendar refresh (2026-09-08)
 
