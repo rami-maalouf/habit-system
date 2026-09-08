@@ -163,8 +163,32 @@
    All B2 baseline rows remain exact. Final totals are 21 boards / 55 checks /
    72 actions / 8 ledger rows, 249 receipts and 223 outbox rows, with zero
    connected runtime-console entries. Evidence: `.artifacts/t15b3/qa/`.
-20. T15 remains in progress. Activity-period restoration, prospective configuration
-   and Earn Coins/Daily Coin Cap controls follow the writer integration. T16 owns
+20. Public archive/export/import reproduction exposed an inherited period bug:
+   a backward time-zone change can store a reversed closed interval, but restore
+   replaced that valid stored evidence with invented eligible dates. Restore now
+   preserves well-formed endpoints, reversed empty ranges, overlaps and multiple
+   open ranges exactly; malformed input retains the existing lifetime fallback.
+   Each imported period writes both endpoints atomically. Individual analytics
+   count the union of clipped eligible ranges, fixing double-counted overlaps
+   while retaining inclusive closed ends; stack ends remain exclusive.
+21. Nine public regressions and independent review cover round-trip preservation,
+   unsorted and overlapping ranges, empty/reversed ranges, fallback controls and
+   outbox identities. Integrated validation passes 91 suites / 1,364 tests,
+   global coverage 97.42/96.13/95.6/97.76 and all 60 core files at 100 percent;
+   native gates remain 9 plugin / 107 Swift tests and diff hygiene is clean.
+   Actual Hermes public round-trips preserve reversed `[Sep7, Sep6]` as zero
+   eligible days, zero streak and null consistency, and preserve overlapping
+   `[Sep5, Sep7]` plus `[Sep6, null]` as four eligible days, longest streak two
+   and 50 percent consistency. Exact notes/date-time fields and individual/stack
+   date eligibility survive; replay changes no table and ledger rows stay exact.
+   Only fresh synthetic restore ids are remapped. Evidence:
+   `.artifacts/t15b4/period-restore/`, including `qa/` runtime proof. Final
+   25 boards / 63 checks / 80 actions and eight unchanged ledger rows preserve
+   all prior B3 data exactly. Before/after shutdown backups match SHA256
+   `44295aa67f66ffdbf88cb50a872ecab6b07dee2fa04fd049f01500655bc23cee`;
+   console remains empty and all four fork QA simulators are shut down.
+22. T15 remains in progress. Prospective configuration and Earn Coins/Daily Coin
+   Cap controls follow the writer integration. T16 owns
    stack-bonus production integration. Intermediate builds remain development-only
    until T19/T20 compatibility.
 

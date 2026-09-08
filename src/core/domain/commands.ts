@@ -459,11 +459,9 @@ export type ImportSummary = {
   remindersSkipped: number;
 };
 
-// restored activity periods replay only when the whole list is coherent:
-// real logical dates, each end on or after its start, strictly ordered
-// without overlap, and any open period last. one bad entry distrusts the
-// list and the import falls back to a derived lifetime period instead of
-// writing corrupt period state
+// stored dates survive zone-changing archive and restore operations exactly.
+// reversed ranges are empty and overlaps retain their existing union meaning;
+// only malformed endpoints invalidate the list and require lifetime fallback.
 function sanitizeImportPeriods(
   periods: { startDate: string; endDate: string | null }[],
 ): { startDate: LogicalDate; endDate: LogicalDate | null }[] {
@@ -479,24 +477,11 @@ function sanitizeImportPeriods(
       if (typeof period.endDate !== 'string' || !isValidLogicalDate(period.endDate)) {
         return [];
       }
-      if (compareLogicalDates(period.endDate, period.startDate) < 0) {
-        return [];
-      }
     }
     cleaned.push({
       startDate: period.startDate as LogicalDate,
       endDate: period.endDate as LogicalDate | null,
     });
-  }
-  cleaned.sort((a, b) => compareLogicalDates(a.startDate, b.startDate));
-  for (let index = 1; index < cleaned.length; index += 1) {
-    const previous = cleaned[index - 1];
-    if (previous.endDate === null) {
-      return [];
-    }
-    if (compareLogicalDates(cleaned[index].startDate, previous.endDate) <= 0) {
-      return [];
-    }
   }
   return cleaned;
 }
@@ -631,15 +616,12 @@ export async function importSnapshotInTransaction(
       if (restoredPeriods.length > 0) {
         // an own-format restore replays its recorded activity periods
         for (const period of restoredPeriods) {
-          const periodId = await insertPeriod(tx, boardId, period.startDate, mutationStamp);
-          if (period.endDate !== null) {
-            await closeOpenPeriod(tx, boardId, period.endDate, mutationStamp);
-          }
+          const periodId = await insertPeriod(tx, boardId, period.startDate, mutationStamp, period.endDate);
           await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
         }
       } else {
         // ripples imports, and own restores whose period list is missing or
-        // incoherent, derive one period from creation to archive
+        // empty or malformed, derive one period from creation to archive
         const startDate = currentLogicalDate(
           createdAt,
           timeZoneId,
