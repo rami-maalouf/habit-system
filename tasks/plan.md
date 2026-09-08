@@ -154,6 +154,9 @@ Inherited from the Ripples process and unchanged:
 | Sample mode leaks into the real database | High | Separate database handle, adapters replaced by fakes, and a checksum test on the real file across a sample session |
 | Miss alert double-schedules or fires for archived boards | Medium | `miss_alerts` records the missed-window key; reconciler skips archived boards and windows where the board was not active for the whole window |
 | Building under Ripples' identifiers by accident | High | T1 runs first and checkpoint 0 verifies the bundle id in the built app before any other task |
+| Swift intents executor refuses all writes after the schema bump | High | `IntentExecutor.swift` hardcodes the schema version and every migration checksum and refuses mutations on mismatch; T2 updates it in the same commit as migration 6 and `bun run test:native` is in T2's gate |
+| Swift CloudKit mapping rejects new columns before T19 | High | `CloudKitRecordMapping.swift` allowlists columns per entity; `SPECS` in `records.ts` gains the new columns only in T19, together with the Swift change |
+| Fork dev client attaches to the Ripples Metro on 8081 and loads the wrong JavaScript | Medium | Observed in T1; run the fork's Metro on another port; rule recorded in AGENTS.md and MEMORY.md |
 | Scope creep toward dice, deadlines, penalties | Medium | Listed under Ask first in the spec; not in any task |
 
 ## Parallelization

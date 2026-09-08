@@ -10,7 +10,18 @@ This repository is the habit-system fork of Ripples. Read in this order:
 4. `checkpoints.md` - the ledger. One entry per task. The first section records what Ripples proved before the fork.
 5. `docs/design/` - the habit-system design documents the spec was derived from, starting with `docs/design/README.md` and `docs/design/habit-os-context.md`.
 
-Process is inherited from Ripples: tests first, `bun run validate` exit 0 with every `src/core` file at 100 percent, Argent simulator evidence for visible changes, independent verification by a non-author, one `checkpoints.md` entry, lowercase conventional commits with no co-author lines. `CAPABILITY-MAP.md` lists the module ids and build order.
+Process is inherited from Ripples: tests first, `bun run validate` exit 0 with every `src/core` file at 100 percent, `bun run test:native` green, Argent simulator evidence for visible changes, independent verification by a non-author, one `checkpoints.md` entry, lowercase conventional commits with no co-author lines. `CAPABILITY-MAP.md` lists the module ids and build order.
+
+## Operational notes (learned the hard way; read before building or running)
+
+- **Metro port 8081 belongs to Rami's Ripples project.** If the fork's dev client attaches to it, the fork's native shell loads Ripples' JavaScript and the dev menu banner reads `habit-tracker`. Start the fork's Metro on another port (`bun run start -- --port 8082`) and open the dev client with that URL. Never stop 8081.
+- **CocoaPods needs a UTF-8 locale.** In a shell with `LANG=""`, `pod install` fails with `Unicode Normalization not appropriate for ASCII-8BIT`. Prefix with `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`.
+- **The Swift intents executor gates on the schema.** `modules/ripples-apple/ios/Intents/Core/IntentExecutor.swift` hardcodes `schemaVersion` and a map of every migration checksum, and refuses all mutations on mismatch. Any new migration must update both in the same commit. `bun run test:native` runs the Swift test that catches a stale map.
+- **The Swift CloudKit mapping allowlists columns per entity** (`modules/ripples-apple/ios/CloudKitRecordMapping.swift`). A column added to `SPECS` in `src/core/sync/records.ts` without the matching Swift change makes every upload fail natively.
+- **Identity.** Bundle `studio.orbitlabs.habitsystem`, App Group `group.studio.orbitlabs.habitsystem`, CloudKit container `iCloud.studio.orbitlabs.habitsystem`, zone `habit-system`, scheme `habitsystem`, widget kind `HabitSystemBoards`, EAS project `@ramimaalouf/habit-system` (`07481ea0-9f44-4f24-ad3c-fd889569cade`), team `3V2UU7RRK9`. The plugin test `app configuration carries the fork identity` fails if any of these regress. Ripples (`studio.orbitlabs.habittracker`) is a separate app that must never share a container or app group.
+- **Widget extension target name** `ExpoWidgetsTarget` is a constant inside the expo-widgets plugin and cannot be renamed from config.
+- **Simulator used for evidence:** iPhone 17 Pro, udid `B47A3DF3-056A-4531-B9FA-8327C7C8A485`. Evidence goes under `.artifacts/<task>/` (ignored). Generated `ios/` is ignored; regenerate with `bunx expo prebuild --platform ios --clean`.
+- **`MEMORY.md` in this repo** is the Argent environment inspector's memory, not a general agent file. This section is the place for facts every agent needs.
 
 ## Expo has changed — do not trust your training data
 
