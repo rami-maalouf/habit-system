@@ -1,18 +1,19 @@
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, ScrollView, View } from 'react-native';
+import { FlatList, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/foundation/app-text';
 import { Icon } from '@/components/foundation/icon';
 import { createCheckIn, reorderBoard, toggleDailyCheckIn, undoCreatedCheckIn } from '@/core/domain/commands';
 import type { BoardId, CheckInId, CommandId } from '@/core/domain/ids';
-import type { DailyToggleSnapshot, HomeBoardCard } from '@/core/domain/queries';
+import type { HomeBoardCard } from '@/core/domain/queries';
 import { getDailyToggleSnapshot, getHomeBoardProjection } from '@/core/domain/queries';
 import { triggerActionHaptic } from '@/foundation/haptics';
 import { semanticColor, semanticFallbacks, spacing } from '@/theme';
 
 import { BoardCard } from './board-card';
+import { confirmDailyUncheck } from './confirm-daily-uncheck';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 
@@ -24,22 +25,6 @@ type UndoState = {
 };
 
 const UNDO_WINDOW_MS = 5000;
-
-function confirmDailyUncheck(snapshot: DailyToggleSnapshot): Promise<boolean> {
-  return new Promise((resolve) => {
-    const checks = `${snapshot.checkInCount} ${snapshot.checkInCount === 1 ? 'check-in' : 'check-ins'}`;
-    const notes = `${snapshot.noteCount} ${snapshot.noteCount === 1 ? 'note' : 'notes'}`;
-    Alert.alert(
-      `Uncheck ${snapshot.boardTitle}?`,
-      `For ${snapshot.logicalDate}, this removes ${checks} and ${notes}.`,
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Uncheck', style: 'destructive', onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
-  });
-}
 
 export function BoardsHomeScreen() {
   const router = useRouter();

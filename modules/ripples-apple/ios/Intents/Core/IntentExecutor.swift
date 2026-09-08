@@ -178,19 +178,27 @@ final class IntentExecutor {
   }
 
   func widgetTimeline() -> IntentOutcome<IntentWidgetTimeline> {
-    read {
-      let rows = try self.database.rows("SELECT * FROM widget_board_rows ORDER BY position LIMIT 12")
-      let values = try rows.map { row -> IntentWidgetRow in
-        guard let id = row["board_id"]?.string, let title = row["title"]?.string,
-              let rawKind = row["kind"]?.string, let kind = IntentBoardKind(rawValue: rawKind),
-              let symbol = row["symbol"]?.string, let accent = row["accent_hex"]?.string,
-              let strip = row["strip"]?.string,
-              let data = strip.data(using: .utf8) else { throw IntentStorageError.unavailable }
-        return IntentWidgetRow(boardId: id, kind: kind, title: title, symbol: symbol, accentHex: accent,
-                               strip: try JSONDecoder().decode([Int].self, from: data))
+    do {
+      return try database.transaction(exclusive: true) {
+        try self.validateSchema()
+        let instant = floor(self.now()), zone = self.zone()
+        guard Int64(exactly: instant) != nil else { throw IntentFailure.database }
+        let boards = try self.rebuildWidgets(instant: instant, zone: zone)
+        let expires = try IntentCalendar.nextWidgetRefreshUtc(utcMs: instant, zone: zone, startMinutes: boards.map(\.startOfDayMinute))
+        let rows = try self.database.rows("SELECT * FROM widget_board_rows ORDER BY position LIMIT 12")
+        let values = try rows.map { row -> IntentWidgetRow in
+          guard let id = row["board_id"]?.string, let title = row["title"]?.string,
+                let rawKind = row["kind"]?.string, let kind = IntentBoardKind(rawValue: rawKind),
+                let symbol = row["symbol"]?.string, let accent = row["accent_hex"]?.string,
+                let strip = row["strip"]?.string,
+                let data = strip.data(using: .utf8) else { throw IntentStorageError.unavailable }
+          return IntentWidgetRow(boardId: id, kind: kind, title: title, symbol: symbol, accentHex: accent,
+                                 strip: try JSONDecoder().decode([Int].self, from: data))
+        }
+        return .success(try IntentWidgetTimeline(rows: values, generatedAtUtc: instant, expiresAtUtc: expires))
       }
-      return try IntentWidgetTimeline(rows: values, instant: self.now(), zone: self.zone())
-    }
+    } catch let error as IntentFailure { return .failure(error) }
+      catch { return .failure(.database) }
   }
 
   private func command<Value: Codable & Sendable>(_ commandId: String,
@@ -307,7 +315,7 @@ final class IntentExecutor {
                       [.text(id), .text(stamp), .integer(Int64(instant))])
   }
 
-  private func rebuildWidgets(instant: Double, zone: String) throws {
+  @discardableResult private func rebuildWidgets(instant: Double, zone: String) throws -> [IntentBoardRecord] {
     let boards = try activeBoards()
     try database.run("DELETE FROM widget_board_rows")
     for (position, board) in boards.enumerated() {
@@ -318,12 +326,16 @@ final class IntentExecutor {
         WHERE board_id = ? AND deleted_at IS NULL AND logical_date BETWEEN ? AND ? GROUP BY logical_date
         """, [.text(board.id), .text(start), .text(today)])
       let byDate = Dictionary(uniqueKeysWithValues: counts.map { ($0["logical_date"]!.string!, Int($0["count"]!.number!)) })
-      let strip = try (0..<7).map { byDate[try IntentCalendar.addingDays($0 - 6, to: today)] ?? 0 }
+      let strip = try (0..<7).map { offset -> Int in
+        let count = byDate[try IntentCalendar.addingDays(offset - 6, to: today)] ?? 0
+        return board.kind == .daily ? (count > 0 ? 1 : 0) : count
+      }
       let encoded = String(decoding: try JSONEncoder().encode(strip), as: UTF8.self)
       try database.run("""
         INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, [.text(board.id), .integer(Int64(position)), .text(board.title), .text(board.symbol), .text(board.accentHex), .text(encoded), .text(today), .text(board.kind.rawValue)])
     }
+    return boards
   }
 }

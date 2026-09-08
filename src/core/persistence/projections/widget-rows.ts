@@ -1,5 +1,5 @@
 import { addDays, currentLogicalDate } from '../../calendar/logical-date';
-import type { WidgetBoardRow } from '../../domain/entities';
+import type { Board, WidgetBoardRow } from '../../domain/entities';
 import type { BoardId, LogicalDate } from '../../domain/ids';
 import type { SqlExecutor } from '../database';
 import { listActiveBoards } from '../repositories/boards';
@@ -11,8 +11,9 @@ export async function rebuildWidgetRows(
   tx: SqlExecutor,
   nowUtcMs: number,
   timeZoneId: string,
+  currentBoards?: readonly Board[],
 ): Promise<void> {
-  const boards = await listActiveBoards(tx);
+  const boards = currentBoards ?? await listActiveBoards(tx);
   await tx.runAsync('DELETE FROM widget_board_rows');
   for (let position = 0; position < boards.length; position += 1) {
     const board = boards[position];
@@ -21,7 +22,8 @@ export async function rebuildWidgetRows(
     const counts = await dailyCounts(tx, board.id, from, today);
     const strip: number[] = [];
     for (let offset = 6; offset >= 0; offset -= 1) {
-      strip.push(counts.get(addDays(today, -offset)) ?? 0);
+      const count = counts.get(addDays(today, -offset)) ?? 0;
+      strip.push(board.kind === 'daily' ? (count > 0 ? 1 : 0) : count);
     }
     await tx.runAsync(
       `INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind)

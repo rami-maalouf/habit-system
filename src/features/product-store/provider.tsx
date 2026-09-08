@@ -5,7 +5,10 @@ import { AppState, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { createCheckIn } from '@/core/domain/commands';
-import type { BoardId, CommandId } from '@/core/domain/ids';
+import type { CommandId } from '@/core/domain/ids';
+import { parseBoardId } from '@/core/domain/ids';
+import { getBoard } from '@/core/domain/queries';
+import { refreshWidgetProjection } from '@/core/domain/widget-projection';
 import { reconcileReminderSchedules } from '@/core/domain/reminder-commands';
 import type { DomainError, DomainResult } from '@/core/domain/result';
 import type { ProductCore } from '@/platform/database/product-core';
@@ -17,7 +20,6 @@ import {
 } from '@/platform/notifications';
 import { addWidgetQuickActionListener, refreshWidgets } from '@/platform/widgets';
 import { addSignificantTimeChangeListener } from '@/platform/time-change';
-import { nextWidgetRefreshUtc } from '@/features/widgets/widget-props';
 import { spacing } from '@/theme';
 import { cloudKitTransport } from '@/platform/sync';
 import type { SyncTransport } from '@/core/sync/transport';
@@ -57,7 +59,11 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
   const [version, setVersion] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [sync, setSync] = useState(INITIAL_SYNC);
-  const refreshQueries = useCallback(() => setVersion((current) => current + 1), []);
+  const projectionGeneration = useRef(0);
+  const refreshQueries = useCallback(() => {
+    projectionGeneration.current += 1;
+    setVersion((current) => current + 1);
+  }, []);
   const coordinatorRef = useRef<SyncCoordinator | null>(null);
 
   useEffect(() => {
@@ -141,24 +147,30 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
   // the existing version effect performs one reconciliation for the event.
   useEffect(() => addSignificantTimeChangeListener(invalidate), [invalidate]);
 
-  // the timer also covers platforms without a native time-change adapter.
+  // cache refresh, publication, and foreground expiry share one snapshot.
+  // generation changes invalidate late results before their effects can commit.
   useEffect(() => {
     if (state.status !== 'ready') {
       return;
     }
-    const clock = state.core.clock;
+    const core = state.core;
+    const generation = projectionGeneration.current;
+    let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const arm = () => {
-      const delay = Math.max(
-        1000,
-        nextWidgetRefreshUtc(clock.nowUtcMs(), clock.timeZoneId()) - clock.nowUtcMs(),
-      );
-      timer = setTimeout(() => {
-        invalidate();
-      }, delay);
+    const isCurrent = () => !cancelled && generation === projectionGeneration.current;
+    const retry = () => {
+      // retain the stale timeline and retry at a bounded rate while foregrounded.
+      if (isCurrent()) timer = setTimeout(invalidate, 30_000);
     };
-    arm();
+    void refreshWidgetProjection(core).then((result) => {
+      if (!isCurrent()) return;
+      if (!result.ok) { retry(); return; }
+      const delay = result.value.expiresAtUtc - core.clock.nowUtcMs();
+      if (delay > 0) void refreshWidgets(result.value);
+      timer = setTimeout(invalidate, Math.max(0, delay));
+    }).catch(retry);
     return () => {
+      cancelled = true;
       if (timer !== null) {
         clearTimeout(timer);
       }
@@ -178,40 +190,35 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
     return () => subscription?.remove?.();
   }, [invalidate, reconcile]);
 
-  // every store change pushes the fresh projection into the widget
-  // timeline; widgets never query the database themselves
-  useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
-    void refreshWidgets(state.core);
-  }, [state, version]);
-
-  // the app-side half of the widget action contract: an interaction event
-  // records through the very same command the app's quick check-in uses,
-  // and a failure deep-links to Add Check-In instead of recording a
-  // partial row. home screen widget presses cannot reach here yet (their
-  // intent performs inside the extension process - see the widget layout's
-  // note), so today this serves the native executor and Live Activity
-  // paths while the widget itself deep-links.
+  // daily events open explicit fresh-state actions; count events retain
+  // their existing quick-create behavior and form fallback.
   useEffect(() => {
     if (state.status !== 'ready') {
       return;
     }
     const core = state.core;
-    return addWidgetQuickActionListener((boardId) => {
-      void createCheckIn(core, {
-        commandId: core.ids.uuid() as CommandId,
-        boardId: boardId as BoardId,
-        source: 'widget',
-      }).then((result) => {
+    let cancelled = false;
+    const remove = addWidgetQuickActionListener((value) => {
+      const boardId = parseBoardId(value);
+      if (!boardId) return;
+      void getBoard(core, boardId).then(async (board) => {
+        if (cancelled) return;
+        if (!board.ok || board.value.kind === 'daily') {
+          router.navigate(`/boards/${boardId}/quick-action`);
+          return;
+        }
+        const result = await createCheckIn(core, {
+          commandId: core.ids.uuid() as CommandId, boardId, source: 'widget',
+        });
+        if (cancelled) return;
         if (result.ok) {
           invalidate();
         } else {
-          router.push(`/boards/${boardId}/check-ins/new`);
+          router.navigate(`/boards/${boardId}/check-ins/new?source=widget`);
         }
       });
     });
+    return () => { cancelled = true; remove(); };
   }, [invalidate, state]);
 
   // a tapped reminder deep-links to its board's add check-in sheet, both

@@ -18,6 +18,28 @@ enum IntentCalendar {
     return hour * 60 + minute < startMinute ? try addingDays(-1, to: date) : date
   }
 
+  // a conservative display refresh deadline, never an economic day close.
+  // minute probes also observe skipped thresholds and repeated-hour rollbacks.
+  static func nextWidgetRefreshUtc(utcMs: Double, zone: String, startMinutes: [Int]) throws -> Double {
+    let calendar = try calendar(zone: zone)
+    let fields: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute]
+    let initial = calendar.dateComponents(fields, from: Date(timeIntervalSince1970: utcMs / 1000))
+    guard let hour = initial.hour, let minute = initial.minute else { throw IntentFailure.database }
+    let initialMinute = hour * 60 + minute
+    let starts = Set(startMinutes)
+    let limit = utcMs + 48 * 60 * 60_000
+    var instant = floor(utcMs / 60_000) * 60_000 + 60_000
+    while instant < limit {
+      let local = calendar.dateComponents(fields, from: Date(timeIntervalSince1970: instant / 1000))
+      guard let localHour = local.hour, let localMinute = local.minute else { throw IntentFailure.database }
+      let minuteOfDay = localHour * 60 + localMinute
+      if local.year != initial.year || local.month != initial.month || local.day != initial.day ||
+          starts.contains(where: { (minuteOfDay < $0) != (initialMinute < $0) }) { return instant }
+      instant += 60_000
+    }
+    return limit
+  }
+
   static func isValidDate(_ value: String) -> Bool {
     guard value.range(of: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", options: .regularExpression) != nil else { return false }
     let parts = value.split(separator: "-").compactMap { Int($0) }

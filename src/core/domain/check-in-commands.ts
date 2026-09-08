@@ -337,7 +337,7 @@ async function removeDateChecks(
 
 export function toggleDailyCheckIn(
   deps: CommandDeps,
-  input: { commandId: CommandId; boardId: BoardId; logicalDate?: LogicalDate; expectedCheckIns?: ExpectedCheckIn[] },
+  input: { commandId: CommandId; boardId: BoardId; logicalDate?: LogicalDate; expectedCheckIns?: ExpectedCheckIn[]; source?: 'app' | 'widget' },
 ): Promise<DomainResult<{ checked: boolean; created: boolean; checkInId: CheckInId | null; logicalDate: LogicalDate; removedCheckInIds: CheckInId[] }>> {
   return runCommand(deps, input.commandId, async (context) => {
     const { tx, now, timeZoneId } = context;
@@ -360,7 +360,7 @@ export function toggleDailyCheckIn(
     }
     const created = await insertCheckedRecord(deps, context, input.commandId, {
       boardId: board.id, logicalDate: date.value, occurredAtUtc: null, timeZoneId: null,
-      offsetMinutes: null, amount: null, note: null, source: 'app',
+      offsetMinutes: null, amount: null, note: null, source: input.source ?? 'app',
     });
     return ok({ ...created, checked: true, removedCheckInIds: [] });
   });

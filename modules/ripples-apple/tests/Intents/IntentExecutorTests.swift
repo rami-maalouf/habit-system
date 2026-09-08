@@ -444,8 +444,10 @@ final class IntentExecutorTests: XCTestCase {
     let count = "00000000-0000-4000-8000-00000000a001"
     let daily = "00000000-0000-4000-8000-00000000a002"
     try harness.database.run("UPDATE boards SET kind = 'daily', tracks_amount = 0, tracks_time = 0 WHERE id = ?", [.text(daily)])
+    for _ in 0..<2 { _ = try harness.legacyCheck(boardId: daily, date: "2026-08-30") }
     XCTAssertTrue(harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: count)).ok)
     XCTAssertEqual(try harness.database.rows("SELECT kind FROM widget_board_rows WHERE board_id = ?", [.text(daily)]).first?["kind"]?.string, "daily")
+    XCTAssertEqual(try harness.database.rows("SELECT strip FROM widget_board_rows WHERE board_id = ?", [.text(daily)]).first?["strip"]?.string, "[0,0,0,0,0,0,1]")
     let timeline = try harness.executor.widgetTimeline().get()
     let rows = try JSONSerialization.jsonObject(with: JSONEncoder().encode(timeline.entries[0].props.rows)) as! [[String: Any]]
     XCTAssertEqual(rows.first { $0["boardId"] as? String == count }?["kind"] as? String, "count")
@@ -533,6 +535,159 @@ final class IntentExecutorTests: XCTestCase {
     let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: Any]])
     XCTAssertEqual(Set(json[0].keys), ["timestamp", "props"])
     XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("private text"))
+  }
+
+  func testWidgetPublicationRefreshesConvertedHistoryWithoutMutationEvidence() throws {
+    let harness = try harness()
+    let daily = "00000000-0000-4000-8000-00000000a001"
+    let count = "00000000-0000-4000-8000-00000000a002"
+    for board in [daily, count] {
+      for _ in 0..<2 { _ = try harness.legacyCheck(boardId: board, date: "2026-08-30") }
+    }
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(daily)])
+    try harness.database.run("UPDATE widget_board_rows SET strip = '[0,0,0,0,0,0,99]', strip_end_date = '2026-08-29'")
+    let protectedTables = ["boards", "check_ins", "app_settings", "habit_actions", "command_receipts", "mutation_outbox"]
+    let before = try protectedTables.map { try harness.database.rows("SELECT * FROM \($0)") }
+
+    let timeline = try harness.executor.widgetTimeline().get()
+    let rows = timeline.entries[0].props.rows
+    XCTAssertEqual(rows.map(\.boardId), [daily, count])
+    XCTAssertEqual(rows[0].kind, .daily)
+    XCTAssertEqual(rows[0].strip, [0, 0, 0, 0, 0, 0, 1])
+    XCTAssertEqual(rows[1].strip, [0, 0, 0, 0, 0, 0, 2])
+    let encoded = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(rows)) as? [[String: Any]])
+    XCTAssertEqual(encoded.map { $0["checkedToday"] as? Bool }, [true, true])
+    XCTAssertEqual(try harness.database.rows("SELECT strip FROM widget_board_rows WHERE board_id = ?", [.text(daily)]).first?["strip"]?.string, "[0,0,0,0,0,0,1]")
+    XCTAssertEqual(try protectedTables.map { try harness.database.rows("SELECT * FROM \($0)") }, before)
+
+    harness.instant += 86_400_000
+    let nextDay = try harness.executor.widgetTimeline().get()
+    XCTAssertEqual(nextDay.entries[0].props.rows[0].strip, [0, 0, 0, 0, 0, 1, 0])
+    XCTAssertEqual(nextDay.entries[0].props.rows[1].strip, [0, 0, 0, 0, 0, 2, 0])
+    XCTAssertEqual(try harness.database.rows("SELECT DISTINCT strip_end_date FROM widget_board_rows").first?["strip_end_date"]?.string, "2026-08-31")
+    XCTAssertEqual(try protectedTables.map { try harness.database.rows("SELECT * FROM \($0)") }, before)
+  }
+
+  func testWidgetPublicationRollsBackCacheFailureAndRespectsSchemaGate() throws {
+    let harness = try harness()
+    let before = try harness.database.rows("SELECT * FROM widget_board_rows ORDER BY position")
+    try harness.database.run("CREATE TRIGGER fail_widget_cache BEFORE INSERT ON widget_board_rows BEGIN SELECT RAISE(ABORT, 'cache failed'); END")
+    XCTAssertEqual(harness.executor.widgetTimeline().error, .database)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM widget_board_rows ORDER BY position"), before)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions").count, 0)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts").count, 0)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 0)
+    try harness.database.run("DROP TRIGGER fail_widget_cache")
+    try harness.database.run("PRAGMA user_version = 99")
+    XCTAssertEqual(harness.executor.widgetTimeline().error, .migration)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM widget_board_rows ORDER BY position"), before)
+  }
+
+  func testWidgetPublicationMatchesSharedRefreshDeadlines() throws {
+    let data = try Data(contentsOf: Self.root.appendingPathComponent("src/core/automations/fixtures/widget-refresh.json"))
+    let cases = try XCTUnwrap((JSONSerialization.jsonObject(with: data) as? [String: Any])?["boundaryCases"] as? [[String: Any]])
+    let source = try fixture(), allMigrations = try migrations()
+    for item in cases {
+      let name = try XCTUnwrap(item["name"] as? String)
+      let generated = try XCTUnwrap(item["nowUtcMs"] as? NSNumber)
+      let expires = try XCTUnwrap(item["expectedExpiresAtUtc"] as? NSNumber)
+      var seed = try XCTUnwrap(source["seed"] as? [String: Any])
+      let template = try XCTUnwrap((seed["boards"] as? [[String: Any]])?.first)
+      seed["nowUtcMs"] = generated.doubleValue
+      seed["timeZoneId"] = try XCTUnwrap(item["timeZoneId"] as? String)
+      seed["boards"] = try XCTUnwrap(item["startMinutes"] as? [Int]).enumerated().map { index, minute in
+        var board = template
+        board["id"] = String(format: "00000000-0000-4000-8000-%012d", 7000 + index)
+        board["startOfDayMinute"] = minute
+        board["archived"] = false
+        return board
+      }
+      let harness = try Harness(seed: seed, migrations: allMigrations)
+      let timeline = try harness.executor.widgetTimeline().get()
+      XCTAssertEqual(timeline.entries[0].timestamp, generated.int64Value, name)
+      XCTAssertEqual(timeline.entries[1].timestamp, expires.int64Value, name)
+      XCTAssertFalse(timeline.entries[0].props.stale, name)
+      XCTAssertTrue(timeline.entries[1].props.stale, name)
+    }
+  }
+
+  func testWidgetRowMatchesSharedPropsForLegacyDuplicateStrips() throws {
+    let data = try Data(contentsOf: Self.root.appendingPathComponent("src/core/automations/fixtures/widget-refresh.json"))
+    let cases = try XCTUnwrap((JSONSerialization.jsonObject(with: data) as? [String: Any])?["propsCases"] as? [[String: Any]])
+    for item in cases {
+      let name = try XCTUnwrap(item["name"] as? String)
+      let row = try XCTUnwrap(item["row"] as? [String: Any])
+      let kind = try XCTUnwrap(IntentBoardKind(rawValue: XCTUnwrap(row["kind"] as? String)))
+      let value = try IntentWidgetRow(boardId: XCTUnwrap(row["boardId"] as? String),
+        kind: kind, title: XCTUnwrap(row["title"] as? String), symbol: XCTUnwrap(row["symbol"] as? String),
+        accentHex: XCTUnwrap(row["accentHex"] as? String), strip: XCTUnwrap(row["strip"] as? [Int]))
+      let actual = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(value)) as? NSDictionary)
+      XCTAssertEqual(actual, try XCTUnwrap(item["expected"] as? NSDictionary), name)
+    }
+  }
+
+  func testWidgetRefreshTracksRepeatedHourBackwardAndForwardWithoutLosingHistory() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE boards SET kind = 'daily', start_of_day_minute = 90 WHERE id = ?", [.text(board)])
+    _ = try harness.legacyCheck(boardId: board, date: "2026-11-01")
+    let history = try harness.database.rows("SELECT * FROM check_ins")
+    let cases: [(String, String, Bool, String)] = [
+      ("2026-11-01T05:45:00Z", "2026-11-01", true, "2026-11-01T06:00:00Z"),
+      ("2026-11-01T06:00:00Z", "2026-10-31", false, "2026-11-01T06:30:00Z"),
+      ("2026-11-01T06:30:00Z", "2026-11-01", true, "2026-11-02T05:00:00Z"),
+    ]
+    let formatter = ISO8601DateFormatter()
+    for (instant, date, checked, expires) in cases {
+      harness.instant = try XCTUnwrap(formatter.date(from: instant)).timeIntervalSince1970 * 1000
+      let timeline = try harness.executor.widgetTimeline().get()
+      let row = try XCTUnwrap(timeline.entries[0].props.rows.first { $0.boardId == board })
+      XCTAssertEqual(row.checkedToday, checked, instant)
+      XCTAssertEqual(row.strip, [0, 0, 0, 0, 0, 0, checked ? 1 : 0], instant)
+      XCTAssertEqual(timeline.entries[1].timestamp, Int64(try XCTUnwrap(formatter.date(from: expires)).timeIntervalSince1970 * 1000), instant)
+      XCTAssertEqual(try harness.database.rows("SELECT strip_end_date FROM widget_board_rows WHERE board_id = ?", [.text(board)]).first?["strip_end_date"]?.string, date)
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins"), history)
+    }
+  }
+
+  func testWidgetRefreshCapturesClockAndZoneOnceAndRemovesInactiveCacheRows() throws {
+    let harness = try harness()
+    var clockReads = 0, zoneReads = 0
+    let executor = IntentExecutor(database: harness.database, now: {
+      clockReads += 1
+      return harness.instant + Double(clockReads - 1) * 86_400_000
+    }, zone: {
+      zoneReads += 1
+      return zoneReads == 1 ? "America/New_York" : "UTC"
+    })
+    let timeline = try executor.widgetTimeline().get()
+    XCTAssertEqual(clockReads, 1)
+    XCTAssertEqual(zoneReads, 1)
+    XCTAssertEqual(timeline.entries[0].timestamp, Int64(harness.instant))
+    XCTAssertEqual(timeline.entries[1].timestamp, 1788148800000)
+    XCTAssertEqual(try harness.database.rows("SELECT DISTINCT strip_end_date FROM widget_board_rows").first?["strip_end_date"]?.string, "2026-08-30")
+
+    try harness.database.run("UPDATE boards SET archived_at = 1 WHERE order_key = '0'")
+    try harness.database.run("UPDATE boards SET deleted_at = 1 WHERE order_key = '1'")
+    let inactive = try harness.executor.widgetTimeline().get()
+    XCTAssertEqual(inactive.entries[0].props.rows, [])
+    XCTAssertEqual(inactive.entries[1].timestamp, 1788148800000)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM widget_board_rows"), [])
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox"), [])
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts"), [])
+  }
+
+  func testWidgetPublicationRejectsInvalidClockAndZoneWithoutChangingCache() throws {
+    let harness = try harness()
+    let before = try harness.database.rows("SELECT * FROM widget_board_rows ORDER BY position")
+    for instant in [Double.nan, Double.infinity, Double(Int64.max)] {
+      let executor = IntentExecutor(database: harness.database, now: { instant }, zone: { harness.timeZone })
+      XCTAssertEqual(executor.widgetTimeline().error, .database)
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM widget_board_rows ORDER BY position"), before)
+    }
+    harness.timeZone = "invalid/timezone"
+    XCTAssertEqual(harness.executor.widgetTimeline().error, .database)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM widget_board_rows ORDER BY position"), before)
   }
 
   func testSecondSQLiteConnectionReplaysTheSameReceiptWithoutDuplicatingOutbox() throws {

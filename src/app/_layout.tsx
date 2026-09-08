@@ -58,6 +58,7 @@ export default function RootLayout() {
           <Stack.Screen name="boards/new" options={sheet} />
           <Stack.Screen name="boards/[boardId]/edit" options={sheet} />
           <Stack.Screen name="boards/[boardId]/options" options={sheet} />
+          <Stack.Screen name="boards/[boardId]/quick-action" options={sheet} />
           <Stack.Screen name="boards/[boardId]/analytics" options={sheet} />
           <Stack.Screen name="boards/[boardId]/journal" options={sheet} />
           <Stack.Screen name="boards/[boardId]/check-ins/index" options={sheet} />

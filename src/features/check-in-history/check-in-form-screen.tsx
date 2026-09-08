@@ -25,6 +25,7 @@ import { useProduct, useProductQuery } from '../product-store';
 
 type CheckInFormScreenProps = {
   boardId: BoardId;
+  source?: 'app' | 'widget';
   // null creates a new check-in; otherwise the existing record is edited
   checkInId: CheckInId | null;
 };
@@ -99,7 +100,7 @@ function instantFor(
   ).getTime();
 }
 
-export function CheckInFormScreen({ boardId, checkInId }: CheckInFormScreenProps) {
+export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckInFormScreenProps) {
   const router = useRouter();
   const scheme = useScheme();
   const { core } = useProduct();
@@ -198,6 +199,7 @@ export function CheckInFormScreen({ boardId, checkInId }: CheckInFormScreenProps
           // the fresh mutation stamp instead of failing forever
           key={loadedRecord ? loadedRecord.mutationStamp : 'new'}
           board={board.value}
+          source={source}
           record={loadedRecord}
           onConflict={() => setConflict(true)}
           dirtyRef={dirtyRef}
@@ -228,6 +230,7 @@ export function CheckInFormScreen({ boardId, checkInId }: CheckInFormScreenProps
 // mounted only once its data exists, so form state seeds in useState
 function CheckInFormBody({
   board,
+  source,
   record,
   today,
   onConflict,
@@ -235,6 +238,7 @@ function CheckInFormBody({
   skipGuardRef,
 }: {
   board: Board;
+  source: 'app' | 'widget';
   record: CheckIn | null;
   today: LogicalDate;
   onConflict: () => void;
@@ -368,7 +372,7 @@ function CheckInFormBody({
           occurredAtUtc,
           amount,
           note,
-          source: 'app',
+          source,
         });
     if (result.ok) {
       invalidate();
@@ -384,7 +388,7 @@ function CheckInFormBody({
     }
     setError(result.error);
     setSaving(false);
-  }, [amountText, board, core, deviceZone, invalidate, logicalDate, nextCommandId, note, occurrenceEdited, onConflict, record, router, saving, skipGuardRef, timeOfDay]);
+  }, [amountText, board, core, deviceZone, invalidate, logicalDate, nextCommandId, note, occurrenceEdited, onConflict, record, router, saving, skipGuardRef, source, timeOfDay]);
 
   const confirmDelete = useCallback(() => {
     if (!record) {

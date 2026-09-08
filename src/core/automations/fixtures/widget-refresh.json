@@ -1,0 +1,268 @@
+{
+  "description": "Shared conservative widget refresh deadlines and timeline row props. These are display refresh times, never economic day-close boundaries.",
+  "boundaryCases": [
+    {
+      "name": "ordinary midnight",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1788105600000,
+      "startMinutes": [],
+      "expectedExpiresAtUtc": 1788148800000
+    },
+    {
+      "name": "shifted four am",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1788062460000,
+      "startMinutes": [
+        240
+      ],
+      "expectedExpiresAtUtc": 1788076800000
+    },
+    {
+      "name": "earliest distinct shift",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1788062482750,
+      "startMinutes": [
+        240,
+        90,
+        240,
+        720
+      ],
+      "expectedExpiresAtUtc": 1788067800000
+    },
+    {
+      "name": "spring midnight",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1772946000000,
+      "startMinutes": [
+        0
+      ],
+      "expectedExpiresAtUtc": 1773028800000
+    },
+    {
+      "name": "spring skipped threshold",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1772953140000,
+      "startMinutes": [
+        150
+      ],
+      "expectedExpiresAtUtc": 1772953200000
+    },
+    {
+      "name": "fall first threshold",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1793510940000,
+      "startMinutes": [
+        90
+      ],
+      "expectedExpiresAtUtc": 1793511000000
+    },
+    {
+      "name": "fall rollback changes logical date",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1793511900000,
+      "startMinutes": [
+        90
+      ],
+      "expectedExpiresAtUtc": 1793512800000
+    },
+    {
+      "name": "fall second threshold",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1793512800000,
+      "startMinutes": [
+        90
+      ],
+      "expectedExpiresAtUtc": 1793514600000
+    },
+    {
+      "name": "fall midnight",
+      "timeZoneId": "America/New_York",
+      "nowUtcMs": 1793505600000,
+      "startMinutes": [
+        0
+      ],
+      "expectedExpiresAtUtc": 1793595600000
+    },
+    {
+      "name": "conservative midnight before shift",
+      "timeZoneId": "Asia/Kathmandu",
+      "nowUtcMs": 1788113640000,
+      "startMinutes": [
+        240
+      ],
+      "expectedExpiresAtUtc": 1788113700000
+    },
+    {
+      "name": "year boundary",
+      "timeZoneId": "UTC",
+      "nowUtcMs": 1798761599500,
+      "startMinutes": [
+        0
+      ],
+      "expectedExpiresAtUtc": 1798761600000
+    },
+    {
+      "name": "month boundary",
+      "timeZoneId": "UTC",
+      "nowUtcMs": 1788220740000,
+      "startMinutes": [
+        0
+      ],
+      "expectedExpiresAtUtc": 1788220800000
+    }
+  ],
+  "propsCases": [
+    {
+      "name": "daily duplicate history",
+      "row": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "daily",
+        "position": 0,
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          1,
+          2,
+          3,
+          0,
+          0,
+          2
+        ],
+        "stripEndDate": "2026-08-30"
+      },
+      "expected": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "daily",
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          1
+        ],
+        "checkedToday": true
+      }
+    },
+    {
+      "name": "count duplicate history",
+      "row": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "count",
+        "position": 0,
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          1,
+          2,
+          3,
+          0,
+          0,
+          2
+        ],
+        "stripEndDate": "2026-08-30"
+      },
+      "expected": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "count",
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          1,
+          2,
+          3,
+          0,
+          0,
+          2
+        ],
+        "checkedToday": true
+      }
+    },
+    {
+      "name": "daily unchecked today",
+      "row": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "daily",
+        "position": 0,
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          1,
+          2,
+          3,
+          0,
+          0,
+          0
+        ],
+        "stripEndDate": "2026-08-30"
+      },
+      "expected": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "daily",
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "checkedToday": false
+      }
+    },
+    {
+      "name": "daily nonpositive cached values",
+      "row": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "daily",
+        "position": 0,
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          -2,
+          0,
+          2,
+          -1,
+          0,
+          0,
+          -3
+        ],
+        "stripEndDate": "2026-08-30"
+      },
+      "expected": {
+        "boardId": "00000000-0000-4000-8000-00000000a001",
+        "kind": "daily",
+        "title": "daily reading",
+        "symbol": "star.fill",
+        "accentHex": "#70A7FF",
+        "strip": [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checkedToday": false
+      }
+    }
+  ]
+}

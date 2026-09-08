@@ -1,28 +1,19 @@
 import { addUserInteractionListener } from 'expo-widgets';
 
-import { getWidgetProjection } from '@/core/domain/queries';
-import type { QueryDeps } from '@/core/domain/queries';
-import {
-  nextWidgetRefreshUtc,
-  widgetPropsFromProjection,
-} from '@/features/widgets/widget-props';
+import type { WidgetProjectionSnapshot } from '@/core/domain/widget-projection';
+import { widgetPropsFromProjection } from '@/features/widgets/widget-props';
 
 import RipplesBoardsWidget from './ripples-boards-widget';
 
 // pushes the current widget projection into the widget timeline: one entry
 // now, and one stale-marked entry past the next logical-day boundary so an
 // unrefreshed widget asks to be opened instead of showing wrong days
-export async function refreshWidgets(deps: QueryDeps): Promise<void> {
+export async function refreshWidgets(snapshot: WidgetProjectionSnapshot): Promise<void> {
   try {
-    const projection = await getWidgetProjection(deps);
-    if (!projection.ok) {
-      return;
-    }
-    const props = widgetPropsFromProjection(projection.value);
-    const boundary = nextWidgetRefreshUtc(deps.clock.nowUtcMs(), deps.clock.timeZoneId());
+    const props = widgetPropsFromProjection(snapshot.rows);
     RipplesBoardsWidget.updateTimeline([
-      { date: new Date(deps.clock.nowUtcMs()), props },
-      { date: new Date(boundary), props: { ...props, stale: true } },
+      { date: new Date(snapshot.generatedAtUtc), props },
+      { date: new Date(snapshot.expiresAtUtc), props: { ...props, stale: true } },
     ]);
   } catch {
     // widget refresh is best effort; the app itself stays authoritative

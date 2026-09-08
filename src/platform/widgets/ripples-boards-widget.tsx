@@ -20,11 +20,11 @@ import type { RipplesWidgetProps, WidgetRowProps } from '@/features/widgets/widg
 // every constant and helper it uses must live inside the function body,
 // because module-scope values are not serialized with it.
 //
-// the quick action deep-links to Add Check-In rather than writing in place.
-// expo-widgets runs an interactive button's App Intent inside the extension
+// quick actions deep-link to a current-state app flow.
+// expo-widgets runs an interactive button's app intent inside the extension
 // process (verified on device: `openAppWhenRun: NO`, perform() logged under
-// ExpoWidgetsTarget) and posts its interaction event to that process's own
-// NotificationCenter, so the app never observes the press and no validated
+// expowidgetstarget) and posts its interaction event to that process's own
+// notification center, so the app never observes the press and no validated
 // row could be written. per the spec's rule for an action that cannot
 // safely execute, the press deep-links instead of silently doing nothing;
 // writing in place needs the native executor in the local module.
@@ -42,11 +42,20 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
   const rows = (props.rows ?? []).slice(0, limit);
 
   const renderRow = (row: WidgetRowProps) => {
+    const daily = row.kind === 'daily';
+    // previously stored timelines may predate the explicit completion field.
+    const checked = row.checkedToday ?? row.strip[row.strip.length - 1] > 0;
+    const actionLabel = daily
+      ? props.stale ? `Review ${row.title} in Habit System` : `${checked ? 'Uncheck' : 'Check'} ${row.title}`
+      : `Check in to ${row.title}`;
+    const actionSymbol = daily
+      ? props.stale ? 'arrow.clockwise' : checked ? 'checkmark.circle.fill' : 'circle'
+      : 'circle';
     // the truncated title carries the full accessibility title; each
     // control keeps its own label, so the row never collapses into one
     // ambiguous element
     const titleLabel = props.stale
-      ? `${row.title}. Open Ripples to refresh.`
+      ? `${row.title}. Open Habit System to refresh.`
       : row.title;
     const days = row.strip.reduce((total, count) => (count > 0 ? total + 1 : total), 0);
     return (
@@ -61,7 +70,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
         <Spacer />
         <HStack
           spacing={3}
-          modifiers={[accessibilityLabel(`${days} of the last 7 days checked in`)]}
+          modifiers={[accessibilityLabel(`${props.stale ? 'Saved history: ' : ''}${days} of the last 7 days checked in`)]}
         >
           {row.strip.map((count, index) => (
             <Circle
@@ -69,16 +78,18 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
               modifiers={[
                 frame({ width: 8, height: 8 }),
                 foregroundStyle(count > 0 ? row.accentHex : '#787880'),
-                opacity(count > 0 ? Math.min(1, 0.4 + count * 0.2) : 0.25),
+                opacity(count > 0 ? daily ? 1 : Math.min(1, 0.4 + count * 0.2) : 0.25),
               ]}
             />
           ))}
         </HStack>
         <Link
-          destination={`habitsystem://boards/${row.boardId}/check-ins/new`}
-          modifiers={[accessibilityLabel(`Check in to ${row.title}`)]}
+          destination={daily
+            ? `habitsystem://boards/${row.boardId}/quick-action`
+            : `habitsystem://boards/${row.boardId}/check-ins/new?source=widget`}
+          modifiers={[accessibilityLabel(actionLabel)]}
         >
-          <Image systemName="circle" color={row.accentHex} size={16} />
+          <Image systemName={actionSymbol} color={row.accentHex} size={16} />
         </Link>
       </HStack>
     );
@@ -87,7 +98,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
   if (rows.length === 0) {
     return (
       <VStack modifiers={[widgetURL('habitsystem://boards/new'), padding({ all: 12 })]}>
-        <Text>Open Ripples to create your first board</Text>
+        <Text>Open Habit System to create your first board</Text>
       </VStack>
     );
   }

@@ -7,6 +7,17 @@ struct IntentWidgetRow: Codable, Equatable, Sendable {
   let symbol: String
   let accentHex: String
   let strip: [Int]
+  let checkedToday: Bool
+
+  init(boardId: String, kind: IntentBoardKind, title: String, symbol: String, accentHex: String, strip: [Int]) {
+    self.boardId = boardId
+    self.kind = kind
+    self.title = title
+    self.symbol = symbol
+    self.accentHex = accentHex
+    self.strip = kind == .daily ? strip.map { $0 > 0 ? 1 : 0 } : strip
+    checkedToday = (self.strip.last ?? 0) > 0
+  }
 }
 
 struct IntentWidgetProps: Codable, Equatable, Sendable {
@@ -22,15 +33,12 @@ struct IntentWidgetEntry: Codable, Equatable, Sendable {
 struct IntentWidgetTimeline: Codable, Sendable {
   let entries: [IntentWidgetEntry]
 
-  init(rows: [IntentWidgetRow], instant: Double, zone: String) throws {
-    let calendar = try IntentCalendar.calendar(zone: zone)
-    let components = calendar.dateComponents([.hour, .minute, .second], from: Date(timeIntervalSince1970: instant / 1000))
-    let elapsed = ((components.hour! * 60 + components.minute!) * 60 + components.second!) * 1000
-    // matches nextWidgetRefreshUtc in widget-props.ts, including its stale marker
-    let boundary = instant + Double(86_400_000 - elapsed) + 1000
+  init(rows: [IntentWidgetRow], generatedAtUtc: Double, expiresAtUtc: Double) throws {
+    guard let generated = Int64(exactly: generatedAtUtc), let expires = Int64(exactly: expiresAtUtc),
+          expires > generated else { throw IntentFailure.database }
     entries = [
-      IntentWidgetEntry(timestamp: Int64(instant), props: IntentWidgetProps(rows: Array(rows.prefix(12)), stale: false)),
-      IntentWidgetEntry(timestamp: Int64(boundary), props: IntentWidgetProps(rows: Array(rows.prefix(12)), stale: true)),
+      IntentWidgetEntry(timestamp: generated, props: IntentWidgetProps(rows: Array(rows.prefix(12)), stale: false)),
+      IntentWidgetEntry(timestamp: expires, props: IntentWidgetProps(rows: Array(rows.prefix(12)), stale: true)),
     ]
   }
 }

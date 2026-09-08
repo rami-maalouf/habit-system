@@ -2,6 +2,48 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T7 - fresh widget fallback and shared Daily receipts (in progress, 2026-09-08)
+
+1. T7a adds binary Daily widget rows and checked state, with Count intensity preserved.
+   Daily links open a dedicated explicit Check/Uncheck screen. Opening, remounting, or
+   redelivering the route writes nothing. The screen resolves current board kind/date/state,
+   confirms note-bearing removals against captured ids/stamps, and retains widget provenance.
+   Creation Undo owns the exact check and command; stale state refreshes before another action.
+2. A derived-only transaction captures clock/zone once, rebuilds active widget rows, and
+   returns matching generation/expiry metadata. TS and Swift share twelve calendar vectors
+   and four props vectors, including shifted days, spring gaps, and repeated-hour rollback.
+   Cache refresh does not mutate checks, actions, HLC settings, receipts, or outbox evidence.
+   Failures roll back the cache. Expiry is conservative and is not an economic day-close rule.
+3. The provider publishes the prepared snapshot and arms its timer from the same expiry.
+   Generation/cleanup guards reject late results; an independent review finding added a
+   bounded 30-second retry after transient cache failure. Donated Daily events reuse the
+   explicit route. Count retains Add Check-In; new links carry widget source and resolve
+   current kind. Old unmarked Count links cannot be distinguished from ordinary app links.
+4. Tests exercise the installed Expo widget compiler and serialized runtime, route races,
+   delayed note confirmation across midnight, unmount cancellation, provider recovery,
+   stale generations, and exact publication deadlines. Independent non-author reviews of
+   the core, native implementation, UI, provider, adapters, and tests are approved.
+5. T7a gates: `bun run validate` exit 0, 60 suites and 772 tests, global coverage
+   97.01/95.26/95.48/97.5, all 42 core files at 100 percent on all four metrics. Native:
+   9 plugin and 71 Swift tests pass without compiler warnings. A test import-order cleanup
+   then passed its focused suite. The fork-only Watchman watch was reset; the final full
+   validation has no recrawl warning. Lint, typecheck, and diff hygiene are clean.
+6. The simulator native build succeeded at `.artifacts/t7/qa-build/habitsystem.app`.
+   The inherited Expo Dev Launcher script-phase warning remains; no generated Xcode file
+   was edited. The current widget JSX is registered by the final Metro runtime at launch.
+   Actual medium-widget light/dark captures show binary checked/unchecked Daily states,
+   correct accessibility actions, and retained Count intensity. Real widget opening and
+   repeated delivery preserve state. Uncheck, Check with widget source, exact Undo,
+   current-kind recovery, note cancellation, and confirmed note removal pass. The initial
+   post-confirm read preceded the async commit; the settled read proves the exact removal.
+   The original Count board's complete historical rows remain byte-for-byte unchanged,
+   including its two original live checks. Final scoped runtime logs contain zero entries.
+   Evidence is retained under `.artifacts/t7/qa/`.
+7. T7b exact shared returned-receipt coverage remains pending. Existing T3 Daily intent
+   semantics are retained. T8 owns actual Shortcuts invocation and native-specific audit.
+   The SDK uses one timeline per widget kind, so an offscreen active board may conservatively
+   expire a smaller family early; the opened action always resolves authoritative state.
+
 ### T6 - binary Daily heatmaps and aligned accessible sizing (2026-09-08)
 
 1. Detail passes explicit board kind into the heatmap. Eligible Daily cells use a binary

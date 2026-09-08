@@ -1,5 +1,7 @@
 import type { WidgetBoardRow } from '@/core/domain/entities';
 
+export { nextWidgetRefreshUtc } from '@/core/calendar/widget-refresh';
+
 // props handed to the widget timeline; rows follow active home order and
 // carry everything a family needs to render without ad hoc queries
 export type WidgetRowProps = {
@@ -8,7 +10,8 @@ export type WidgetRowProps = {
   title: string;
   symbol: string;
   accentHex: string;
-  // seven logical days ending today, oldest first; values are counts
+  checkedToday: boolean;
+  // seven logical days ending today; daily values are binary, count values are counts.
   strip: number[];
 };
 
@@ -37,26 +40,9 @@ export function widgetPropsFromProjection(rows: WidgetBoardRow[]): RipplesWidget
       title: row.title,
       symbol: row.symbol,
       accentHex: row.accentHex,
-      strip: row.strip,
+      checkedToday: row.strip[row.strip.length - 1] > 0,
+      strip: row.kind === 'daily' ? row.strip.map((count) => count > 0 ? 1 : 0) : row.strip,
     })),
     stale: false,
   };
-}
-
-// the earliest possible logical-day boundary is local midnight (start-of-day
-// shifts only push a board's boundary later), so the stale entry lands there
-export function nextWidgetRefreshUtc(nowUtcMs: number, timeZoneId: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-    hour12: false,
-    timeZone: timeZoneId,
-  }).formatToParts(new Date(nowUtcMs));
-  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
-  const elapsedMs =
-    ((value('hour') % 24) * 3600 + value('minute') * 60 + value('second')) * 1000;
-  const dayMs = 24 * 3600 * 1000;
-  // one extra second keeps the entry safely past the boundary
-  return nowUtcMs + (dayMs - elapsedMs) + 1000;
 }

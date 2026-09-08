@@ -1,3 +1,6 @@
+import { act } from '@testing-library/react-native';
+import { router } from 'expo-router';
+
 import type { WidgetBoardRow } from '@/core/domain/entities';
 import type { BoardId, LogicalDate } from '@/core/domain/ids';
 import { getGroupedCheckInHistory } from '@/core/domain/queries';
@@ -54,18 +57,18 @@ describe('widget props', () => {
     const props = widgetPropsFromProjection([count, daily]);
     expect(props.rows).toEqual([
       expect.objectContaining({ kind: 'count', strip: count.strip }),
-      expect.objectContaining({ kind: 'daily', strip: daily.strip }),
+      expect.objectContaining({ kind: 'daily', strip: [0, 1, 0, 1, 0, 0, 1], checkedToday: true }),
     ]);
   });
 
-  it('schedules the stale entry just past the next local midnight', () => {
+  it('schedules the stale entry exactly at the next local midnight', () => {
     // 2026-08-30 16:00 utc is noon in new york; 12 hours to midnight
     const now = Date.UTC(2026, 7, 30, 16, 0, 0);
     const next = nextWidgetRefreshUtc(now, 'America/New_York');
-    expect(next).toBe(now + 12 * 3600 * 1000 + 1000);
+    expect(next).toBe(now + 12 * 3600 * 1000);
     // exactly at midnight the next boundary is a full day away
     const atMidnight = nextWidgetRefreshUtc(Date.UTC(2026, 7, 31, 4, 0, 0), 'America/New_York');
-    expect(atMidnight).toBe(Date.UTC(2026, 8, 1, 4, 0, 0) + 1000);
+    expect(atMidnight).toBe(Date.UTC(2026, 8, 1, 4, 0, 0));
   });
 });
 
@@ -76,7 +79,7 @@ describe('widget wiring', () => {
     notificationsPlatformMock.reset();
   });
 
-  async function seedBoard(title = 'widget board'): Promise<BoardId> {
+  async function seedBoard(title = 'widget board', kind: 'daily' | 'count' = 'count'): Promise<BoardId> {
     const opened = await getProductCore();
     if (!opened.ok) {
       throw new Error('core failed');
@@ -87,6 +90,7 @@ describe('widget wiring', () => {
     const created = await createBoard(opened.value, {
       commandId: newCommandId(),
       title,
+      kind,
       symbol: 'star.fill',
       accentHex: '#70A7FF',
       usesTintedBackground: true,
@@ -128,6 +132,25 @@ describe('widget wiring', () => {
       throw new Error('history failed');
     }
     expect(history.value.months[0].days[0].checkIns[0].source).toBe('widget');
+  });
+
+  it('reuses the explicit Daily action route for repeated donated events without creating a check', async () => {
+    const boardId = await seedBoard('daily donated habit', 'daily');
+    renderRouter('src/app', { initialUrl: '/' });
+    await screen.findByText('daily donated habit');
+    widgetsPlatformMock.emitQuickAction(boardId);
+    await settle();
+    await screen.findByTestId('daily-widget-action');
+    widgetsPlatformMock.emitQuickAction(boardId);
+    await settle();
+    expect(screen).toHavePathname(`/boards/${boardId}/quick-action`);
+    const opened = await getProductCore();
+    if (!opened.ok) throw new Error(opened.error.message);
+    const history = await getGroupedCheckInHistory(opened.value, boardId);
+    expect(history.ok && history.value.months).toEqual([]);
+    act(() => router.back());
+    await settle();
+    expect(screen).toHavePathname('/');
   });
 
   it('deep-links to the add check-in sheet when a donated action cannot execute', async () => {
