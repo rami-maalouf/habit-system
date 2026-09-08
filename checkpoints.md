@@ -2167,3 +2167,67 @@ none can be built or verified without a signed Apple Developer team:
    - screenshots auto-captured with each interaction; full-resolution baselines happen in T7.
 7. Deviations from the reference: none. Notable in-spec decisions: `@expo/ui` receives a reviewed behavior-focused Jest mock (`src/testing/expo-ui.mock.tsx`) because jest-expo ships none and the real package needs the native ObservableState runtime; test infrastructure under `src/testing/` is excluded from coverage as a reviewed exclusion; the accessibility section labels the forced-fallback state `Material mode:` so material status text stays unique per section. Accepted risks from review: the universal `@expo/ui` Slider and Picker expose no accessible-name prop, so their name association is the adjacent text label pinned by real testID props in tests and confirmed by the Argent describe evidence; Jest mocks cannot prove native Host rendering or the native accessibility tree, which rest on the Argent evidence in field 6 and the T7 device validation.
 8. Commit and push: `41de0c3`, pushed to `origin/main`.
+
+### T17 - coin balance and virtualized history (2026-09-08)
+
+1. The Boards trailing header now opens Coins through an accessible integer
+   balance pill before edit and plus. Coins shows available balance, raw earned
+   and spent totals, an explanation of reversals/adjustments, Coin History and
+   the temporary reward placeholder. Negative balances retain their sign and
+   explain that future earnings pay them back. Loading and errors never invent
+   zero balances. Existing board check, Undo and navigation remain intact.
+2. History uses a native virtualized SectionList, newest stored logical date
+   first and then descending timestamp/id. It displays every immutable row,
+   distinct reversal/restoration/correction/cancellation explanations and claim
+   title snapshots. Archived, deleted, empty-title tombstone and missing parent
+   references remain readable. Stored dates format directly, including early
+   years, without timezone reassignment or Date.UTC year remapping.
+3. SQL totals return one aggregate row and validate exact integer text before
+   converting to supported JS numbers; excessive totals report capacity rather
+   than rounding. SQLite integer overflow remains a query error. The history
+   reader projects only display fields, uses the existing history index and
+   tuple keyset pages with one lookahead row, then resolves at most one page of
+   metadata in the same snapshot. It never loads notes, actions or proof blobs.
+   No schema change or new native binary is needed.
+4. Each page request belongs to a committed query generation. Duplicate
+   end-reached callbacks share one request, failed pages retain rows and retry
+   the same cursor, and old successes/failures/finalizers cannot replace refreshed
+   data or release another request's guard. Date groups merge across page edges.
+5. Thirty-seven real SQL tests cover raw sign totals, negative claims, precision,
+   indexed/deep pages, tuple ties, absent parents, read failures and a two-connection
+   WAL snapshot. Fourteen feature tests cover routed navigation, real Home
+   check/Undo, seven-row bonus history, signs, labels, loading/error recovery,
+   page boundaries and stale-request races. Independent review approves all
+   source and passes an additional 180-row oracle across page sizes 1/7/50/100,
+   mixed-case v4/v5 ids, binary ties and dates from year 0000 to 9999.
+6. Final `bun run validate` exits 0: 107 suites / 1,670 tests, global coverage
+   97.70/96.24/95.77/97.97 and all 72 core files at 100 percent. Native gates
+   remain green at 9 plugin and 131 Swift tests. `git diff --check` passes.
+   Evidence: `.artifacts/t17/validate-main-final.log`, `native-main.log`,
+   `core-acceptance.md`, `independent-acceptance.md` and focused/oracle logs.
+7. Simulator testing first reproduced maximum-balance toolbar collapse, a
+   split Spent amount at accessibility text sizes, a long history delta hiding
+   its title, and two nine-digit totals overflowing at moderate text size.
+   The pill now reserves room for the native controls and scales the complete
+   signed integer; totals and history use vertical layouts when needed and
+   constrained columns otherwise. Ordinary balances retain their normal size,
+   full accessibility labels remain available and no amount is abbreviated.
+   Presentation-only query overrides exercised extreme values without adding
+   fabricated ledger entries. Each override was restored by identity before
+   a real-state cold launch.
+8. Actual signed-native QA preserves every prior T16 row and canonical ledger
+   payload. A new ordinary-form Daily habit and Home Check/Undo change the pill
+   8 -> 9 -> 8 and totals to earned 16 / spent 8. History shows both immutable
+   entries and keeps earlier dates separate. All four reproduced visual issues
+   pass their affected native rechecks; Edit/Create/Cancel remain usable. At
+   the maximum signed integer the native Boards title shortens, while normal
+   balances retain the full title and Coins displays the full amount.
+9. Final cold launch has zero captured runtime log entries. All owned QA apps,
+   Argent services and four QA simulators are stopped. The final backup has
+   32 boards, 73 checks, 100 actions, 24 ledger rows, 34 periods, 325 receipts
+   and 322 outbox rows; all T16 rows remain exact. Backup SHA256:
+   `d90e0e57f38c9d139a28afc4f08cf935519854b0d3e9bb0b207ab1e8d2884f6b`.
+   Fourteen additional receipts are successful no-op reminder reconciliations.
+   Evidence: `.artifacts/t17/qa/qa-proof.md`, `verification.json`, `verify.py`,
+   `after-shutdown.db`, final screenshots and accessibility captures;
+   `.artifacts/t17/independent-layout-final.md` approves the final corrections.

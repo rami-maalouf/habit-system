@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T16 and Checkpoint B are done; T17 Coins screens and balance pill is next. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T17 and Checkpoint B are done; T18 reward storage and claims is next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -135,7 +135,8 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: coin/stack rules, command/reconciliation helpers, Swift implementation, shared fixtures, tests.
   - Depends on: T15.
 
-- [ ] **T17: Coins screens and balance pill**
+- [x] **T17: Coins screens and balance pill**
+  - Status: done. Accessible balance, raw totals and indexed virtualized history pass 1,670 tests with all 72 core files at 100 percent, 9 plugin and 131 Swift checks, independent review and actual light/dark simulator QA. Four reproduced native layout issues are fixed, including signed maximum balances and large text. Prior rows remain exact; see `checkpoints.md` and `.artifacts/t17/qa/`.
   - Acceptance: accessible balance pill, `/coins` balance/earned/spent with rewards placeholder, `/coins/history` virtualized newest-first ledger grouped by logical date. Show negative balance and meaningful restoration/compensation entries. Historical missing board/reward references have stable readable fallbacks.
   - Verify: queries/features, negative balance and deleted-reference history, light/dark simulator evidence.
   - Ownership scope: routes, coin screens/history, home header, feature tests.

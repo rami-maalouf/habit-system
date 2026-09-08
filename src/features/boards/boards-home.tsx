@@ -16,6 +16,7 @@ import { BoardCard } from './board-card';
 import { confirmDailyUncheck } from './confirm-daily-uncheck';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { CoinBalancePill } from '../coins/coin-balance-pill';
 
 type UndoState = {
   boardId: BoardId;
@@ -209,7 +210,8 @@ export function BoardsHomeScreen() {
             </View>
           ),
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <CoinBalancePill />
               <ProductPressable
                 onPress={() => setEditMode((current) => !current)}
                 label={editMode ? 'Done editing boards' : 'Edit boards'}
