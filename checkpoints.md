@@ -136,10 +136,37 @@
    `8647add1dd7caa5bf1731c1b64b3068fdf48fd95343d54614c7cce9a7c80114f`.
    Evidence is packaged under `.artifacts/t15b2/qa/`; the dedicated simulator
    stays booted with both apps terminated for the next bounded verification.
-17. T15 remains in progress. Moves/deletion/non-earning restore, prospective
-   configuration and Earn Coins/Daily Coin Cap controls follow the check/removal
-   writers. T16 owns stack-bonus production integration. Intermediate builds
-   remain development-only until T19/T20 compatibility.
+17. T15b3 captures both stored dates before a check move, writes ordered
+   `move_out`/`move_in` evidence and settles both scopes atomically. Only a timely
+   source move-out reverses its original coin; the destination and moving back
+   never mint another award. Same-date note, amount and time edits preserve
+   actions and ledger rows. Board deletion snapshots old policies before link
+   detachment/tombstones, removes exact live tokens, settles each date once and
+   retains immutable closed history. Every live action call supplies an explicit
+   target and policy. Normal imports and direct reference seeding explicitly use
+   `preserve-history`; missing/other import modes fail before any writes.
+18. Fourteen real-SQL public tests cover move boundaries, moving back, informational
+   edits, Daily conflicts, root deletion, preflight topology errors, ledger failure
+   rollback/retry, non-earning imports and direct seeding. Independent source/test
+   review approves the slice. Integrated `bun run validate` passes 90 suites /
+   1,355 tests, global coverage 97.43/96.13/95.6/97.77 and all 60 core files at
+   100 percent. Native gates remain 9 plugin / 107 Swift tests; diff hygiene
+   passes. Evidence: `.artifacts/t15b3/acceptance.md`, `validate-integrated.log`
+   and `native-integrated.log`.
+19. Independent actual B3 verification uses the existing signed binary with
+   frozen B3 JavaScript. Native date-picker Save moves a check to yesterday and
+   back, preserving its id/note and producing only the original-scope reversal.
+   The normal board-delete confirmation tombstones a fresh closed-day fixture
+   while preserving its source action and award byte-for-byte. A public explicit
+   `preserve-history` import adds one restored check and one null-policy baseline
+   with no ledger change; same-command replay preserves every table exactly.
+   All B2 baseline rows remain exact. Final totals are 21 boards / 55 checks /
+   72 actions / 8 ledger rows, 249 receipts and 223 outbox rows, with zero
+   connected runtime-console entries. Evidence: `.artifacts/t15b3/qa/`.
+20. T15 remains in progress. Activity-period restoration, prospective configuration
+   and Earn Coins/Daily Coin Cap controls follow the writer integration. T16 owns
+   stack-bonus production integration. Intermediate builds remain development-only
+   until T19/T20 compatibility.
 
 ### T14 - stack screens and calendar refresh (2026-09-08)
 

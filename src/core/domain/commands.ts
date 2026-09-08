@@ -31,7 +31,8 @@ import {
   saveSelectedIcon,
   tombstoneBoardGraph,
 } from '../persistence/repositories/support';
-import { appendCheckAction, seedLegacyCheckActions } from './check-in-mutations';
+import { appendCheckAction, captureBoardDatePolicies, seedLegacyCheckActions } from './check-in-mutations';
+import { settleCheckCoinScope } from './coin-settlement';
 import { EMPTY_BOARD_ANCHOR, normalizeBoardAnchorFields, validateBoardAnchorGraph, type BoardAnchorFields, type BoardAnchorOptions } from './board-anchor';
 import type { Board, BoardKind, CheckIn, Reminder, SelectedIcon } from './entities';
 import type { BoardId, CheckInId, CommandId, LogicalDate, ReminderId } from './ids';
@@ -371,10 +372,14 @@ export function deleteBoard(
     }
     const dependents = await listBoardAnchorDependents(tx, board.id);
     const checks = await listBoardCheckIns(tx, board.id);
+    const dates = [...new Set(checks.map((check) => check.logicalDate))];
+    const policies = await captureBoardDatePolicies(context, board.id, dates);
+    if (!policies.ok) return policies;
     await seedLegacyCheckActions(deps, tx, checks, now);
     const mutationStamp = stamp();
     for (const check of checks) {
-      await appendCheckAction(deps, context, input.commandId, check, 'uncheck', mutationStamp);
+      await appendCheckAction(deps, context, input.commandId, check, 'uncheck', mutationStamp,
+        check.id, policies.value.get(check.logicalDate)!);
     }
     for (const dependent of dependents) {
       await updateBoardRow(tx, { ...dependent, ...EMPTY_BOARD_ANCHOR, updatedAt: now, mutationStamp });
@@ -392,6 +397,7 @@ export function deleteBoard(
     for (const periodId of descendants.periodIds) {
       await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
     }
+    for (const logicalDate of dates) await settleCheckCoinScope(deps, context, { boardId: board.id, logicalDate });
     await rebuildWidgetRows(tx, now, timeZoneId);
     return ok(undefined);
   });
@@ -504,7 +510,7 @@ export function importSnapshot(
   input: ImportSnapshotInput,
 ): Promise<DomainResult<ImportSummary>> {
   return runCommand(deps, input.commandId, (context) =>
-    importSnapshotInTransaction(deps, context, input.draft),
+    importSnapshotInTransaction(deps, context, input.draft, 'preserve-history'),
   );
 }
 
@@ -514,7 +520,11 @@ export async function importSnapshotInTransaction(
   deps: CommandDeps,
   { tx, now, timeZoneId, stamp }: CommandContext,
   importDraft: ImportDraft,
+  earningMode: 'preserve-history',
 ): Promise<DomainResult<ImportSummary>> {
+    if (earningMode !== 'preserve-history') {
+      return err('validation', 'Import must preserve historical earnings.');
+    }
     const summary: ImportSummary = {
       boardsCreated: 0,
       boardsSkipped: 0,
