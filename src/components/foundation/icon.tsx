@@ -7,6 +7,7 @@ import { Platform, Text } from 'react-native';
 export const icons = {
   add: { sfSymbol: 'plus', fallbackGlyph: '+' },
   settings: { sfSymbol: 'gearshape.fill', fallbackGlyph: '⚙' },
+  stacks: { sfSymbol: 'square.stack.3d.up', fallbackGlyph: '▤' },
   checkmark: { sfSymbol: 'checkmark', fallbackGlyph: '✓' },
   close: { sfSymbol: 'xmark', fallbackGlyph: '×' },
   pencil: { sfSymbol: 'pencil', fallbackGlyph: '✎' },

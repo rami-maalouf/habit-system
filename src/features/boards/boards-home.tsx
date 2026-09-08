@@ -194,14 +194,19 @@ export function BoardsHomeScreen() {
           // native layout must finish before navigation can find the scroll view.
           scrollEdgeEffects: { top: scrollHeaderReady ? 'soft' : 'automatic' },
           headerLeft: () => (
-            <ProductPressable
-              onPress={() => router.push('/settings')}
-              label="Settings"
-              hint="Opens settings"
-              testID="open-settings"
-            >
-              <Icon name="settings" size={22} color={semanticFallbacks.label[scheme]} />
-            </ProductPressable>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <ProductPressable
+                onPress={() => router.push('/settings')}
+                label="Settings"
+                hint="Opens settings"
+                testID="open-settings"
+              >
+                <Icon name="settings" size={22} color={semanticFallbacks.label[scheme]} />
+              </ProductPressable>
+              <ProductPressable onPress={() => router.push('/stacks')} label="Stacks" hint="Opens habit stacks" testID="open-stacks">
+                <Icon name="stacks" size={22} color={semanticFallbacks.label[scheme]} />
+              </ProductPressable>
+            </View>
           ),
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: spacing.md }}>

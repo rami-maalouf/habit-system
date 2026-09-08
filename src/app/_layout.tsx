@@ -54,6 +54,8 @@ export default function RootLayout() {
       <ProductProvider>
         <Stack>
           <Stack.Screen name="index" options={scrollingHeader} />
+          <Stack.Screen name="stacks/index" options={scrollingHeader} />
+          <Stack.Screen name="stacks/[rootId]" options={scrollingHeader} />
           <Stack.Screen name="boards/[boardId]/index" options={scrollingHeader} />
           <Stack.Screen name="boards/new" options={sheet} />
           <Stack.Screen name="boards/[boardId]/edit" options={sheet} />

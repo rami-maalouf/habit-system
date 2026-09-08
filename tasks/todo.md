@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T13 are done; T14 screens are next. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T14 and Checkpoint B are done; T15 ledger rules and earnings are next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -105,7 +105,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: stack analytics, domain queries, tests.
   - Depends on: T12.
 
-- [ ] **T14: Stack screens**
+- [x] **T14: Stack screens**
   - Acceptance: header Stacks action, list with ordered members/current date state/informational time/weekly count/current streak, detail heatmap and member counts, and empty state linking to Create Board. Route identity uses the structural root id and remains stable when display order changes.
   - Verify: feature tests and light/dark simulator evidence; no overnight-run language in product UI.
   - Ownership scope: stack routes/screens, home header integration, feature tests.
@@ -113,7 +113,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
 
 ### Checkpoint B
 
-- [ ] User-entered habits derive the expected topology and same-date runs; checks on consecutive dates never combine. Time edits are informational, archived eligibility is date-based, and every gate/review is recorded.
+- [x] User-entered habits derive the expected topology and same-date runs; checks on consecutive dates never combine. Time edits are informational, archived eligibility is date-based, and every gate/review is recorded.
 
 ## Phase 3: coins and rewards
 

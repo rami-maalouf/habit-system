@@ -2,6 +2,63 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T14 - stack screens and calendar refresh (2026-09-08)
+
+1. The Boards header opens `/stacks`. A virtualized stack list shows the ordered
+   active members, their exact-root-date checked/eligible state, optional labels,
+   informational time, weekly completed days and current streak. Empty state
+   explains anchors and opens the existing Create Board form.
+2. `/stacks/[rootId]` uses the structural root identity independently of display
+   order and shows the current run, 365-date history, longest streak and per-member
+   weekly counts. Missing/non-root/all-archived routes have explicit recovery.
+   An absent time hint remains distinct from configured midnight. An empty
+   required set is unavailable, without suggesting zero-of-zero completion.
+3. A shared presentation-only CalendarHeatmap preserves the board grid's measured
+   weekday sizing and initial scroll adjustment. Stack cells distinguish none,
+   some, most, all and unavailable through text alternatives and non-color cues.
+   Count and Daily board adapters retain their existing semantics and scroll.
+4. The stack-local snapshot hook reuses the existing query cancellation envelope
+   and retains ready data during refresh. Captured deadlines drive cancellable
+   local refresh; request/root guards reject late results and stale route data.
+   An expired result gets one immediate reread, then a bounded 30-second recovery
+   after repeated expiry. This does not publish widgets or reset history scroll.
+5. Fourteen new routed/refresh cases cover empty creation, ordered list/detail,
+   all history states, malformed/missing roots, midnight versus absent hints,
+   optional checked-but-ineligible history, archived-root week rollover, route/
+   time-zone late-result cancellation, unmount and bounded expiry recovery.
+   Fourteen inherited heatmap/UI regressions pass after extraction.
+6. Independent plan_review approved final source and focused tests. The first
+   aggregate gate found a React refs-during-render lint error; request identity
+   now installs and clears in the committed effect lifecycle, with the same
+   generation protection and no lint suppression. The independent review also
+   requested the two added optional-gap and repeated-expiry acceptance cases.
+7. Final `bun run validate` exits 0: 75 suites / 988 tests, global coverage
+   97.15/95.63/95.32/97.57, all 49 core files at 100 percent. Lint/typecheck and
+   `git diff --check` pass. Unchanged native source passes 9 plugin / 74 Swift
+   tests. Evidence: `.artifacts/t14/validate-final.log`, `native.log`,
+   `green-lifecycle.log`, `lint-final.log` and `independent-acceptance.md`.
+8. Non-author simulator acceptance passes on two dedicated devices. Fresh Empty
+   QA verifies actual Home -> Stacks -> empty state -> Create/Cancel with zero
+   boards, then anchored Daily creation, Save, detail and reopen with no invented
+   history. The device is shut down with its one board and database preserved.
+9. Migration QA adds six synthetic boards and 24 checks through fixed-id public
+   commands. Actual cells show none 0/4, some 1/4, most 3/4 and all 4/4 on separate
+   stored dates. Counts, midnight versus absent hint and weekly/current/longest
+   streaks match. Archiving the structural root changes 3/4 to 3/3 and streak 1
+   to 2; restoration returns both. Before-to-After editing reorders members while
+   preserving the root URL, its 240-minute shift and exact dated history.
+10. Light, dark and large-text visuals pass. A scrolled June 1 cell retains its
+    exact frame across actual background/foreground refresh. Original Count
+    detail still shows two live checks. Final Migration QA contains 16 boards,
+    42 checks and 51 actions; every pre-T14 board/check/action is byte-equivalent
+    at the row level. Scoped debugger logs have zero entries. Main QA returns to
+    Home/light/normal text. Evidence is under `.artifacts/t14/qa/`.
+11. T14 and Checkpoint B are complete: native screens and automated rules prove
+    same-date stacks, independent adjacent dates, stable topology, informational
+    times and date-based archived eligibility. T15 begins after full QA database
+    backups and termination of our live development clients, preserving the
+    separate earlier schema rehearsal. No T14 native or schema change was needed.
+
 ### T13 - stack analytics and consistent query snapshots (2026-09-08)
 
 1. Pure stack analytics compute the current run, complete runs in the root's ISO
