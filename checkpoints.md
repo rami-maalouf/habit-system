@@ -2,6 +2,56 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T8 - native Daily verification and actual Shortcuts execution (2026-09-08)
+
+1. Read-only audit confirms the three-action inventory, schema-7/checksum gate,
+   atomic check/action/receipt/HLC/outbox writes, Daily no-op behavior, guarded removal,
+   and fresh widget publication. T7b closed the explicit removal-date validation mismatch.
+2. A focused regression captures a note-bearing Daily removal at 03:59 before its 04:00
+   boundary, then creates the new-day check through another real SQLite connection.
+   Confirming the captured date removes only the prior check and records the proper
+   whole-date clear. The new row/action remain exact; Today reports one. Next-day replay
+   from the second connection leaves checks, actions, settings, outbox, receipts, and
+   cache unchanged. Existing production passes without modification. Independent review
+   approves this native-only test and its distinction from real Shortcuts execution.
+3. Local gates: `bun run validate` exit 0, 61 suites and 777 tests, global coverage
+   97.01/95.26/95.48/97.5, all 42 core files at 100 percent on all four metrics. Native:
+   9 plugin and 74 Swift tests pass with no failures/compiler warnings. Evidence:
+   `.artifacts/t8/validate.log`, `native.log`, and `native-shifted-confirmation.log`.
+4. Actual Shortcuts on Migration QA discovers exactly the three Habit System actions and
+   resolves all synthetic boards in its picker. A composed Daily Check In / Check In /
+   Today shortcut was prepared and run using the final T7b binary. Two bounded iOS 26.5
+   attempts report `LNContextErrorDomain` 2004 / `LNPerformActionErrorCodeUnsupportedValueType`
+   without creating a check. Trace also reports that linkd cannot obtain the process team id;
+   the baseline simulator executable has an ad hoc signature and no TeamIdentifier.
+5. A new isolated iPhone 17 Pro / iOS 27.0 simulator, `Habit System Shortcuts QA 27`,
+   udid `408FBC15-1A3F-4A0C-945F-04AE63759C66`, opened the same build and a synthetic
+   Daily board. Its Shortcuts catalog was empty even for stock actions, so it supplied
+   no meaningful invocation comparison. Its isolated data and evidence are retained.
+6. A development-signed copy resolved real Shortcuts execution on the original iOS 26.5
+   device. The same composed Daily shortcut creates one `shortcut` row, returns the same
+   check id with `created:false` for the second command, and reports correct Today totals.
+   Scoped native trace shows both intent types invoking/finishing without the prior team-id
+   or unsupported-value errors. A note-bearing Daily removal warns about saved notes;
+   Cancel preserves the full row and Confirm tombstones exactly that row. After converting
+   only that fixture to Count, the same composed shortcut creates two distinct checks,
+   Today reports two, and Remove Latest deletes only the newer one while retaining the older.
+7. Xcode's simulator signing context rejected the attempted development-signing override.
+   The successful isolated experiment instead signs the copied artifact inside-out with
+   Apple's codesign tool and the existing Apple Development identity. All twenty code targets
+   report team `3V2UU7RRK9`; deep/strict verification passes. Info.plist, compiled intent
+   metadata, executable text, and embedded entitlements remain unchanged. The recipe and
+   evidence live in `.artifacts/t8/simulator-signing.md` and `signed-sim-build/`.
+   AGENTS.md records the working workflow. This is simulator invocation evidence, not
+   physical-device provisioning or signed CloudKit acceptance.
+8. Actual invocation artifacts are retained under `.artifacts/t8/qa/`, including the three
+   action catalog, entity picker, composed shortcut, unsigned failure traces, signed result
+   dialogs, and database/receipt snapshots. The original Count board's complete rows match
+   the T7 final snapshot byte-for-byte. Final synthetic state is original Count 2, QA T4
+   Daily 1, and the separate notes fixture Count 1. The unused new iOS 27 simulator is
+   shut down with its data retained. Checkpoint A is complete; serialization and actual
+   multi-device CloudKit acceptance remain the later T19/T20 gates.
+
 ### T7 - fresh widget fallback and shared Daily receipts (2026-09-08)
 
 1. T7a adds binary Daily widget rows and checked state, with Count intensity preserved.

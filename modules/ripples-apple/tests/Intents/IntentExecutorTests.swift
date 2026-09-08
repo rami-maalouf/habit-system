@@ -853,6 +853,54 @@ final class IntentExecutorTests: XCTestCase {
     XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 2)
   }
 
+  func testDailyConfirmationAcrossShiftPreservesNewDateFromAnotherConnectionAndReplaysExactly() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".db")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let source = try fixture()
+    let harness = try Harness(seed: XCTUnwrap(source["seed"] as? [String: Any]), migrations: migrations(), path: url.path)
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE boards SET kind = 'daily', start_of_day_minute = 240 WHERE id = ?", [.text(board)])
+    harness.instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-08-31T07:59:00Z")).timeIntervalSince1970 * 1000
+    let original = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, note: "selected before four am")).get()
+    let candidate = try harness.executor.removalCandidate(boardId: board, logicalDate: nil).get()
+    XCTAssertEqual(candidate.logicalDate, "2026-08-30")
+    XCTAssertTrue(candidate.hasNotes)
+    XCTAssertEqual(candidate.checkInIds, [original.checkInId])
+
+    harness.instant += 60_000
+    let second = IntentExecutor(database: try IntentDatabase(path: url.path), now: { harness.instant },
+      zone: { harness.timeZone }, uuid: { harness.id() })
+    let newer = try second.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, note: "new day from another connection")).get()
+    XCTAssertEqual(newer.logicalDate, "2026-08-31")
+    let newRows = try harness.database.rows("SELECT * FROM check_ins WHERE id = ?", [.text(newer.checkInId)])
+    let newActions = try harness.database.rows("SELECT * FROM habit_actions WHERE check_in_id = ? ORDER BY id", [.text(newer.checkInId)])
+
+    let command = harness.id()
+    let removed = try harness.executor.removeLatest(commandId: command, boardId: board,
+      logicalDate: candidate.logicalDate, expectedCheckInId: candidate.checkInId,
+      expectedCheckInIds: candidate.checkInIds, expectedSnapshot: candidate.snapshot).get()
+    XCTAssertEqual(removed, IntentRemovedCheckIn(removedCheckInId: original.checkInId,
+      logicalDate: "2026-08-30", removedCheckInIds: [original.checkInId]))
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE id = ?", [.text(newer.checkInId)]), newRows)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions WHERE check_in_id = ? ORDER BY id", [.text(newer.checkInId)]), newActions)
+    XCTAssertEqual(try harness.database.rows("SELECT id FROM check_ins WHERE deleted_at IS NULL").compactMap { $0["id"]?.string }, [newer.checkInId])
+    XCTAssertEqual(try second.today(boardId: board).get().total, 1)
+    let clear = try XCTUnwrap(harness.database.rows("SELECT logical_date, check_in_id FROM habit_actions WHERE command_id = ?", [.text(command)]).first)
+    XCTAssertEqual(clear["logical_date"]?.string, candidate.logicalDate)
+    XCTAssertEqual(clear["check_in_id"], .null)
+
+    let tables = ["check_ins", "habit_actions", "app_settings", "mutation_outbox", "command_receipts", "widget_board_rows"]
+    var committed: [String: [[String: IntentSQLValue]]] = [:]
+    for table in tables { committed[table] = try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid") }
+    harness.instant += 86_400_000
+    let replay = try second.removeLatest(commandId: command, boardId: board,
+      logicalDate: newer.logicalDate, expectedCheckInId: newer.checkInId).get()
+    XCTAssertEqual(replay, removed)
+    for table in tables {
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid"), committed[table], table)
+    }
+  }
+
   func testHistoryOrderingPrefersTimedRowsThenAscendingIdForTies() throws {
     let harness = try harness()
     let board = "00000000-0000-4000-8000-00000000a001"
