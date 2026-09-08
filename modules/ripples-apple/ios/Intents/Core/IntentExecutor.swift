@@ -97,6 +97,7 @@ final class IntentExecutor {
       let offset = try occurredAt.map { date -> Double in
         Double(try IntentCalendar.calendar(zone: zone).timeZone.secondsFromGMT(for: Date(timeIntervalSince1970: date / 1000))) / 60
       }
+      let policy = try self.captureCoinPolicy(boardId: board.id, date: date, zone: zone)
       try self.ensureBaselines(boardId: board.id, date: date)
       let stamp = clock.advance(now: Int64(instant))
       let id = self.uuid()
@@ -109,7 +110,8 @@ final class IntentExecutor {
               .text(input.source), .text(input.commandId), .integer(Int64(instant)), .integer(Int64(instant)), .text(stamp)])
       try self.appendOutbox(id: id, stamp: stamp, instant: instant)
       try self.appendAction(commandId: input.commandId, boardId: board.id, date: date, checkInId: id,
-                            kind: "check", stamp: stamp, instant: instant)
+                            kind: "check", stamp: stamp, instant: instant, policyJson: policy)
+      _ = try IntentCoinStore.settleCheck(boardId: board.id, logicalDate: date, database: self.database, enqueueAt: Int64(instant))
       try self.rebuildWidgets(instant: instant, zone: zone)
       return .success(IntentCreatedCheckIn(checkInId: id, logicalDate: date))
     }
@@ -162,6 +164,7 @@ final class IntentExecutor {
       if let expectedSnapshot, try IntentRemovalCandidate.snapshot(rows: rows, kind: board.kind) != expectedSnapshot {
         return .failure(IntentFailure(code: "conflict", message: "The check-ins changed. Run the shortcut again to review them."))
       }
+      let policy = try self.captureCoinPolicy(boardId: board.id, date: date, zone: zone)
       try self.ensureBaselines(boardId: board.id, date: date)
       let stamp = clock.advance(now: Int64(instant))
       for id in ids {
@@ -170,7 +173,8 @@ final class IntentExecutor {
         try self.appendOutbox(id: id, stamp: stamp, instant: instant)
       }
       try self.appendAction(commandId: commandId, boardId: board.id, date: date,
-        checkInId: board.kind == .daily ? nil : id, kind: "uncheck", stamp: stamp, instant: instant)
+        checkInId: board.kind == .daily ? nil : id, kind: "uncheck", stamp: stamp, instant: instant, policyJson: policy)
+      _ = try IntentCoinStore.settleCheck(boardId: board.id, logicalDate: date, database: self.database, enqueueAt: Int64(instant))
       try self.rebuildWidgets(instant: instant, zone: zone)
       return .success(IntentRemovedCheckIn(removedCheckInId: id, logicalDate: date, removedCheckInIds: ids))
     }
@@ -304,9 +308,15 @@ final class IntentExecutor {
   }
 
   private func appendAction(commandId: String, boardId: String, date: String, checkInId: String?,
-                            kind: String, stamp: String, instant: Double) throws {
+                            kind: String, stamp: String, instant: Double, policyJson: String) throws {
     try IntentHabitAction(id: uuid(), commandId: commandId, boardId: boardId, logicalDate: date,
-      checkInId: checkInId, kind: kind, createdAt: Int64(instant), mutationStamp: stamp, policyJson: nil).append(to: database)
+      checkInId: checkInId, kind: kind, createdAt: Int64(instant), mutationStamp: stamp, policyJson: policyJson).append(to: database)
+  }
+
+  private func captureCoinPolicy(boardId: String, date: String, zone: String) throws -> String {
+    let resolver = try IntentEconomicDayCloseResolver(zone: zone)
+    let capture = try IntentCoinPolicyCapture.read(database: database, boardIds: [boardId], resolveClose: resolver.resolve)
+    return try capture.capture(boardId: boardId, logicalDate: date).canonical()
   }
 
   private func ensureBaselines(boardId: String, date: String) throws {

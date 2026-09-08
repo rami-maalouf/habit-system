@@ -98,11 +98,48 @@
    build succeeds at `.artifacts/t15b1/qa-build/habitsystem.app`. Its inherited
    Expo dev-launcher script and duplicate `-lc++` warnings are recorded. No device runtime
    claim is made for helpers that no live writer calls yet.
-13. T15 remains in progress. The next bounded slices connect app/native check
-   and removal writers, moves/deletion/non-earning restore, then prospective
-   configuration and Earn Coins/Daily Coin Cap controls. No live earning writer
-   invokes the new helpers yet. T16 owns stack-bonus production integration.
-   Intermediate builds remain development-only until T19/T20 compatibility.
+13. T15b2 connects TS creation, Daily toggle, targeted deletion, Remove Latest
+   and precise Undo, plus native Check In and Remove Latest. Live actions capture
+   canonical policy before the first write; settlement precedes widgets and
+   receipts in the same transaction. Daily no-op and receipt replay bypass
+   policy, hashing and id allocation. Targeted deletion/Undo still work when a
+   board tombstone arrives first: null-policy removal uses the original earning
+   action's close, without inventing current settings.
+14. Forty-seven app cases and the shared two-scenario/eight-step writer fixture
+   pin exact public receipts, cumulative actions/policies, ledger identities,
+   HLC state, id consumption and replay. Native tests cover confirmed prior-date
+   removal across a close, current configuration changes, archived structural
+   roots, cap behavior and rollback/retry for missing proofs and ledger/outbox
+   failures. Seven independent real-SQL public-command probes additionally prove
+   acquired-transaction time/configuration, corrupt-evidence rollback, scope
+   isolation, missing-dependency recovery and guard/no-op precedence.
+15. T15b2 full gates pass: 89 suites / 1,341 tests, global coverage
+   97.41/96.12/95.59/97.76, all 60 core files at 100 percent, and 9 plugin /
+   107 Swift tests. Source and the shared literal fixture have independent
+   non-author approval. Generic build and signing-only copy succeed at
+   `.artifacts/t15b2/signed-sim-build/habitsystem.app`: 20 team-verified targets,
+   deep-strict verification, eight unchanged executable/entitlement comparisons,
+   unchanged App Intents metadata and 28 frozen Swift source hashes. Only the
+   inherited Expo dev-launcher build-script warning appears in this build.
+16. Independent actual Migration QA passes app Check and precise Undo, native
+   Daily no-op, Count cap1 across two checks, removal of the blocked Count token,
+   Today counts and saved-note Cancel/Confirm. Cancel leaves the full snapshot
+   hash identical; confirmation reverses only the original source award. The
+   authorized setup public-creates two synthetic boards and changes only their
+   earning/cap configuration; all tested mutations use public app/native paths.
+   All prior 17 boards / 48 checks / 57 actions and retained periods, receipts,
+   outbox and sync rows remain exact. Final totals are 19 boards / 52 checks /
+   64 actions / 5 ledger rows, 237 receipts and 200 outbox rows. Cold Home is
+   visually clean with zero connected console entries. The installed executable
+   matches the signed candidate and deep-strict signature verification passes.
+   Before/after app termination backups share SHA256
+   `8647add1dd7caa5bf1731c1b64b3068fdf48fd95343d54614c7cce9a7c80114f`.
+   Evidence is packaged under `.artifacts/t15b2/qa/`; the dedicated simulator
+   stays booted with both apps terminated for the next bounded verification.
+17. T15 remains in progress. Moves/deletion/non-earning restore, prospective
+   configuration and Earn Coins/Daily Coin Cap controls follow the check/removal
+   writers. T16 owns stack-bonus production integration. Intermediate builds
+   remain development-only until T19/T20 compatibility.
 
 ### T14 - stack screens and calendar refresh (2026-09-08)
 

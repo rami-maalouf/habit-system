@@ -44,11 +44,31 @@ later clocks do not rewrite them. Close instants are signed safe integers becaus
 backdated history can precede the Unix epoch. A genuine backdated check is distinct from
 an import or move-in; its captured close can precede its live action's creation timestamp.
 Policies apply prospectively and never mint or remove past coins merely because settings change.
+Targeted history removal and precise Undo remain available when sync delivers a board's
+tombstone before its check tombstones. With no live board to describe, these two paths
+append a null-policy removal rather than inventing current settings. Reconciliation still
+uses each original earning action's immutable policy and close. This exception cannot earn
+new coins; ordinary live-board actions capture canonical policy even when earning is off.
 Scopes: `check:<boardId>:<logicalDate>` and, when a snapshot names a root, `bonus:<rootId>:<logicalDate>`.
-A root change writes two policy actions: old snapshot with `bonusEnabled=false`, new enabled
-only when its required eligible set is nonempty. Empty/optional-only scopes remain disabled.
-The old scope retains prior entitlement but cannot earn new bonuses; neither policy mints coins.
-All bonus members use the exact scope date. Future genuine completions can earn under the new scope.
+A membership change writes each affected surviving root's post-edit policy. A root that
+disappears or ceases to form a stack gets its old snapshot with `bonusEnabled=false`.
+Do not disable a surviving stack merely because a member moves elsewhere. New/current
+policies enable bonuses only when their required eligible set is nonempty.
+Root controls use `kind=policy`, `boardId=rootId`, and the exact scope date. Their ordered
+membership/close policy takes precedence over subsequent stale member check observations;
+a stale offline check cannot re-enable retired membership on that same root/date.
+Existing edited boards also record observations when kind, earning, cap, or day shift
+changes. Topology-only detachment needs no redundant root-null member observation.
+New rootless boards validate prospective settings but have no prior policy to replace.
+Neither policy mints coins, changes checked state, nor removes an earlier valid award.
+That award retains its source policy and close. A later genuine completion may use earlier
+same-date member checks whose observations named a different root or no root.
+
+Prepare old/new component snapshots before source writes. Consider their current logical
+dates under both old/new shifts and sparse known scopes with open captured bonus evidence.
+Do not enumerate unknown historical dates. Retirement applies to the recorded root/date,
+not globally to an unseen date: replay can still discover an owed completion ordered before
+the applicable policy change. All members of every bonus use its exact stored scope date.
 
 ## Economic replay and identities
 

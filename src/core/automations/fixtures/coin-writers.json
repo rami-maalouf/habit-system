@@ -1,0 +1,719 @@
+{
+  "description": "literal public writer parity; constant occurrence-free timestamps deliberately select the earliest ascending check id on history ties; expected UUIDv5 rows computed independently with Python stdlib",
+  "seed": {
+    "timeZoneId": "UTC",
+    "nowUtcMs": 1788868800000,
+    "deviceId": "00000000-0000-4000-8000-00000000d001",
+    "boards": [
+      {
+        "id": "00000000-0000-4000-8000-00000000a001",
+        "title": "Writer fixture",
+        "kind": "count",
+        "earnsCoins": true,
+        "coinCapPerDay": 1,
+        "archived": false,
+        "tracksAmount": false,
+        "amountUnit": null,
+        "quickAmount": 1,
+        "tracksTime": false,
+        "startOfDayMinute": 0
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "count public writers with exact evidence and receipts",
+      "kind": "count",
+      "steps": [
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000000064",
+          "generatedIds": [
+            "00000000-0000-4000-8000-0000000000c8",
+            "00000000-0000-4000-8000-00000000012c"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "logicalDate": "2026-09-08",
+              "created": true
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000c8"
+          ],
+          "expectedHlcCounter": 0
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000000065",
+          "generatedIds": [
+            "00000000-0000-4000-8000-0000000000c9",
+            "00000000-0000-4000-8000-00000000012d"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-0000000000c9",
+              "logicalDate": "2026-09-08",
+              "created": true
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012d",
+              "commandId": "00000000-0000-4000-8000-000000000065",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c9",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000c8",
+            "00000000-0000-4000-8000-0000000000c9"
+          ],
+          "expectedHlcCounter": 1
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000000066",
+          "generatedIds": [
+            "00000000-0000-4000-8000-00000000012e"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-0000000000c8",
+              "logicalDate": "2026-09-08",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-0000000000c8"
+              ]
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012d",
+              "commandId": "00000000-0000-4000-8000-000000000065",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c9",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012e",
+              "commandId": "00000000-0000-4000-8000-000000000066",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "uncheck",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00002-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            },
+            {
+              "id": "d6d6c822-a8d7-5317-9276-e74f81f697b5",
+              "kind": "reversal",
+              "delta": -1,
+              "boardId": null,
+              "checkInId": null,
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012e",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00002-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000c9"
+          ],
+          "expectedHlcCounter": 2
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000000067",
+          "generatedIds": [
+            "00000000-0000-4000-8000-0000000000cb",
+            "00000000-0000-4000-8000-00000000012f"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-0000000000cb",
+              "logicalDate": "2026-09-08",
+              "created": true
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012d",
+              "commandId": "00000000-0000-4000-8000-000000000065",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c9",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012e",
+              "commandId": "00000000-0000-4000-8000-000000000066",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "uncheck",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00002-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012f",
+              "commandId": "00000000-0000-4000-8000-000000000067",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000cb",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00003-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            },
+            {
+              "id": "d6d6c822-a8d7-5317-9276-e74f81f697b5",
+              "kind": "reversal",
+              "delta": -1,
+              "boardId": null,
+              "checkInId": null,
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012e",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00002-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            },
+            {
+              "id": "cbd76bed-1553-5625-bf4f-30da3fbf21c4",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000cb",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012f",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00003-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000c9",
+            "00000000-0000-4000-8000-0000000000cb"
+          ],
+          "expectedHlcCounter": 3
+        }
+      ]
+    },
+    {
+      "name": "daily public writers with exact evidence and receipts",
+      "kind": "daily",
+      "steps": [
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000000064",
+          "generatedIds": [
+            "00000000-0000-4000-8000-0000000000c8",
+            "00000000-0000-4000-8000-00000000012c"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "logicalDate": "2026-09-08",
+              "created": true
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000c8"
+          ],
+          "expectedHlcCounter": 0
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000000065",
+          "generatedIds": [],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "logicalDate": "2026-09-08",
+              "created": false
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000c8"
+          ],
+          "expectedHlcCounter": 0
+        },
+        {
+          "intent": "removeLatest",
+          "commandId": "00000000-0000-4000-8000-000000000066",
+          "generatedIds": [
+            "00000000-0000-4000-8000-00000000012e"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "removedCheckInId": "00000000-0000-4000-8000-0000000000c8",
+              "logicalDate": "2026-09-08",
+              "removedCheckInIds": [
+                "00000000-0000-4000-8000-0000000000c8"
+              ]
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012e",
+              "commandId": "00000000-0000-4000-8000-000000000066",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": null,
+              "kind": "uncheck",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            },
+            {
+              "id": "d6d6c822-a8d7-5317-9276-e74f81f697b5",
+              "kind": "reversal",
+              "delta": -1,
+              "boardId": null,
+              "checkInId": null,
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012e",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [],
+          "expectedHlcCounter": 1
+        },
+        {
+          "intent": "checkIn",
+          "commandId": "00000000-0000-4000-8000-000000000067",
+          "generatedIds": [
+            "00000000-0000-4000-8000-0000000000cb",
+            "00000000-0000-4000-8000-00000000012f"
+          ],
+          "input": {
+            "boardId": "00000000-0000-4000-8000-00000000a001"
+          },
+          "expectedReceipt": {
+            "ok": true,
+            "value": {
+              "checkInId": "00000000-0000-4000-8000-0000000000cb",
+              "logicalDate": "2026-09-08",
+              "created": true
+            }
+          },
+          "expectedActions": [
+            {
+              "id": "00000000-0000-4000-8000-00000000012c",
+              "commandId": "00000000-0000-4000-8000-000000000064",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012e",
+              "commandId": "00000000-0000-4000-8000-000000000066",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": null,
+              "kind": "uncheck",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            },
+            {
+              "id": "00000000-0000-4000-8000-00000000012f",
+              "commandId": "00000000-0000-4000-8000-000000000067",
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "logicalDate": "2026-09-08",
+              "checkInId": "00000000-0000-4000-8000-0000000000cb",
+              "kind": "check",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00002-00000000-0000-4000-8000-00000000d001",
+              "policyJson": "{\"version\":1,\"boardKind\":\"daily\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788912000000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+            }
+          ],
+          "expectedLedger": [
+            {
+              "id": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000c8",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012c",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00000-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            },
+            {
+              "id": "d6d6c822-a8d7-5317-9276-e74f81f697b5",
+              "kind": "reversal",
+              "delta": -1,
+              "boardId": null,
+              "checkInId": null,
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": "c6200b36-1543-5d48-888d-8c7511da2a3c",
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012e",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00001-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            },
+            {
+              "id": "cbd76bed-1553-5625-bf4f-30da3fbf21c4",
+              "kind": "check",
+              "delta": 1,
+              "boardId": "00000000-0000-4000-8000-00000000a001",
+              "checkInId": "00000000-0000-4000-8000-0000000000cb",
+              "runKey": null,
+              "rewardId": null,
+              "rewardTitleSnapshot": null,
+              "reversesId": null,
+              "scopeKey": "check:00000000-0000-4000-8000-00000000a001:2026-09-08",
+              "sourceActionId": "00000000-0000-4000-8000-00000000012f",
+              "reconciliationKey": null,
+              "adjustsId": null,
+              "provenanceJson": null,
+              "logicalDate": "2026-09-08",
+              "createdAt": 1788868800000,
+              "mutationStamp": "01788868800000-00002-00000000-0000-4000-8000-00000000d001",
+              "deletedAt": null
+            }
+          ],
+          "expectedLiveCheckIds": [
+            "00000000-0000-4000-8000-0000000000cb"
+          ],
+          "expectedHlcCounter": 2
+        }
+      ]
+    }
+  ]
+}
