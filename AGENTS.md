@@ -1,5 +1,17 @@
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
+## Product context (read before touching product code)
+
+This repository is the habit-system fork of Ripples. Read in this order:
+
+1. `FORK.md` - origin, fork point, and the identifiers that must change before any build.
+2. `SPEC-habit-system.md` - the approved product spec for this fork. It is a delta on `SPEC-ripples-product.md`; everything inherited stays unless the delta names the rule it replaces.
+3. `tasks/plan.md` and `tasks/todo.md` - the phase plan and the 24-task list. Work one task at a time, in order, following `.agents/skills/incremental-implementation` and `.agents/skills/test-driven-development`.
+4. `checkpoints.md` - the ledger. One entry per task. The first section records what Ripples proved before the fork.
+5. `docs/design/` - the habit-system design documents the spec was derived from, starting with `docs/design/README.md` and `docs/design/habit-os-context.md`.
+
+Process is inherited from Ripples: tests first, `bun run validate` exit 0 with every `src/core` file at 100 percent, Argent simulator evidence for visible changes, independent verification by a non-author, one `checkpoints.md` entry, lowercase conventional commits with no co-author lines. `CAPABILITY-MAP.md` lists the module ids and build order.
+
 ## Expo has changed — do not trust your training data
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
