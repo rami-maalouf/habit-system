@@ -2,7 +2,7 @@
 
 Spec: `SPEC-habit-system.md` (approved 2026-09-08, amended by Rami's pre-T2 decisions). Inherited specs: `SPEC-native-foundation.md`, `SPEC-ripples-product.md`.
 
-Status: approved for implementation. T1 and T2 are complete; T3 is next. Rami authorized updating and pushing the planning documents, then completing T2 through T24. The latest correction takes precedence: stacks combine checks on one stored logical date only; consecutive dates never combine into one stack run.
+Status: approved for implementation. T1 through T3 are complete; T4 is next. Rami authorized updating and pushing the planning documents, then completing T2 through T24. The latest correction takes precedence: stacks combine checks on one stored logical date only; consecutive dates never combine into one stack run.
 
 The original plan was authored by Fable 5.1. Ripples planning artifacts remain archived under `tasks/ripples/`; the incorporated review is `tasks/plan-review.md`.
 

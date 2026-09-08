@@ -8,11 +8,16 @@ export type ReminderId = Brand<string, 'ReminderId'>;
 export type CommandId = Brand<string, 'CommandId'>;
 export type DeviceId = Brand<string, 'DeviceId'>;
 export type LogicalDate = Brand<string, 'LogicalDate'>;
+export type HabitActionId = Brand<string, 'HabitActionId'>;
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isUuidV4(value: string): boolean {
   return UUID_V4.test(value);
+}
+
+export function isUuidV5(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 // route params and adapter inputs arrive as plain strings; these parse them

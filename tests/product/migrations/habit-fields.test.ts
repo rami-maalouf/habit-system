@@ -146,4 +146,33 @@ describe('habit fields migration', () => {
       await db.closeAsync();
     }
   });
+  it('upgrades version 6 with empty immutable action storage and keeps all existing data', async () => {
+    const db = await priorDatabase(6);
+    try {
+      const tables = ['boards', 'widget_board_rows', 'check_ins', 'mutation_outbox', 'command_receipts', 'sync_state'];
+      const before = await Promise.all(tables.map(table => db.getAllAsync(`SELECT * FROM ${table}`)));
+      expect(await migrateDatabase(db)).toEqual({ ok: true, value: 7 });
+      expect(await db.getAllAsync('SELECT * FROM habit_actions')).toEqual([]);
+      for (const [index, table] of tables.entries()) expect(await db.getAllAsync(`SELECT * FROM ${table}`)).toEqual(before[index]);
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 7 });
+      expect(await db.getFirstAsync('SELECT schema_revision FROM app_settings')).toEqual({ schema_revision: 7 });
+      expect(migrations.slice(0, 6).map(migrationChecksum)).toEqual(['c459cef6', '34363ca0', 'bac085e2', 'dcbb9394', '633f8fb7', '0191110b']);
+    } finally { await db.closeAsync(); }
+  });
+
+  it('rolls back the action table and triggers if version 7 cannot finish', async () => {
+    const db = await priorDatabase(6);
+    try {
+      const run = db.runAsync.bind(db);
+      jest.spyOn(db, 'runAsync').mockImplementation((sql, params) => {
+        if (sql.includes('CREATE TRIGGER habit_actions_no_delete')) return Promise.reject(new Error('simulated disk failure'));
+        return run(sql, params);
+      });
+      expect(await migrateDatabase(db)).toMatchObject({ ok: false, error: { code: 'migration' } });
+      expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 6 });
+      expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE name = 'habit_actions'")).toBeNull();
+      expect(await db.getFirstAsync('SELECT schema_revision FROM app_settings')).toEqual({ schema_revision: 6 });
+    } finally { await db.closeAsync(); }
+  });
+
 });

@@ -3,8 +3,10 @@
 // executors. one json fixture suite drives all of them, so a native
 // implementation can never fork product semantics.
 import { currentLogicalDate } from '../calendar/logical-date';
-import { createCheckIn, removeLatestCheckIn } from '../domain/commands';
+import { createCheckIn, removeLatestCheckIn, replayCommand } from '../domain/commands';
 import type { CommandDeps } from '../domain/commands';
+import { normalizeCreatedReceipt, normalizeRemovedReceipt } from '../domain/check-in-receipts';
+import type { CreatedCheckInValue, RemovedCheckInValue } from '../domain/check-in-receipts';
 import type { BoardId, CommandId, LogicalDate } from '../domain/ids';
 import type { DomainResult } from '../domain/result';
 import { err, ok } from '../domain/result';
@@ -51,7 +53,7 @@ export type CheckInIntentInput = {
   note?: string;
 };
 
-export type CheckInIntentResult = { checkInId: string; logicalDate: string };
+export type CheckInIntentResult = { checkInId: string; logicalDate: string; created: boolean };
 
 // a board read that turns a transport failure into an actionable result
 // instead of a rejected promise a native executor would have to catch
@@ -73,6 +75,8 @@ export function runCheckInIntent(
   input: CheckInIntentInput,
 ): Promise<DomainResult<CheckInIntentResult>> {
   return (async () => {
+    const replayed = await replayCommand<CreatedCheckInValue>(deps.db, input.commandId);
+    if (replayed !== null) return normalizeCreatedReceipt(replayed);
     const board = await readActiveBoard(deps, input.boardId);
     if (!board.ok) {
       return board;
@@ -89,16 +93,16 @@ export function runCheckInIntent(
       commandId: input.commandId,
       boardId: input.boardId,
       logicalDate: input.logicalDate,
-      occurredAtUtc: input.occurredAtUtc,
+      occurredAtUtc: board.value.kind === 'count' && board.value.tracksTime ? input.occurredAtUtc : undefined,
       // an omitted amount falls back to the board's quick amount
-      amount: board.value.tracksAmount ? (input.amount ?? board.value.quickAmount) : undefined,
+      amount: board.value.kind === 'count' && board.value.tracksAmount ? (input.amount ?? board.value.quickAmount) : undefined,
       note: input.note,
       source: input.source,
     });
     if (!result.ok) {
       return result;
     }
-    return ok({ checkInId: result.value.checkInId, logicalDate: result.value.logicalDate });
+    return ok(result.value);
   })();
 }
 
@@ -113,8 +117,10 @@ export type RemoveLatestInput = {
 export function runRemoveLatestIntent(
   deps: CommandDeps,
   input: RemoveLatestInput,
-): Promise<DomainResult<{ removedCheckInId: string }>> {
+): Promise<DomainResult<{ removedCheckInId: string; removedCheckInIds: string[]; logicalDate: string }>> {
   return (async () => {
+    const replayed = await replayCommand<RemovedCheckInValue>(deps.db, input.commandId);
+    if (replayed !== null) return normalizeRemovedReceipt(replayed);
     const board = await readActiveBoard(deps, input.boardId);
     if (!board.ok) {
       return board;
@@ -135,7 +141,7 @@ export function runRemoveLatestIntent(
     if (!removed.ok) {
       return removed;
     }
-    return ok({ removedCheckInId: removed.value.removedCheckInId });
+    return ok(removed.value);
   })();
 }
 
@@ -174,8 +180,9 @@ export function runTodayCheckInsIntent(
             board.startOfDayMinute,
           );
           const checkIns = await listBoardCheckInsForDate(tx, board.id, today);
-          rows.push({ title: board.title, count: checkIns.length });
-          total += checkIns.length;
+          const count = board.kind === 'daily' ? Math.min(1, checkIns.length) : checkIns.length;
+          rows.push({ title: board.title, count });
+          total += count;
         }
         return { boards: rows, total };
       });

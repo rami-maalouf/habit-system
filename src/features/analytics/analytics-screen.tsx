@@ -20,7 +20,7 @@ import {
 } from '@/core/domain/queries';
 import { radius, radiusCurve, semanticColor, semanticFallbacks, spacing } from '@/theme';
 
-import { deriveBoardColors } from '../boards';
+import { deriveBoardColors } from '../boards/board-colors';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import {

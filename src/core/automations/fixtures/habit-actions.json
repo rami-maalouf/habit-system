@@ -1,0 +1,337 @@
+{
+  "contractVersion": 1,
+  "namespace": "4d96f757-73e0-561c-99b9-16b7ef2d1903",
+  "uuidVectors": [
+    {
+      "name": "habit-system:baseline:éclair",
+      "id": "2617c8e8-a439-59c5-83e1-7924723582af"
+    },
+    {
+      "name": "habit-system:baseline:習慣",
+      "id": "aede2134-1aac-5084-b8dd-5a1710f369f4"
+    }
+  ],
+  "baseline": {
+    "source": {
+      "id": "00000000-0000-4000-8000-00000000c001",
+      "boardId": "00000000-0000-4000-8000-00000000b001",
+      "logicalDate": "2026-09-08"
+    },
+    "id": "8e046b63-e9e2-565e-b8af-79e5593769d9",
+    "name": "[\"habit-baseline-v1\",\"00000000-0000-4000-8000-00000000c001\",\"00000000-0000-4000-8000-00000000b001\",\"2026-09-08\"]",
+    "createdAt": 0,
+    "mutationStamp": "00000000000000-00000-baseline"
+  },
+  "foldCases": [
+    {
+      "name": "empty",
+      "actions": [],
+      "checked": false,
+      "checkInId": null
+    },
+    {
+      "name": "duplicate",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        }
+      ],
+      "checked": true,
+      "checkInId": "00000000-0000-4000-8000-00000000c001"
+    },
+    {
+      "name": "same-stamp-tie",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c002",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        }
+      ],
+      "checked": true,
+      "checkInId": "00000000-0000-4000-8000-00000000c002"
+    },
+    {
+      "name": "selective-removal",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c002",
+          "kind": "uncheck",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600001-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c002",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        }
+      ],
+      "checked": true,
+      "checkInId": "00000000-0000-4000-8000-00000000c001"
+    },
+    {
+      "name": "date-wide-clear",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600001-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c002",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        }
+      ],
+      "checked": false,
+      "checkInId": null
+    },
+    {
+      "name": "later-move-in",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "move_in",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600002-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600001-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c002",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-device",
+          "policyJson": null
+        }
+      ],
+      "checked": true,
+      "checkInId": "00000000-0000-4000-8000-00000000c001"
+    },
+    {
+      "name": "move-out",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "move_in",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600002-00000-device",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "move_out",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600003-00000-device",
+          "policyJson": null
+        }
+      ],
+      "checked": false,
+      "checkInId": null
+    },
+    {
+      "name": "device-stamp-prefix",
+      "actions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": "00000000-0000-4000-8000-00000000c001",
+          "kind": "check",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-a",
+          "policyJson": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000003",
+          "commandId": "00000000-0000-4000-8000-000000000010",
+          "boardId": "00000000-0000-4000-8000-00000000b001",
+          "logicalDate": "2026-09-08",
+          "checkInId": null,
+          "kind": "uncheck",
+          "createdAt": 1788825600000,
+          "mutationStamp": "01788825600000-00000-aa",
+          "policyJson": null
+        }
+      ],
+      "checked": false,
+      "checkInId": null
+    }
+  ],
+  "automationCases": [
+    {
+      "name": "daily automation ignores unsupported fields",
+      "legacyCheckCount": 0,
+      "checkAttempts": 1,
+      "removeLatest": false,
+      "expectedCreated": [
+        true
+      ],
+      "expectedLiveCount": 1,
+      "expectedTodayCount": 1,
+      "expectedActionKinds": [
+        "check"
+      ]
+    },
+    {
+      "name": "daily second check is a no-op",
+      "legacyCheckCount": 0,
+      "checkAttempts": 2,
+      "removeLatest": false,
+      "expectedCreated": [
+        true,
+        false
+      ],
+      "expectedLiveCount": 1,
+      "expectedTodayCount": 1,
+      "expectedActionKinds": [
+        "check"
+      ]
+    },
+    {
+      "name": "daily converted history remains checked",
+      "legacyCheckCount": 2,
+      "checkAttempts": 1,
+      "removeLatest": false,
+      "expectedCreated": [
+        false
+      ],
+      "expectedLiveCount": 2,
+      "expectedTodayCount": 1,
+      "expectedActionKinds": []
+    },
+    {
+      "name": "daily removal clears converted history",
+      "legacyCheckCount": 2,
+      "checkAttempts": 0,
+      "removeLatest": true,
+      "expectedCreated": [],
+      "expectedLiveCount": 0,
+      "expectedTodayCount": 0,
+      "expectedActionKinds": [
+        "baseline",
+        "baseline",
+        "uncheck"
+      ]
+    }
+  ]
+}

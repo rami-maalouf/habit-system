@@ -55,13 +55,13 @@ public struct RipplesCheckInIntent: AppIntent {
     if let receipt = try executor.replay(commandId: commandId, as: IntentCreatedCheckIn.self) {
       let result = try receipt.get()
       RipplesIntentRuntime.publishWidgets(executor)
-      let text = String(localized: "Checked in to \(board.title) for \(result.logicalDate).")
+      let text = RipplesIntentRuntime.checkInText(result, title: board.title)
       return .result(value: text, dialog: "\(text)")
     }
     let record = try executor.activeBoard(id: board.id)
     let logicalDate = try RipplesIntentRuntime.logicalDate(date)
     var occurredAt: Double?
-    if record.tracksTime, let time {
+    if record.kind == .count && record.tracksTime, let time {
       guard let hour = time.hour, let minute = time.minute, (0...23).contains(hour), (0...59).contains(minute) else {
         throw IntentFailure(code: "validation", message: "Choose a valid local time.", field: "occurredAtUtc")
       }
@@ -72,14 +72,14 @@ public struct RipplesCheckInIntent: AppIntent {
     let result = try executor.checkIn(IntentCheckInInput(commandId: commandId, boardId: board.id,
       logicalDate: logicalDate, occurredAtUtc: occurredAt, amount: amount, note: note)).get()
     RipplesIntentRuntime.publishWidgets(executor)
-    let text = String(localized: "Checked in to \(record.title) for \(result.logicalDate).")
+    let text = RipplesIntentRuntime.checkInText(result, title: record.title)
     return .result(value: text, dialog: "\(text)")
   }
 }
 
 public struct RipplesRemoveLatestCheckInIntent: AppIntent {
   public static var title: LocalizedStringResource = "Remove Latest Check-In"
-  public static var description = IntentDescription("Confirm and remove the latest check-in from an active Ripples board.")
+  public static var description = IntentDescription("Confirm and remove the latest Count check-in or all Daily check-ins for a date.")
 
   @Parameter(title: "Board") public var board: RipplesBoardEntity
   @Parameter(title: "Date", kind: .date) public var date: DateComponents?
@@ -95,18 +95,19 @@ public struct RipplesRemoveLatestCheckInIntent: AppIntent {
     if let receipt = try executor.replay(commandId: commandId, as: IntentRemovedCheckIn.self) {
       let result = try receipt.get()
       RipplesIntentRuntime.publishWidgets(executor)
-      let text = String(localized: "Removed the latest check-in from \(board.title) for \(result.logicalDate).")
+      let text = RipplesIntentRuntime.removalText(result, title: board.title)
       return .result(value: text, dialog: "\(text)")
     }
     let candidate = try executor.removalCandidate(boardId: board.id, logicalDate: RipplesIntentRuntime.logicalDate(date)).get()
     try await requestConfirmation(
       actionName: .custom(acceptLabel: "Remove", acceptAlternatives: [], denyLabel: "Cancel", denyAlternatives: [], destructive: true),
-      dialog: "Remove the latest check-in from \(candidate.boardTitle) for \(candidate.logicalDate)?"
+      dialog: "\(candidate.confirmationText)"
     )
     let result = try executor.removeLatest(commandId: commandId, boardId: board.id,
-      logicalDate: candidate.logicalDate, expectedCheckInId: candidate.checkInId).get()
+      logicalDate: candidate.logicalDate, expectedCheckInId: candidate.checkInId,
+      expectedCheckInIds: candidate.checkInIds, expectedSnapshot: candidate.snapshot).get()
     RipplesIntentRuntime.publishWidgets(executor)
-    let text = String(localized: "Removed the latest check-in from \(candidate.boardTitle) for \(result.logicalDate).")
+    let text = RipplesIntentRuntime.removalText(result, title: candidate.boardTitle)
     return .result(value: text, dialog: "\(text)")
   }
 }
@@ -131,6 +132,17 @@ public struct RipplesTodayCheckInsIntent: AppIntent {
 }
 
 enum RipplesIntentRuntime {
+  static func checkInText(_ result: IntentCreatedCheckIn, title: String) -> String {
+    result.created ? String(localized: "Checked in to \(title) for \(result.logicalDate).")
+      : String(localized: "\(title) is already checked for \(result.logicalDate).")
+  }
+
+  static func removalText(_ result: IntentRemovedCheckIn, title: String) -> String {
+    result.removedCheckInIds.count > 1
+      ? String(localized: "Removed all \(result.removedCheckInIds.count) check-ins from \(title) for \(result.logicalDate).")
+      : String(localized: "Removed the latest check-in from \(title) for \(result.logicalDate).")
+  }
+
   static func open() throws -> IntentExecutor {
     guard let group = Bundle.main.object(forInfoDictionaryKey: "RipplesAppGroupIdentifier") as? String,
           !group.isEmpty,

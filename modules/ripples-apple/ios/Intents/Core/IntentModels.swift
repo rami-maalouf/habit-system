@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct IntentFailure: Error, Codable, LocalizedError, CustomLocalizedStringResourceConvertible, Equatable, Sendable {
@@ -81,11 +82,39 @@ struct IntentCheckInInput: Sendable {
 struct IntentCreatedCheckIn: Codable, Equatable, Sendable {
   let checkInId: String
   let logicalDate: String
+  let created: Bool
+
+  init(checkInId: String, logicalDate: String, created: Bool = true) {
+    self.checkInId = checkInId
+    self.logicalDate = logicalDate
+    self.created = created
+  }
+
+  init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    checkInId = try values.decode(String.self, forKey: .checkInId)
+    logicalDate = try values.decode(String.self, forKey: .logicalDate)
+    created = try values.decodeIfPresent(Bool.self, forKey: .created) ?? true
+  }
 }
 
 struct IntentRemovedCheckIn: Codable, Equatable, Sendable {
   let removedCheckInId: String
   let logicalDate: String
+  let removedCheckInIds: [String]
+
+  init(removedCheckInId: String, logicalDate: String, removedCheckInIds: [String]? = nil) {
+    self.removedCheckInId = removedCheckInId
+    self.logicalDate = logicalDate
+    self.removedCheckInIds = removedCheckInIds ?? [removedCheckInId]
+  }
+
+  init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    removedCheckInId = try values.decode(String.self, forKey: .removedCheckInId)
+    logicalDate = try values.decode(String.self, forKey: .logicalDate)
+    removedCheckInIds = try values.decodeIfPresent([String].self, forKey: .removedCheckInIds) ?? [removedCheckInId]
+  }
 }
 
 struct IntentTodayCount: Codable, Equatable, Sendable {
@@ -102,6 +131,23 @@ struct IntentRemovalCandidate: Codable, Sendable {
   let checkInId: String
   let boardTitle: String
   let logicalDate: String
+  let checkInIds: [String]
+  let kind: IntentBoardKind
+  let hasNotes: Bool
+  let snapshot: String
+
+  var confirmationText: String {
+    let dailyAction = checkInIds.count == 1 ? "Remove the check-in" : "Remove all \(checkInIds.count) check-ins"
+    let action = kind == .daily ? dailyAction : "Remove the latest check-in"
+    let notes = hasNotes ? " Saved notes will also be removed." : ""
+    return "\(action) from \(boardTitle) for \(logicalDate)?\(notes)"
+  }
+
+  static func snapshot(rows: [[String: IntentSQLValue]], kind: IntentBoardKind) throws -> String {
+    let values = rows.map { row in [row["id"]?.string ?? "", row["mutation_stamp"]?.string ?? "", row["note"]?.string ?? ""] }
+    let data = try JSONSerialization.data(withJSONObject: [kind.rawValue, values], options: [.withoutEscapingSlashes])
+    return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+  }
 }
 
 struct IntentHybridClock {

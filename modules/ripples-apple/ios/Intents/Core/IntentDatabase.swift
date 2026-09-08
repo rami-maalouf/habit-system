@@ -25,15 +25,15 @@ final class IntentDatabase {
   init(path: String, createForTesting: Bool = false) throws {
     let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | (createForTesting ? SQLITE_OPEN_CREATE : 0)
     guard exsqlite3_open_v2(path, &handle, flags, nil) == SQLITE_OK else {
-      if let handle { exsqlite3_close(handle) }
+      if let handle { _ = exsqlite3_close(handle) }
       handle = nil
       throw IntentFailure.unavailable
     }
-    exsqlite3_busy_timeout(handle, 5000)
+    _ = exsqlite3_busy_timeout(handle, 5000)
     try run("PRAGMA foreign_keys = ON")
   }
 
-  deinit { exsqlite3_close(handle) }
+  deinit { _ = exsqlite3_close(handle) }
 
   func transaction<Value>(exclusive: Bool, _ work: () throws -> Value) throws -> Value {
     try run(exclusive ? "BEGIN EXCLUSIVE" : "BEGIN")
@@ -49,7 +49,7 @@ final class IntentDatabase {
 
   @discardableResult func run(_ sql: String, _ values: [IntentSQLValue] = []) throws -> Int {
     let statement = try prepare(sql, values)
-    defer { exsqlite3_finalize(statement) }
+    defer { _ = exsqlite3_finalize(statement) }
     let status = exsqlite3_step(statement)
     guard status == SQLITE_DONE || status == SQLITE_ROW else { throw IntentStorageError.unavailable }
     return Int(exsqlite3_changes(handle))
@@ -57,7 +57,7 @@ final class IntentDatabase {
 
   func rows(_ sql: String, _ values: [IntentSQLValue] = []) throws -> [[String: IntentSQLValue]] {
     let statement = try prepare(sql, values)
-    defer { exsqlite3_finalize(statement) }
+    defer { _ = exsqlite3_finalize(statement) }
     var output: [[String: IntentSQLValue]] = []
     while true {
       let status = exsqlite3_step(statement)
@@ -96,7 +96,7 @@ final class IntentDatabase {
       case .integer(let number): status = exsqlite3_bind_int64(statement, position, number)
       case .real(let number): status = exsqlite3_bind_double(statement, position, number)
       }
-      if status != SQLITE_OK { exsqlite3_finalize(statement); throw IntentStorageError.unavailable }
+      if status != SQLITE_OK { _ = exsqlite3_finalize(statement); throw IntentStorageError.unavailable }
     }
     return statement
   }

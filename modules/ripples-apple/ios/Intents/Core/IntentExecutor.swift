@@ -8,8 +8,8 @@ final class IntentExecutor {
 
   // native code never migrates. the fixture test compares these checksums
   // with the authoritative typescript migrations before executing cases.
-  static let schemaVersion = 6
-  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b"]
+  static let schemaVersion = 7
+  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b", 7: "a901fb95"]
 
   init(database: IntentDatabase, now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
        zone: @escaping () -> String = { TimeZone.current.identifier },
@@ -43,24 +43,24 @@ final class IntentExecutor {
   }
 
   func checkIn(_ input: IntentCheckInInput) -> IntentOutcome<IntentCreatedCheckIn> {
-    // javascript trim includes the byte-order mark and uses unicode code
-    // points, not grapheme clusters, for its 10,000-character limit.
-    let whitespace = CharacterSet(charactersIn: "\u{0009}\u{000A}\u{000B}\u{000C}\u{000D}\u{0020}\u{00A0}\u{1680}\u{2000}\u{2001}\u{2002}\u{2003}\u{2004}\u{2005}\u{2006}\u{2007}\u{2008}\u{2009}\u{200A}\u{2028}\u{2029}\u{202F}\u{205F}\u{3000}\u{FEFF}")
-    let trimmed = input.note?.trimmingCharacters(in: whitespace)
-    let note = trimmed?.isEmpty == true ? nil : trimmed
-    if let note, note.unicodeScalars.count > 10_000 {
-      return .failure(IntentFailure(code: "validation", message: "Notes are limited to 10,000 characters.", field: "note"))
-    }
-    guard ["shortcut", "siri"].contains(input.source) else {
-      return .failure(IntentFailure(code: "validation", message: "Choose a supported automation source.", field: "source"))
-    }
     return command(input.commandId) { clock, instant, zone in
+      // javascript trim includes the byte-order mark and uses unicode code
+      // points, not grapheme clusters, for its 10,000-character limit.
+      let whitespace = CharacterSet(charactersIn: "\u{0009}\u{000A}\u{000B}\u{000C}\u{000D}\u{0020}\u{00A0}\u{1680}\u{2000}\u{2001}\u{2002}\u{2003}\u{2004}\u{2005}\u{2006}\u{2007}\u{2008}\u{2009}\u{200A}\u{2028}\u{2029}\u{202F}\u{205F}\u{3000}\u{FEFF}")
+      let trimmed = input.note?.trimmingCharacters(in: whitespace)
+      let note = trimmed?.isEmpty == true ? nil : trimmed
+      if let note, note.unicodeScalars.count > 10_000 {
+        return .failure(IntentFailure(code: "validation", message: "Notes are limited to 10,000 characters.", field: "note"))
+      }
+      guard ["shortcut", "siri"].contains(input.source) else {
+        return .failure(IntentFailure(code: "validation", message: "Choose a supported automation source.", field: "source"))
+      }
       guard let board = try self.board(id: input.boardId) else { return .failure(.notFound) }
       guard !board.archived else { return .failure(.archived) }
       let today = try IntentCalendar.logicalDate(utcMs: instant, zone: zone, startMinute: board.startOfDayMinute)
       var amount: Double?
       // the automation contract ignores an amount on non-amount boards.
-      if board.tracksAmount {
+      if board.kind == .count && board.tracksAmount {
         let candidate = input.amount ?? board.quickAmount
         guard candidate.isFinite, candidate > 0 else {
           return .failure(IntentFailure(code: "validation", message: "Enter an amount greater than zero.", field: "amount"))
@@ -73,7 +73,7 @@ final class IntentExecutor {
         }
         amount = candidate
       }
-      let occurredAt = board.tracksTime ? input.occurredAtUtc ?? instant : nil
+      let occurredAt = board.kind == .count && board.tracksTime ? input.occurredAtUtc ?? instant : nil
       if let occurredAt, !occurredAt.isFinite || abs(occurredAt) > 8_640_000_000_000_000 {
         return .failure(IntentFailure(code: "validation", message: "Choose a valid time.", field: "occurredAtUtc"))
       }
@@ -91,9 +91,13 @@ final class IntentExecutor {
       guard date <= today else {
         return .failure(IntentFailure(code: "validation", message: "Future dates cannot receive check-ins.", field: "logicalDate"))
       }
+      if board.kind == .daily, let id = try self.latestCheckIn(boardId: board.id, date: date) {
+        return .success(IntentCreatedCheckIn(checkInId: id, logicalDate: date, created: false))
+      }
       let offset = try occurredAt.map { date -> Double in
         Double(try IntentCalendar.calendar(zone: zone).timeZone.secondsFromGMT(for: Date(timeIntervalSince1970: date / 1000))) / 60
       }
+      try self.ensureBaselines(boardId: board.id, date: date)
       let stamp = clock.advance(now: Int64(instant))
       let id = self.uuid()
       try self.database.run("""
@@ -101,9 +105,11 @@ final class IntentExecutor {
           offset_minutes, amount, note, source, idempotency_key, created_at, updated_at, mutation_stamp, deleted_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         """, [.text(id), .text(board.id), .text(date), .number(occurredAt),
-              .string(board.tracksTime ? zone : nil), .number(offset), .number(amount), .string(note),
+              .string(occurredAt != nil ? zone : nil), .number(offset), .number(amount), .string(note),
               .text(input.source), .text(input.commandId), .integer(Int64(instant)), .integer(Int64(instant)), .text(stamp)])
       try self.appendOutbox(id: id, stamp: stamp, instant: instant)
+      try self.appendAction(commandId: input.commandId, boardId: board.id, date: date, checkInId: id,
+                            kind: "check", stamp: stamp, instant: instant)
       try self.rebuildWidgets(instant: instant, zone: zone)
       return .success(IntentCreatedCheckIn(checkInId: id, logicalDate: date))
     }
@@ -114,27 +120,45 @@ final class IntentExecutor {
       guard let board = try self.board(id: boardId) else { throw IntentFailure.notFound }
       guard !board.archived else { throw IntentFailure.archived }
       let date = try logicalDate ?? IntentCalendar.logicalDate(utcMs: self.now(), zone: self.zone(), startMinute: board.startOfDayMinute)
-      guard let id = try self.latestCheckIn(boardId: boardId, date: date) else { throw IntentFailure.noCheckIn }
-      return IntentRemovalCandidate(checkInId: id, boardTitle: board.title, logicalDate: date)
+      let rows = try self.removalRows(boardId: boardId, date: date, kind: board.kind)
+      guard let id = rows.first?["id"]?.string else { throw IntentFailure.noCheckIn }
+      return IntentRemovalCandidate(checkInId: id, boardTitle: board.title, logicalDate: date,
+        checkInIds: rows.compactMap { $0["id"]?.string }, kind: board.kind,
+        hasNotes: rows.contains { $0["note"]?.string?.isEmpty == false },
+        snapshot: try IntentRemovalCandidate.snapshot(rows: rows, kind: board.kind))
     }
   }
 
   func removeLatest(commandId: String, boardId: String, logicalDate: String? = nil,
-                    expectedCheckInId: String? = nil) -> IntentOutcome<IntentRemovedCheckIn> {
+                    expectedCheckInId: String? = nil, expectedCheckInIds: [String]? = nil,
+                    expectedSnapshot: String? = nil) -> IntentOutcome<IntentRemovedCheckIn> {
     command(commandId) { clock, instant, zone in
       guard let board = try self.board(id: boardId) else { return .failure(.notFound) }
       guard !board.archived else { return .failure(.archived) }
       let date = try logicalDate ?? IntentCalendar.logicalDate(utcMs: instant, zone: zone, startMinute: board.startOfDayMinute)
-      guard let id = try self.latestCheckIn(boardId: boardId, date: date) else { return .failure(.noCheckIn) }
+      let rows = try self.removalRows(boardId: boardId, date: date, kind: board.kind)
+      let ids = rows.compactMap { $0["id"]?.string }
+      guard let id = ids.first else { return .failure(.noCheckIn) }
       if let expectedCheckInId, id != expectedCheckInId {
         return .failure(IntentFailure(code: "conflict", message: "The latest check-in changed. Run the shortcut again to review it."))
       }
+      if let expectedCheckInIds, Set(ids) != Set(expectedCheckInIds) {
+        return .failure(IntentFailure(code: "conflict", message: "The check-ins changed. Run the shortcut again to review them."))
+      }
+      if let expectedSnapshot, try IntentRemovalCandidate.snapshot(rows: rows, kind: board.kind) != expectedSnapshot {
+        return .failure(IntentFailure(code: "conflict", message: "The check-ins changed. Run the shortcut again to review them."))
+      }
+      try self.ensureBaselines(boardId: board.id, date: date)
       let stamp = clock.advance(now: Int64(instant))
-      try self.database.run("UPDATE check_ins SET deleted_at = ?, updated_at = ?, mutation_stamp = ? WHERE id = ?",
+      for id in ids {
+        try self.database.run("UPDATE check_ins SET deleted_at = ?, updated_at = ?, mutation_stamp = ? WHERE id = ?",
                             [.integer(Int64(instant)), .integer(Int64(instant)), .text(stamp), .text(id)])
-      try self.appendOutbox(id: id, stamp: stamp, instant: instant)
+        try self.appendOutbox(id: id, stamp: stamp, instant: instant)
+      }
+      try self.appendAction(commandId: commandId, boardId: board.id, date: date,
+        checkInId: board.kind == .daily ? nil : id, kind: "uncheck", stamp: stamp, instant: instant)
       try self.rebuildWidgets(instant: instant, zone: zone)
-      return .success(IntentRemovedCheckIn(removedCheckInId: id, logicalDate: date))
+      return .success(IntentRemovedCheckIn(removedCheckInId: id, logicalDate: date, removedCheckInIds: ids))
     }
   }
 
@@ -147,7 +171,7 @@ final class IntentExecutor {
       let boards = try scoped.map { board -> IntentTodayCount in
         let date = try IntentCalendar.logicalDate(utcMs: instant, zone: zone, startMinute: board.startOfDayMinute)
         let count = try self.database.rows("SELECT COUNT(*) AS count FROM check_ins WHERE board_id = ? AND logical_date = ? AND deleted_at IS NULL", [.text(board.id), .text(date)]).first?["count"]?.number ?? 0
-        return IntentTodayCount(title: board.title, count: Int(count))
+        return IntentTodayCount(title: board.title, count: board.kind == .daily ? (count > 0 ? 1 : 0) : Int(count))
       }
       return IntentTodayCheckIns(boards: boards, total: boards.reduce(0) { $0 + $1.count })
     }
@@ -247,6 +271,35 @@ final class IntentExecutor {
       SELECT id FROM check_ins WHERE board_id = ? AND logical_date = ? AND deleted_at IS NULL
       ORDER BY CASE WHEN occurred_at_utc IS NULL THEN 1 ELSE 0 END, occurred_at_utc DESC, created_at DESC, id LIMIT 1
       """, [.text(boardId), .text(date)]).first?["id"]?.string
+  }
+
+  private func removalRows(boardId: String, date: String, kind: IntentBoardKind) throws -> [[String: IntentSQLValue]] {
+    let limit = kind == .count ? " LIMIT 1" : ""
+    return try database.rows("""
+      SELECT id, note, mutation_stamp FROM check_ins WHERE board_id = ? AND logical_date = ? AND deleted_at IS NULL
+      ORDER BY CASE WHEN occurred_at_utc IS NULL THEN 1 ELSE 0 END, occurred_at_utc DESC, created_at DESC, id
+      """ + limit, [.text(boardId), .text(date)])
+  }
+
+  private func appendAction(commandId: String, boardId: String, date: String, checkInId: String?,
+                            kind: String, stamp: String, instant: Double) throws {
+    try IntentHabitAction(id: uuid(), commandId: commandId, boardId: boardId, logicalDate: date,
+      checkInId: checkInId, kind: kind, createdAt: Int64(instant), mutationStamp: stamp, policyJson: nil).append(to: database)
+  }
+
+  private func ensureBaselines(boardId: String, date: String) throws {
+    let evidence = try database.rows("SELECT check_in_id FROM habit_actions WHERE board_id = ? AND logical_date = ?",
+      [.text(boardId), .text(date)])
+    let known = Set(evidence.compactMap { $0["check_in_id"]?.string })
+    let rows = try database.rows("""
+      SELECT id FROM check_ins WHERE board_id = ? AND logical_date = ? AND deleted_at IS NULL
+      ORDER BY id
+      """, [.text(boardId), .text(date)])
+    for row in rows {
+      guard let id = row["id"]?.string else { throw IntentStorageError.unavailable }
+      if known.contains(id) { continue }
+      try IntentHabitAction.baseline(checkInId: id, boardId: boardId, date: date).append(to: database)
+    }
   }
 
   private func appendOutbox(id: String, stamp: String, instant: Double) throws {

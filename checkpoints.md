@@ -2,6 +2,47 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T3 - immutable action evidence and atomic Daily commands (2026-09-08)
+
+1. Migration 7 adds immutable `habit_actions`, scope indexing, and guards against update,
+   delete, and replacement. Checksum `a901fb95` matches the Swift schema gate. Earlier
+   migrations remain unchanged. Actions remain pending in the outbox until T19, without
+   blocking supported uploads. No complete sync or export compatibility is claimed yet.
+2. Shared TypeScript/Swift fixtures prove deterministic UUIDv5 baselines and scoped replay.
+   Baselines use only check id, board id, and logical date, with fixed synthetic metadata.
+   Whole-date Daily unchecks clear earlier completions; targeted history removal, Undo,
+   and move-out affect only their check. Active concurrent/converted history retains its
+   notes, amounts, and times while Daily projections expose one effective completion.
+3. Daily commands force tracking off, check idempotently, toggle inside one transaction,
+   remove all retained checks when unchecking a date, and reject occupied-date moves.
+   Conversion and legacy import establish non-earning baselines. Every relevant writer
+   records action evidence atomically. Confirmation guards reject changed check sets,
+   notes/stamps, or native board kind. Legacy receipts decode without rewriting storage;
+   acknowledged actions replay even after archive and cannot authorize another check's Undo.
+4. Red/green evidence includes action identity/storage, Daily commands, confirmation races,
+   archived automation replay, and shared TS/Swift behavior. Storage-failure tests preserve
+   checks, notes, actions, settings/HLC, receipts, widget rows, and outbox together. Real
+   separate SQLite connections prove simultaneous native checks create one completion.
+5. Final gates: `bun run validate` exit 0, 50 suites and 656 tests, global coverage
+   97.62/95.77/95.71/97.7, all 40 core files at 100 percent on all four metrics. Native gate:
+   9 plugin and 64 Swift tests pass. Simulator build succeeds with the correct fork bundle.
+   An observed feature import cycle and unused native C-return warnings were fixed.
+6. Independent review: coordinating agent reviewed TS/native commands, schema, helpers,
+   and secondary changes; data-contract reviewer approved foundations and final commands;
+   TS author independently reviewed the coordinator's rollback/retry tests. All findings
+   were resolved before the final gates. `git diff --check` is clean.
+7. Migration QA `DF054717-410A-4F91-996B-2BCBC29296B1` ran committed T2 JavaScript/native
+   code, then upgraded in place with two UI-created Count checks. Complete board/check
+   rows match the schema-6 backup byte-for-byte after schema 7. Final detail shows two
+   checks and no development banner; both scoped cold-log captures contain zero entries.
+   Evidence: `.artifacts/t3/migration-proof.md`, `schema7-detail.png`, `schema7-detail.json`,
+   `cold-log-final.json`, `validate.log`, `native.log`, and `qa-native-build.log`.
+8. The first synthetic QA device had loaded an uncommitted migration through Metro; its
+   database was preserved rather than rewriting its checksum. The clean rehearsal used a
+   separate simulator and committed T2 checkout on temporary port 8083, now stopped.
+   Port 8081 and user devices/data remained untouched. T4 provides the Daily/Count form;
+   widget interaction and remaining native device flows still belong to T7/T8.
+
 ### T2 - schema 6 and habit field persistence (2026-09-08)
 
 1. Migration 6 adds the ten board fields, four preset minutes, and widget kind, with Count

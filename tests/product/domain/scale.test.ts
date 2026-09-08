@@ -36,7 +36,7 @@ async function seedCheckIns(
   for (let index = 0; index < count; index += 1) {
     const dayOffset = Math.floor(index / perDay);
     const date = new Date(firstDay + dayOffset * 86_400_000).toISOString().slice(0, 10);
-    const id = `p${String(index).padStart(11, '0')}`;
+    const id = `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
     rows.push(
       `('${id}','${boardId}','${date}',NULL,NULL,NULL,NULL,NULL,'app','k${id}',${stamps},${stamps},'s${index}',NULL)`,
     );

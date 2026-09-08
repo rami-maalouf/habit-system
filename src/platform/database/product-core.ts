@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 
 import type { CommandDeps } from '@/core/domain/commands';
 import type { CommandId } from '@/core/domain/ids';
-import type { Clock, IdGenerator } from '@/core/domain/ports';
+import type { Clock, Hashing, IdGenerator } from '@/core/domain/ports';
 import type { QueryDeps } from '@/core/domain/queries';
 import type { DomainResult } from '@/core/domain/result';
 import { ok } from '@/core/domain/result';
@@ -22,6 +22,10 @@ const deviceIds: IdGenerator = {
   uuid: () => Crypto.randomUUID(),
 };
 
+const deviceHashing: Hashing = {
+  sha1: async (bytes) => new Uint8Array(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA1, new Uint8Array(bytes))),
+};
+
 let corePromise: Promise<DomainResult<ProductCore>> | null = null;
 
 async function open(): Promise<DomainResult<ProductCore>> {
@@ -34,7 +38,7 @@ async function open(): Promise<DomainResult<ProductCore>> {
       await db.closeAsync().catch(() => undefined);
       return initialized;
     }
-    return ok({ db, clock: deviceClock, ids: deviceIds });
+    return ok({ db, clock: deviceClock, ids: deviceIds, hashing: deviceHashing });
   } catch (cause) {
     await db.closeAsync().catch(() => undefined);
     throw cause;

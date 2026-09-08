@@ -108,14 +108,14 @@ Board gains `kind: 'count' | 'daily'`. Default for new boards is `daily`. Existi
 
 `daily` boards:
 
-- At most one effective daily completion per logical date. New local daily checks create at most one non-deleted record per date. `createCheckIn` on an already checked date returns the existing check-in id with `ok: true` without inserting. The receipt records that no mutation happened. History retained by a Count-to-Daily conversion is an explicit exception to physical row uniqueness.
+- At most one effective daily completion per logical date. New local daily checks create at most one non-deleted record per date. `createCheckIn` on an already checked date returns the existing check-in id with `ok: true` without inserting. The receipt records that no mutation happened. History retained by a Count-to-Daily conversion and concurrent offline checks are explicit exceptions to physical row uniqueness. Preserve every active record's notes, amount, and time; projections and coin settlement resolve one effective Daily completion instead of deleting extra active history.
 - The quick action toggles. On an unchecked day it creates the check-in. On a checked day it removes it (a tombstone, as in Ripples). Both paths run through named commands.
 - `tracksAmount` and `tracksTime` are forced false and their controls are hidden. Existing amounts and times on a board switched to `daily` are retained, not deleted.
 - Heatmap cells have two states, unchecked and checked. The accessibility label says "checked" or "not checked" with the date.
 - Analytics are unchanged: a completed day is one with a check-in. Streak, consistency, weekday, timeline, and year comparison all work without change.
 - Switching kind is an edit with optimistic concurrency. Switching `count` to `daily` keeps all history; days with several check-ins show as checked.
 - Unchecking a daily date tombstones all live checks for that date in one transaction, with confirmation when any has a note. Deleting one selected history entry remains a single-record operation. Toggle reads and writes in the same command transaction. Edits, Undo, import, sync, and native intents obey the same daily-state rules.
-- Concurrent offline check/uncheck actions resolve by the existing total hybrid-clock order, with stable id tie-breaking. Sync must reconcile duplicate daily completions and their coin consequences. A local unique index alone is not the conflict policy.
+- Concurrent offline actions replay by the existing total hybrid-clock order, with stable id tie-breaking. A Daily uncheck clears the whole date; Count removals, individual history deletion, Undo, and move-out remove only their referenced check. The date is checked when any completion remains. A whole-day uncheck supersedes earlier checks and a later check restores completion. Sync must reconcile duplicate daily completions and their coin consequences. A local unique index alone is not the conflict policy.
 
 ### 4.2 Anchors
 

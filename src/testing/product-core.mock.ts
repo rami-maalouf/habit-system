@@ -1,6 +1,6 @@
 // jest replacement for the platform product core: the same domain stack over
 // node:sqlite so route tests exercise real commands, queries, and migrations
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
 import type { CommandId } from '@/core/domain/ids';
@@ -13,6 +13,7 @@ type ProductCore = {
   db: SqlDatabase;
   clock: { nowUtcMs(): number; timeZoneId(): string };
   ids: { uuid(): string };
+  hashing: { sha1(bytes: Uint8Array): Promise<Uint8Array> };
 };
 
 class MockSqlDatabase implements SqlDatabase {
@@ -98,6 +99,7 @@ async function open(): Promise<DomainResult<ProductCore>> {
     db,
     clock: { nowUtcMs: () => mockClock.utcMs, timeZoneId: () => mockClock.zone },
     ids,
+    hashing: { sha1: async (bytes) => new Uint8Array(createHash('sha1').update(bytes).digest()) },
   });
 }
 

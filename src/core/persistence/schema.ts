@@ -206,6 +206,35 @@ export const migrations: readonly Migration[] = [
       `UPDATE app_settings SET schema_revision = 6 WHERE id = 1`,
     ],
   },
+  {
+    version: 7,
+    name: 'immutable-habit-actions',
+    statements: [
+      `CREATE TABLE habit_actions (
+        id TEXT PRIMARY KEY NOT NULL,
+        command_id TEXT,
+        board_id TEXT NOT NULL,
+        logical_date TEXT NOT NULL,
+        check_in_id TEXT,
+        kind TEXT NOT NULL CHECK (kind IN ('check', 'uncheck', 'move_out', 'move_in', 'policy', 'baseline')),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at >= 0),
+        mutation_stamp TEXT NOT NULL,
+        policy_json TEXT,
+        CHECK ((kind = 'baseline' AND command_id IS NULL) OR (kind != 'baseline' AND command_id IS NOT NULL)),
+        CHECK (kind IN ('uncheck', 'policy') OR check_in_id IS NOT NULL),
+        CHECK (kind != 'policy' OR check_in_id IS NULL)
+      )`,
+      `CREATE INDEX idx_habit_actions_scope ON habit_actions (board_id, logical_date, mutation_stamp, id)`,
+      `CREATE TRIGGER habit_actions_no_replace BEFORE INSERT ON habit_actions
+       WHEN EXISTS (SELECT 1 FROM habit_actions WHERE id = NEW.id)
+       BEGIN SELECT RAISE(ABORT, 'habit actions are immutable'); END`,
+      `CREATE TRIGGER habit_actions_no_update BEFORE UPDATE ON habit_actions
+        BEGIN SELECT RAISE(ABORT, 'habit actions are immutable'); END`,
+      `CREATE TRIGGER habit_actions_no_delete BEFORE DELETE ON habit_actions
+        BEGIN SELECT RAISE(ABORT, 'habit actions are immutable'); END`,
+      `UPDATE app_settings SET schema_revision = 7 WHERE id = 1`,
+    ],
+  },
 ];
 
 export const latestSchemaVersion = migrations[migrations.length - 1].version;

@@ -7,6 +7,10 @@ export interface IdGenerator {
   uuid(): string;
 }
 
+export interface Hashing {
+  sha1(bytes: Uint8Array): Promise<Uint8Array>;
+}
+
 export type ReminderAuthorization = 'granted' | 'denied' | 'undetermined';
 
 export type ReminderScheduleRequest = {

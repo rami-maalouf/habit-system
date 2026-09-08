@@ -11,14 +11,29 @@ T3 migration 7 adds `habit_actions`: `id TEXT PRIMARY KEY`, `command_id TEXT`,
 Command ids are not unique: a date move writes old-date `move_out` and new-date `move_in`.
 Index `(board_id, logical_date, mutation_stamp, id)`. Actions are never updated or tombstoned.
 Kinds: `check`, `uncheck`, `move_out`, `move_in`, `policy`, `baseline`; policy never toggles.
-A baseline retains a legacy active check; its id hashes the original check id and immutable source identity.
-Its timestamp/stamp derive from that original snapshot, never the importing device or import time.
+A baseline retains a legacy active check. Its UUIDv5 name is the canonical JSON tuple
+`["habit-baseline-v1", checkId, boardId, logicalDate]`, under namespace
+`4d96f757-73e0-561c-99b9-16b7ef2d1903`. Its `createdAt` is always 0,
+its stamp is `00000000000000-00000-baseline`, and command/policy are null.
+This metadata is synthetic; original event times remain on the check-in. It never depends on
+import time, importer identity, or fields absent from a legacy export.
 Baselines rank below live actions; no matching evidence means unchecked. Reimport is idempotent.
-Daily state is the last check/uncheck by `(mutation_stamp, id)`; moves map to off/on respectively.
+Replay into an active check-id set, baselines first and then live actions by `(mutation_stamp, id)`.
+`check` and `move_in` add their check id; `move_out` removes only its check id.
+An `uncheck` with a check id removes only that id; an `uncheck` with null check id clears the date.
+Daily state is checked when that set is nonempty, with the latest remaining completion canonical.
+Thus a whole-day uncheck wins over earlier checks, while a later check restores completion.
+The canonical completion identifies replay state. A local no-op check returns an existing row using
+inherited history order, with `created=false`; its receipt cannot authorize Undo. It adds no
+check/action/outbox mutation and does not advance the hybrid clock.
 Materialize that state in check-ins atomically; merge cleanup never manufactures user unchecks.
+Preserve every active token's check-in, including concurrent offline checks and retained Count history.
+Daily projections and entitlement replay expose one effective completion without pruning active history.
+A whole-day clear suppresses earlier checks even when those rows arrive after the clear.
 Keep count history and note contents in check-ins; actions contain no titles, notes, or amounts.
 Daily uncheck applies to the board/date; count uncheck targets its `check_in_id`.
-Single-history deletion emits a daily uncheck only when it removes the date's effective completion.
+Single-history deletion and Undo target only their check id. Switching kind changes the projection,
+preserves retained history, and never reinterprets earlier targeted removals as whole-day clears.
 
 `policy_json` is null in T3 and for legacy baselines; these facts cannot invent historical coins.
 Once coins are enabled, validated version-1 policy JSON carries `boardKind`, `earnsCoins`,

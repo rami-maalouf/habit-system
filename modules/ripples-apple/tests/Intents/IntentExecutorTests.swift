@@ -77,6 +77,16 @@ final class IntentExecutorTests: XCTestCase {
       return String(format: "00000000-0000-4000-8000-%012d", counter)
     }
 
+    func legacyCheck(boardId: String, date: String) throws -> String {
+      let checkId = id()
+      try database.run("""
+        INSERT INTO check_ins (id, board_id, logical_date, source, idempotency_key,
+          created_at, updated_at, mutation_stamp, note, amount)
+        VALUES (?, ?, ?, 'manual', ?, 1, 1, 'legacy', 'legacy note', 3)
+        """, [.text(checkId), .text(boardId), .text(date), .text(id())])
+      return checkId
+    }
+
     func run(_ intent: String, _ input: [String: Any], commandId: String? = nil) throws -> [String: Any] {
       let id = commandId ?? self.id()
       let encoded: Data
@@ -95,6 +105,176 @@ final class IntentExecutorTests: XCTestCase {
   private func harness() throws -> Harness {
     let source = try fixture()
     return try Harness(seed: source["seed"] as! [String: Any], migrations: migrations())
+  }
+
+  func testDailyCheckIsPureAndIdempotentAcrossCommands() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a002"
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(board)])
+    let first = try harness.run("checkIn", ["boardId": board, "amount": -1, "occurredAtUtc": Double.nan])
+    XCTAssertEqual(first["ok"] as? Bool, true)
+    let value = try XCTUnwrap(first["value"] as? [String: Any])
+    XCTAssertEqual(value["created"] as? Bool, true)
+    let clock = try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings")
+    let second = try harness.run("checkIn", ["boardId": board])
+    let secondValue = try XCTUnwrap(second["value"] as? [String: Any])
+    XCTAssertEqual(secondValue["created"] as? Bool, false)
+    XCTAssertEqual(secondValue["checkInId"] as? String, value["checkInId"] as? String)
+    XCTAssertEqual(try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings"), clock)
+    let rows = try harness.database.rows("SELECT * FROM check_ins")
+    XCTAssertEqual(rows.count, 1)
+    for field in ["amount", "occurred_at_utc", "time_zone_id", "offset_minutes"] {
+      XCTAssertEqual(rows.first?[field], .null)
+    }
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions").count, 1)
+    XCTAssertEqual(try harness.executor.today(boardId: board).get().total, 1)
+  }
+
+  func testDailyRemovalClearsPreservedCountHistoryAndReportsBinaryToday() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a002"
+    try harness.database.run("UPDATE boards SET tracks_time = 1 WHERE id = ?", [.text(board)])
+    for note in ["first private note", "second private note"] {
+      XCTAssertTrue(harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, note: note)).ok)
+    }
+    let historyQuery = "SELECT id, note, amount, occurred_at_utc, time_zone_id, offset_minutes, created_at, idempotency_key FROM check_ins ORDER BY id"
+    let history = try harness.database.rows(historyQuery)
+    try harness.database.run("UPDATE boards SET kind = 'daily', tracks_amount = 0, tracks_time = 0 WHERE id = ?", [.text(board)])
+    XCTAssertEqual(try harness.executor.today(boardId: board).get().total, 1)
+    let removed = try harness.run("removeLatest", ["boardId": board])
+    let value = try XCTUnwrap(removed["value"] as? [String: Any])
+    XCTAssertEqual((value["removedCheckInIds"] as? [String])?.count, 2)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE deleted_at IS NULL").count, 0)
+    XCTAssertEqual(try harness.database.rows("SELECT note, amount FROM check_ins WHERE deleted_at IS NOT NULL").count, 2)
+    XCTAssertEqual(try harness.database.rows(historyQuery), history)
+    XCTAssertEqual(try harness.executor.today(boardId: board).get().total, 0)
+    let action = try XCTUnwrap(harness.database.rows("SELECT * FROM habit_actions WHERE kind = 'uncheck'").first)
+    XCTAssertEqual(action["check_in_id"], .null)
+    XCTAssertEqual(action["policy_json"], .null)
+    XCTAssertFalse(String(describing: action).contains("private note"))
+  }
+
+  func testDailyConfirmationRejectsChangedNotesAndRecordGroup() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let first = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).get()
+    let second = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board, note: "saved note")).get()
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(board)])
+    let candidate = try harness.executor.removalCandidate(boardId: board, logicalDate: nil).get()
+    XCTAssertEqual(Set(candidate.checkInIds), Set([first.checkInId, second.checkInId]))
+    XCTAssertEqual(candidate.confirmationText, "Remove all 2 check-ins from morning pages for 2026-08-30? Saved notes will also be removed.")
+    try harness.database.run("UPDATE check_ins SET note = 'edited note', mutation_stamp = 'changed' WHERE id = ?", [.text(second.checkInId)])
+    let result = harness.executor.removeLatest(commandId: harness.id(), boardId: board,
+      expectedCheckInIds: candidate.checkInIds, expectedSnapshot: candidate.snapshot)
+    XCTAssertEqual(result.error?.code, "conflict")
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE deleted_at IS NULL").count, 2)
+    let refreshed = try harness.executor.removalCandidate(boardId: board, logicalDate: nil).get()
+    try harness.database.run("UPDATE check_ins SET deleted_at = 1 WHERE id = ?", [.text(second.checkInId)])
+    XCTAssertEqual(harness.executor.removeLatest(commandId: harness.id(), boardId: board,
+      expectedCheckInIds: refreshed.checkInIds, expectedSnapshot: refreshed.snapshot).error?.code, "conflict")
+  }
+
+  func testConfirmationRejectsBoardKindChangeWithTheSameRecord() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    XCTAssertTrue(harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).ok)
+    let candidate = try harness.executor.removalCandidate(boardId: board, logicalDate: nil).get()
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(board)])
+    let before = try harness.database.rows("SELECT * FROM habit_actions")
+    XCTAssertEqual(harness.executor.removeLatest(commandId: harness.id(), boardId: board,
+      expectedCheckInIds: candidate.checkInIds, expectedSnapshot: candidate.snapshot).error?.code, "conflict")
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions"), before)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE deleted_at IS NULL").count, 1)
+  }
+
+  func testActionFailureRollsBackDailyRemovalAndCanReplayAfterRetry() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    for _ in 0..<2 { XCTAssertTrue(harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).ok) }
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(board)])
+    let before = try harness.database.rows("SELECT * FROM check_ins ORDER BY id")
+    let clock = try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings")
+    let outbox = try harness.database.rows("SELECT * FROM mutation_outbox")
+    try harness.database.run("CREATE TRIGGER fail_action BEFORE INSERT ON habit_actions BEGIN SELECT RAISE(ABORT, 'private details'); END")
+    let command = harness.id()
+    XCTAssertEqual(harness.executor.removeLatest(commandId: command, boardId: board).error, .database)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins ORDER BY id"), before)
+    XCTAssertEqual(try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings"), clock)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox"), outbox)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts WHERE command_id = ?", [.text(command)]).count, 0)
+    try harness.database.run("DROP TRIGGER fail_action")
+    let removed = try harness.executor.removeLatest(commandId: command, boardId: board).get()
+    XCTAssertEqual(removed.removedCheckInIds.count, 2)
+    XCTAssertEqual(try harness.executor.removeLatest(commandId: command, boardId: "missing").get(), removed)
+  }
+
+  func testStoredCreateReceiptReplaysBeforeMalformedNewInput() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let command = harness.id()
+    let created = try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: board)).get()
+    XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: "missing",
+      logicalDate: "invalid", note: String(repeating: "x", count: 10_001), source: "invalid")).get(), created)
+    let legacyCommand = harness.id()
+    let legacy = "{\"ok\":true,\"value\":{\"checkInId\":\"\(created.checkInId)\",\"logicalDate\":\"\(created.logicalDate)\"}}"
+    try harness.database.run("INSERT INTO command_receipts VALUES (?, ?, 0)", [.text(legacyCommand), .text(legacy)])
+    XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: legacyCommand, boardId: "missing")).get().created, true)
+  }
+
+  func testLegacyCountRemovalSeedsSurvivingSourcesBeforeTargetedUncheck() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let date = "1969-12-31"
+    let first = try harness.legacyCheck(boardId: board, date: date)
+    let second = try harness.legacyCheck(boardId: board, date: date)
+    let removed = try harness.executor.removeLatest(commandId: harness.id(), boardId: board, logicalDate: date).get()
+    XCTAssertEqual(removed.removedCheckInIds, [first])
+    XCTAssertEqual(try harness.database.rows("SELECT id FROM check_ins WHERE deleted_at IS NULL").first?["id"]?.string, second)
+    let baselines = try harness.database.rows("SELECT * FROM habit_actions WHERE kind = 'baseline' ORDER BY check_in_id")
+    XCTAssertEqual(baselines.count, 2)
+    for row in baselines {
+      XCTAssertEqual(row["created_at"]?.number, 0)
+      XCTAssertEqual(row["mutation_stamp"]?.string, IntentHabitAction.baselineStamp)
+      XCTAssertEqual(row["command_id"], .null)
+    }
+    XCTAssertEqual(try harness.database.rows("SELECT check_in_id FROM habit_actions WHERE kind = 'uncheck'").first?["check_in_id"]?.string, first)
+    let baseline = try IntentHabitAction.baseline(checkInId: second, boardId: board, date: date)
+    XCTAssertFalse(try baseline.append(to: harness.database))
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox WHERE entity_type = 'habit_action'").count, 3)
+  }
+
+  func testLegacyDailyNoOpPreservesHistoryWithoutCreatingEvidence() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let first = try harness.legacyCheck(boardId: board, date: "2026-08-30")
+    _ = try harness.legacyCheck(boardId: board, date: "2026-08-30")
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(board)])
+    let before = try harness.database.rows("SELECT * FROM check_ins ORDER BY id")
+    let result = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).get()
+    XCTAssertEqual(result.checkInId, first)
+    XCTAssertFalse(result.created)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins ORDER BY id"), before)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions").count, 0)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 0)
+    XCTAssertEqual(try harness.database.rows("SELECT hlc_wall_time FROM app_settings").first?["hlc_wall_time"]?.number, 0)
+  }
+
+  func testImmutableActionsRejectInvalidOrConflictingPayloadWithoutOutboxWrites() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let baseline = try IntentHabitAction.baseline(checkInId: harness.id(), boardId: board, date: "2026-08-30")
+    XCTAssertTrue(try baseline.append(to: harness.database))
+    XCTAssertFalse(try baseline.append(to: harness.database))
+    let conflict = IntentHabitAction(id: baseline.id, commandId: nil, boardId: board, logicalDate: "2026-08-29",
+      checkInId: baseline.checkInId, kind: "baseline", createdAt: 0, mutationStamp: IntentHabitAction.baselineStamp, policyJson: nil)
+    XCTAssertThrowsError(try conflict.append(to: harness.database))
+    let invalid = IntentHabitAction(id: "invalid", commandId: harness.id(), boardId: board, logicalDate: "2026-08-30",
+      checkInId: baseline.checkInId, kind: "check", createdAt: 1, mutationStamp: "00000000000001-00000-device", policyJson: nil)
+    XCTAssertThrowsError(try invalid.append(to: harness.database))
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 1)
+    XCTAssertThrowsError(try harness.database.run("UPDATE habit_actions SET logical_date = '2026-08-29'"))
+    XCTAssertThrowsError(try harness.database.run("DELETE FROM habit_actions"))
   }
 
   func testSharedFixtureVerbatim() throws {
@@ -120,10 +300,11 @@ final class IntentExecutorTests: XCTestCase {
         continue
       }
       if intent == "listBoards" {
-        XCTAssertEqual((result["value"] as! [[String: Any]]).map { $0["title"] as! String }, expected["boards"] as! [String], name)
+        let boards = try XCTUnwrap(result["value"] as? [[String: Any]], name)
+        XCTAssertEqual(boards.map { $0["title"] as? String }, expected["boards"] as! [String], name)
         continue
       }
-      let value = result["value"] as! [String: Any]
+      let value = try XCTUnwrap(result["value"] as? [String: Any], name)
       if let date = expected["logicalDate"] as? String { XCTAssertEqual(value["logicalDate"] as? String, date, name) }
       if let amount = expected["amount"] as? Double {
         XCTAssertEqual(try harness.database.rows("SELECT amount FROM check_ins WHERE id = ?", [.text(value["checkInId"] as! String)]).first?["amount"]?.number, amount, name)
@@ -142,6 +323,37 @@ final class IntentExecutorTests: XCTestCase {
         XCTAssertFalse(String(describing: result).contains("private thought"), name)
         XCTAssertFalse(String(describing: result).contains("note"), name)
       }
+    }
+  }
+
+  func testSharedDailyAutomationCases() throws {
+    let data = try Data(contentsOf: Self.root.appendingPathComponent("src/core/automations/fixtures/habit-actions.json"))
+    let source = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let cases = try XCTUnwrap(source["automationCases"] as? [[String: Any]])
+    for entry in cases {
+      let name = entry["name"] as! String
+      let harness = try harness()
+      let board = "00000000-0000-4000-8000-00000000a002"
+      try harness.database.run("UPDATE boards SET kind = 'daily', tracks_time = 1 WHERE id = ?", [.text(board)])
+      let date = try IntentCalendar.logicalDate(utcMs: harness.instant, zone: harness.timeZone, startMinute: 0)
+      for _ in 0..<(entry["legacyCheckCount"] as! Int) { _ = try harness.legacyCheck(boardId: board, date: date) }
+      var created: [Bool] = []
+      for _ in 0..<(entry["checkAttempts"] as! Int) {
+        let result = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board,
+          occurredAtUtc: harness.instant - 86_400_000, amount: 7.25)).get()
+        created.append(result.created)
+        if result.created {
+          let row = try XCTUnwrap(harness.database.rows("SELECT amount, occurred_at_utc FROM check_ins WHERE id = ?", [.text(result.checkInId)]).first)
+          XCTAssertEqual(row["amount"], .null, name)
+          XCTAssertEqual(row["occurred_at_utc"], .null, name)
+        }
+      }
+      if entry["removeLatest"] as! Bool { _ = try harness.executor.removeLatest(commandId: harness.id(), boardId: board).get() }
+      XCTAssertEqual(created, entry["expectedCreated"] as! [Bool], name)
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE deleted_at IS NULL").count, entry["expectedLiveCount"] as! Int, name)
+      XCTAssertEqual(try harness.executor.today(boardId: board).get().total, entry["expectedTodayCount"] as! Int, name)
+      let kinds = try harness.database.rows("SELECT kind FROM habit_actions ORDER BY kind").compactMap { $0["kind"]?.string }
+      XCTAssertEqual(kinds, (entry["expectedActionKinds"] as! [String]).sorted(), name)
     }
   }
 
@@ -205,7 +417,8 @@ final class IntentExecutorTests: XCTestCase {
     XCTAssertThrowsError(try harness.executor.activeBoard(id: board))
     XCTAssertEqual(try harness.executor.replay(commandId: createId, as: IntentCreatedCheckIn.self)?.get(), created)
     XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts").count, 2)
-    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 2)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox WHERE entity_type = 'check_in'").count, 2)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox WHERE entity_type = 'habit_action'").count, 2)
   }
 
   func testMutationTransactionUpdatesReceiptClockOutboxAndProjection() throws {
@@ -217,12 +430,13 @@ final class IntentExecutorTests: XCTestCase {
     XCTAssertEqual(row["note"]?.string, "thought")
     XCTAssertEqual(row["idempotency_key"]?.string, id)
     XCTAssertEqual(row["mutation_stamp"]?.string, "01788105600000-00000-00000000-0000-4000-8000-00000000d001")
-    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox WHERE entity_type = 'check_in'").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox WHERE entity_type = 'habit_action'").count, 1)
     XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts").count, 1)
     XCTAssertEqual(try harness.database.rows("SELECT strip FROM widget_board_rows WHERE board_id = ?", [.text(board)]).first?["strip"]?.string, "[0,0,0,0,0,0,1]")
     harness.instant += 86_400_000
     XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: id, boardId: board)).get(), result)
-    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 2)
   }
 
   func testCountCommandRetainsDailyKindInWidgetStorageAndTimeline() throws {
@@ -330,8 +544,37 @@ final class IntentExecutorTests: XCTestCase {
     let input = IntentCheckInInput(commandId: harness.id(), boardId: "00000000-0000-4000-8000-00000000a001")
     let first = try harness.executor.checkIn(input).get()
     XCTAssertEqual(try second.checkIn(input).get(), first)
-    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 2)
     XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins").count, 1)
+  }
+
+  func testConcurrentDailyCommandsOnSeparateConnectionsCreateOneCompletion() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".db")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let source = try fixture()
+    let harness = try Harness(seed: source["seed"] as! [String: Any], migrations: migrations(), path: url.path)
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE boards SET kind = 'daily' WHERE id = ?", [.text(board)])
+    let lock = NSLock()
+    var outcomes: [IntentOutcome<IntentCreatedCheckIn>] = []
+    DispatchQueue.concurrentPerform(iterations: 2) { index in
+      let outcome: IntentOutcome<IntentCreatedCheckIn>
+      do {
+        let executor = IntentExecutor(database: try IntentDatabase(path: url.path), now: { harness.instant }, zone: { harness.timeZone })
+        let command = String(format: "00000000-0000-4000-8000-%012d", 9000 + index)
+        outcome = executor.checkIn(IntentCheckInInput(commandId: command, boardId: board))
+      } catch { outcome = .failure(.database) }
+      lock.lock()
+      outcomes.append(outcome)
+      lock.unlock()
+    }
+    let values = try outcomes.map { try $0.get() }
+    XCTAssertEqual(values.filter(\.created).count, 1)
+    XCTAssertEqual(Set(values.map(\.checkInId)).count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM check_ins WHERE deleted_at IS NULL").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM habit_actions").count, 1)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts").count, 2)
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 2)
   }
 
   func testHistoryOrderingPrefersTimedRowsThenAscendingIdForTies() throws {

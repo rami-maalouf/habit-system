@@ -127,7 +127,7 @@ export type OutboxEntityType =
 
 export async function appendOutbox(
   tx: SqlExecutor,
-  entityType: OutboxEntityType,
+  entityType: OutboxEntityType | 'habit_action',
   entityId: string,
   mutationStamp: string,
   createdAt: number,
@@ -324,7 +324,7 @@ export async function listOutbox(tx: SqlExecutor, limit: number): Promise<Outbox
     mutation_stamp: string;
   }>(
     `SELECT id, entity_type, entity_id, mutation_stamp FROM mutation_outbox
-     ORDER BY id LIMIT ?`,
+     WHERE entity_type != 'habit_action' ORDER BY id LIMIT ?`,
     [limit],
   );
   return rows.map((row) => ({

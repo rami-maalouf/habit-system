@@ -1,5 +1,6 @@
 // real sql engine for jest through node:sqlite, implementing the same
 // SqlDatabase port the expo-sqlite adapter implements on device
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
 import type { CommandDeps } from '@/core/domain/commands';
@@ -130,5 +131,5 @@ export async function createTestHarness(): Promise<TestHarness> {
   if (!initialized.ok) {
     throw new Error(initialized.error.message);
   }
-  return { db, clock, ids, deps: { db, clock, ids } };
+  return { db, clock, ids, deps: { db, clock, ids, hashing: { sha1: async (bytes) => new Uint8Array(createHash('sha1').update(bytes).digest()) } } };
 }
