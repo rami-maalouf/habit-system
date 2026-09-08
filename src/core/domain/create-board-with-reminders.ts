@@ -63,14 +63,15 @@ export async function createBoardWithReminders(
   };
   const result = await runCommand(deps, input.commandId, async (context) => {
     const board = await createBoardInTransaction(deps, context, input, fields.value);
+    if (!board.ok) return board;
     let remindersDenied = false;
     for (const reminder of reminders) {
       const created = await createReminderInTransaction({ ...deps, scheduler }, context, {
-        ...reminder, board, authorization: authorization.value,
+        ...reminder, board: board.value, authorization: authorization.value,
       });
       remindersDenied ||= created.scheduleState === 'denied';
     }
-    return ok({ boardId: board.id, remindersDenied });
+    return ok({ boardId: board.value.id, remindersDenied });
   });
   // sqlite rollback cannot roll back notification-center side effects.
   if (!result.ok && scheduled.length > 0) {

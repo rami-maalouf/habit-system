@@ -23,6 +23,7 @@ import type { SqlDatabase, SqlExecutor } from '../persistence/database';
 import { readWidgetRows } from '../persistence/projections/widget-rows';
 import {
   getBoardById,
+  listBoardAnchorDependents,
   listActiveBoards as listActiveBoardRows,
   listArchivedBoards as listArchivedBoardRows,
 } from '../persistence/repositories/boards';
@@ -637,7 +638,7 @@ export function getStreakAnalytics(
 export function getBoardDependentCounts(
   deps: QueryDeps,
   boardId: BoardId,
-): Promise<DomainResult<{ checkIns: number; notes: number; reminders: number }>> {
+): Promise<DomainResult<{ checkIns: number; notes: number; reminders: number; anchoredBoards: number }>> {
   return runQuery(deps, async (tx) => {
     const checkIns = await countBoardCheckIns(tx, boardId);
     const notes = await countBoardNotes(tx, boardId);
@@ -645,7 +646,8 @@ export function getBoardDependentCounts(
       'SELECT COUNT(*) AS count FROM reminders WHERE board_id = ? AND deleted_at IS NULL',
       [boardId],
     );
-    return { checkIns, notes, reminders: reminders?.count ?? 0 };
+    const anchoredBoards = (await listBoardAnchorDependents(tx, boardId)).length;
+    return { checkIns, notes, reminders: reminders?.count ?? 0, anchoredBoards };
   });
 }
 

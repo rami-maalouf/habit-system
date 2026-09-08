@@ -323,7 +323,13 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
     const message = counts.ok
       ? `This permanently deletes ${counts.value.checkIns} check-ins, ${counts.value.notes} notes, and ${counts.value.reminders} reminders.`
       : 'This permanently deletes the board and everything it contains.';
-    Alert.alert('Delete Board', message, [
+    const anchoredBoards = counts.ok ? counts.value.anchoredBoards : null;
+    const anchorSummary = anchoredBoards === null
+      ? 'Habits anchored to this board will lose that anchor. Those habits and their history remain.'
+      : anchoredBoards === 0
+        ? ''
+        : `This also removes the anchor from ${anchoredBoards} habit${anchoredBoards === 1 ? '' : 's'}. ${anchoredBoards === 1 ? 'That habit and its history remain.' : 'Those habits and their history remain.'}`;
+    Alert.alert('Delete Board', [message, anchorSummary].filter(Boolean).join('\n\n'), [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete Board',

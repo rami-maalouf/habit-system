@@ -2,6 +2,54 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T10 - validated habit anchors and transactional link cleanup (2026-09-08)
+
+1. Create/update accepts a discriminated anchor, optional usual time and required
+   membership. Normalization writes the five consistent stored anchor columns;
+   omitted update inputs retain their values and explicit null clears only the
+   anchor. Text uses trimmed Unicode code-point limits; times use quarter-hours;
+   false membership persists. The spec now names all five columns and direct-link
+   cleanup explicitly. No migration, native schema or serialization change occurred.
+2. Both creation paths validate the complete undeleted graph inside the command
+   transaction before allocating ids, stamps or rows. Archived targets remain
+   valid; self-links, cycles and missing/deleted targets fail. The shared reminder
+   creation path propagates validation errors before scheduling, including a target
+   deleted while permission is pending. Receipt replay precedes retry validation.
+   Updates validate the effective edge before legacy Count-to-Daily evidence writes.
+3. Deletion captures direct undeleted dependents, including archived boards, clears
+   their anchor columns with one batch stamp and matching outbox rows, and rebuilds
+   the widget projection once. Their history, usual time, required flag and indirect
+   links remain. Both active-edit and archived-detail confirmations describe the
+   affected count and retained history, with honest query-failure wording.
+4. Core author plan_review and UI author simulator_readiness received independent
+   source/test/spec review from data_contract_review, with additional root review.
+   The reviewer found a defensive deleted-node gap in the pure graph helper;
+   a failing test preceded the guard and re-review approved it. Domain tests cover
+   queued reciprocal edits, malformed chains, replay, unchanged legacy history,
+   and real-SQL rollback/retry at dependent update, outbox and receipt boundaries.
+   Seven new routed cases cover both confirmations, zero/singular/plural, Cancel
+   and retained history. Final review has no unresolved source finding.
+5. Full `bun run validate`: exit 0, 66 suites / 872 tests, global coverage
+   96.99/95.52/95.28/97.47, all 44 core files at 100 percent on all metrics.
+   Native gate: 9 plugin checks and 74 Swift tests pass. Lint/typecheck pass.
+   Logs: `.artifacts/t10/validate.log`, `native.log`, `domain-coverage.log`,
+   `ui.log`; independent disposition: `independent-acceptance.md`.
+6. Simulator acceptance passed on the development-signed Migration QA app with
+   Metro 8082. Six synthetic Count boards and four note histories were created
+   through normal commands. Cancel preserved all six captured tables exactly.
+   Confirming active and archived deletions tombstoned both roots and cleared only
+   three direct links, with exactly five matching board outbox rows. All 18 check
+   rows and action evidence remained; the indirect board and original Count's
+   complete board/three stored checks, including two live checks, remained exact.
+   data_contract_review independently approved these comparisons plus light/plural
+   and dark/singular native dialogs. Evidence: `.artifacts/t10/qa/qa-proof.md`,
+   `active-committed.json`, `final-committed.json` and `verification.json`.
+7. The settled connected runtime capture contains zero entries. Intermediate
+   evidence retains an animation-time missed tap and a debugger async transport
+   response issue; neither is claimed as success or a product defect. Fixed command
+   ids and stored receipt replay prevented duplicate setup. No source correction,
+   user device, Metro 8081 or iCloud operation was needed. T10 is complete.
+
 ### T9 - editable informational anchor times (2026-09-08)
 
 1. Added the shared `setAnchorPresetMinute` command with runtime preset and

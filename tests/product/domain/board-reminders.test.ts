@@ -1,5 +1,7 @@
 import { createBoardWithReminders } from '@/core/domain/create-board-with-reminders';
+import { createBoard, deleteBoard } from '@/core/domain/commands';
 import { reconcileReminderSchedules } from '@/core/domain/reminder-commands';
+import { getBoardById } from '@/core/persistence/repositories/boards';
 
 import { FakeReminderScheduler } from '../helpers/fake-scheduler';
 import { createTestHarness, type TestHarness } from '../helpers/test-db';
@@ -31,6 +33,7 @@ describe('atomic board and reminder creation', () => {
     { reminders: [{ ...reminder, weekdaysMask: 0 }] },
     { reminders: [{ ...reminder, minuteOfDay: 1440 }] },
     { reminders: [{ ...reminder, message: 'x'.repeat(181) }] },
+    { anchor: { kind: 'text', relation: 'after', text: '  ' } },
   ])('validates every draft before prompting or writing: %j', async (overrides) => {
     scheduler.auth = 'undetermined';
     const result = await save([reminder], overrides);
@@ -55,6 +58,32 @@ describe('atomic board and reminder creation', () => {
     jest.spyOn(scheduler, 'authorization').mockRejectedValue(new Error('permission service down'));
     expect(await createBoardWithReminders(deps, input)).toEqual(result);
     expect(scheduler.pending.size).toBe(2);
+  });
+
+  it('creates an anchored board with reminders and replays its receipt after the target is deleted', async () => {
+    const target = await createBoard(harness.deps, { ...board, commandId: harness.ids.nextCommandId() });
+    if (!target.ok) throw new Error(target.error.message);
+    const input = {
+      ...board, commandId: harness.ids.nextCommandId(),
+      anchor: { kind: 'board' as const, relation: 'before' as const, boardId: target.value.boardId },
+      usualTimeMinute: 735, requiredInStack: false, reminders: [reminder],
+    };
+    const deps = { ...harness.deps, scheduler };
+    const result = await createBoardWithReminders(deps, input);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(await getBoardById(harness.db, result.value.boardId)).toMatchObject({
+      anchorKind: 'board', anchorRelation: 'before', anchorBoardId: target.value.boardId,
+      anchorPreset: null, anchorText: null, usualTimeMinute: 735, requiredInStack: false,
+    });
+    expect(scheduler.pending.size).toBe(1);
+    expect((await deleteBoard(harness.deps, { commandId: harness.ids.nextCommandId(), boardId: target.value.boardId })).ok).toBe(true);
+    const tables = ['boards', 'reminders', 'board_activity_periods', 'mutation_outbox', 'app_settings', 'command_receipts'];
+    const before = await Promise.all(tables.map((table) => harness.db.getAllAsync(`SELECT * FROM ${table} ORDER BY rowid`)));
+    const auth = jest.spyOn(scheduler, 'authorization').mockRejectedValue(new Error('permission service down'));
+    expect(await createBoardWithReminders(deps, { ...input, title: '', usualTimeMinute: Infinity })).toEqual(result);
+    expect(auth).not.toHaveBeenCalled();
+    expect(scheduler.pending.size).toBe(1);
+    expect(await Promise.all(tables.map((table) => harness.db.getAllAsync(`SELECT * FROM ${table} ORDER BY rowid`)))).toEqual(before);
   });
 
   it('keeps validated reminders disabled when permission is denied', async () => {

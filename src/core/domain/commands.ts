@@ -11,6 +11,8 @@ import {
   getBoardById,
   insertBoard,
   lastActiveOrderKey,
+  listBoardAnchorDependents,
+  listUndeletedBoards,
   updateBoardRow,
 } from '../persistence/repositories/boards';
 import {
@@ -30,6 +32,7 @@ import {
   tombstoneBoardGraph,
 } from '../persistence/repositories/support';
 import { appendCheckAction, seedLegacyCheckActions } from './check-in-mutations';
+import { EMPTY_BOARD_ANCHOR, normalizeBoardAnchorFields, validateBoardAnchorGraph, type BoardAnchorFields, type BoardAnchorOptions } from './board-anchor';
 import type { Board, BoardKind, CheckIn, Reminder, SelectedIcon } from './entities';
 import type { BoardId, CheckInId, CommandId, LogicalDate, ReminderId } from './ids';
 import { isUuidV4 } from './ids';
@@ -54,10 +57,11 @@ import { runCommand } from './command-context';
 export { runCommand, replayCommand } from './command-context';
 export type { CommandContext, CommandDeps } from './command-context';
 export { setAnchorPresetMinute } from './anchor-settings-commands';
+export type { BoardAnchorInput, BoardAnchorOptions } from './board-anchor';
 
 // --- boards ------------------------------------------------------------------
 
-export type CreateBoardInput = {
+export type CreateBoardInput = BoardAnchorOptions & {
   kind?: BoardKind;
   commandId: CommandId;
   title: string;
@@ -73,6 +77,7 @@ export type CreateBoardInput = {
 };
 
 type BoardFieldValidation = {
+  anchorFields: Partial<BoardAnchorFields>;
   title: string;
   symbol: string;
   accentHex: string;
@@ -82,7 +87,7 @@ type BoardFieldValidation = {
 };
 
 export function validateBoardFields(
-  input: {
+  input: BoardAnchorOptions & {
     kind?: BoardKind;
     title: string;
     symbol: string;
@@ -128,7 +133,10 @@ export function validateBoardFields(
   if (!startOfDay.ok) {
     return startOfDay;
   }
+  const anchorFields = normalizeBoardAnchorFields(input);
+  if (!anchorFields.ok) return anchorFields;
   return ok({
+    anchorFields: anchorFields.value,
     title: title.value,
     symbol: symbol.value,
     accentHex: accent.value,
@@ -142,13 +150,11 @@ export function createBoard(
   deps: CommandDeps,
   input: CreateBoardInput,
 ): Promise<DomainResult<{ boardId: BoardId }>> {
-  const fields = validateBoardFields(input);
-  if (!fields.ok) {
-    return Promise.resolve(fields);
-  }
   return runCommand(deps, input.commandId, async (context) => {
+    const fields = validateBoardFields(input);
+    if (!fields.ok) return fields;
     const board = await createBoardInTransaction(deps, context, input, fields.value);
-    return ok({ boardId: board.id });
+    return board.ok ? ok({ boardId: board.value.id }) : board;
   });
 }
 
@@ -158,7 +164,11 @@ export async function createBoardInTransaction(
   { tx, now, timeZoneId, stamp }: CommandContext,
   input: CreateBoardInput,
   fields: BoardFieldValidation,
-): Promise<Board> {
+): Promise<DomainResult<Board>> {
+  if (fields.anchorFields.anchorKind === 'board') {
+    const anchor = validateBoardAnchorGraph(null, fields.anchorFields.anchorBoardId!, await listUndeletedBoards(tx));
+    if (!anchor.ok) return anchor;
+  }
   const boardId = deps.ids.uuid() as BoardId;
   const mutationStamp = stamp();
   const orderKey = orderKeyAfter(await lastActiveOrderKey(tx));
@@ -172,6 +182,7 @@ export async function createBoardInTransaction(
     anchorText: null,
     usualTimeMinute: null,
     requiredInStack: true,
+    ...fields.anchorFields,
     earnsCoins: false,
     coinCapPerDay: 1,
     title: fields.title,
@@ -197,7 +208,7 @@ export async function createBoardInTransaction(
   await appendOutbox(tx, 'board', boardId, mutationStamp, now);
   await appendOutbox(tx, 'activity_period', String(periodId), mutationStamp, now);
   await rebuildWidgetRows(tx, now, timeZoneId);
-  return board;
+  return ok(board);
 }
 
 export type UpdateBoardInput = Omit<CreateBoardInput, 'commandId'> & {
@@ -210,11 +221,9 @@ export function updateBoard(
   deps: CommandDeps,
   input: UpdateBoardInput,
 ): Promise<DomainResult<{ mutationStamp: string }>> {
-  const fields = validateBoardFields(input);
-  if (!fields.ok) {
-    return Promise.resolve(fields);
-  }
   return runCommand(deps, input.commandId, async (context) => {
+    const fields = validateBoardFields(input);
+    if (!fields.ok) return fields;
     const { tx, now, timeZoneId, stamp } = context;
     const board = await getBoardById(tx, input.boardId);
     if (!board) {
@@ -226,12 +235,18 @@ export function updateBoard(
     if (board.mutationStamp !== input.expectedMutationStamp) {
       return err('conflict', 'This board changed elsewhere. Review the latest values.');
     }
+    const anchored = { ...board, ...fields.value.anchorFields };
+    if (anchored.anchorKind === 'board') {
+      const anchor = validateBoardAnchorGraph(board.id, anchored.anchorBoardId, await listUndeletedBoards(tx));
+      if (!anchor.ok) return anchor;
+    }
     if (board.kind === 'count' && input.kind === 'daily') {
       await seedLegacyCheckActions(deps, tx, await listBoardCheckIns(tx, board.id), now);
     }
     const mutationStamp = stamp();
     const updated: Board = {
       ...board,
+      ...fields.value.anchorFields,
       kind: input.kind ?? board.kind,
       title: fields.value.title,
       symbol: fields.value.symbol,
@@ -354,11 +369,16 @@ export function deleteBoard(
     if (!board) {
       return err('not_found', 'This board no longer exists.');
     }
+    const dependents = await listBoardAnchorDependents(tx, board.id);
     const checks = await listBoardCheckIns(tx, board.id);
     await seedLegacyCheckActions(deps, tx, checks, now);
     const mutationStamp = stamp();
     for (const check of checks) {
       await appendCheckAction(deps, context, input.commandId, check, 'uncheck', mutationStamp);
+    }
+    for (const dependent of dependents) {
+      await updateBoardRow(tx, { ...dependent, ...EMPTY_BOARD_ANCHOR, updatedAt: now, mutationStamp });
+      await appendOutbox(tx, 'board', dependent.id, mutationStamp, now);
     }
     const descendants = await tombstoneBoardGraph(tx, board.id, now, mutationStamp);
     await appendOutbox(tx, 'board', board.id, mutationStamp, now);

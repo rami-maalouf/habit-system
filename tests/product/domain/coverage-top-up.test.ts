@@ -55,13 +55,13 @@ describe('coverage top-up', () => {
     const strip = await getSevenDayStrip(harness.deps, boardId);
     expect(strip.ok && strip.value?.strip[6]).toBe(1);
     const counts = await getBoardDependentCounts(harness.deps, boardId);
-    expect(counts.ok && counts.value).toEqual({ checkIns: 1, notes: 0, reminders: 0 });
+    expect(counts.ok && counts.value).toEqual({ checkIns: 1, notes: 0, reminders: 0, anchoredBoards: 0 });
     const byKey = await getCheckInByIdempotencyKey(harness.db, 'no-such-key');
     expect(byKey).toBeNull();
     await harness.db.closeAsync();
   });
 
-  it('rejects invalid update-board fields before the transaction', async () => {
+  it('rejects invalid update-board fields before editing the board', async () => {
     const harness = await createTestHarness();
     const boardId = await createBoardForTest(harness);
     const result = await updateBoard(harness.deps, {

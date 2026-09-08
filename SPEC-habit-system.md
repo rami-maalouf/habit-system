@@ -133,9 +133,9 @@ Board gains:
 
 Rules:
 
-- A board has at most one anchor. The four anchor fields are all null or all consistent with `anchorKind`.
+- A board has at most one anchor. The five anchor fields are all null, or relation and kind are set with exactly the matching target field. Other target fields remain null.
 - "A after B" and "B before A" describe the same order. The UI offers both directions so the user can write the sentence naturally. Storage keeps what the user chose.
-- Anchor cycles are rejected by validation: following board anchors from any board must terminate. `deleteBoard` on an anchored-to board sets dependents' anchors to null in the same transaction and reports how many were cleared in the confirmation.
+- Anchor cycles are rejected by validation: following board anchors from any board must terminate. `deleteBoard` on an anchored-to board clears all five anchor fields on its direct undeleted dependents, including archived boards, in the same transaction. The confirmation reports how many links will be removed. Dependent boards and their history remain; indirect links keep their immediate parent.
 - Archiving an anchored-to board keeps the link. Stack computations treat an archived member as absent.
 - Text anchors are plain text. They are not entities and are not shared between boards.
 

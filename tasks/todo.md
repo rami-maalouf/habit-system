@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T9 done; T10 next. Revised planning documents were pushed; implementation continues through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 through T10 done; T11 next. Revised planning documents were pushed; implementation continues through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -78,7 +78,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: command/query, anchor settings screen/route, settings navigation, tests.
   - Depends on: T8.
 
-- [ ] **T10: Anchor fields and validation**
+- [x] **T10: Anchor fields and validation**
   - Acceptance: create/update accepts consistent anchor fields, usual time, and required-member flag; rejects self/cycles/invalid links; deletion clears dependents in the same transaction and reports their count. Archiving preserves links. Stable stack identity will use the terminal structural anchor-root board even when a Before member displays first.
   - Verify: chains, siblings, mixed directions, cycles, archived targets, delete cleanup/outbox effects.
   - Ownership scope: validation/commands/queries, board repository as needed, anchor domain tests.

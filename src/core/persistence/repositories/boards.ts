@@ -179,6 +179,23 @@ export async function listActiveBoards(tx: SqlExecutor): Promise<Board[]> {
   return rows.map(toBoard);
 }
 
+export async function listUndeletedBoards(tx: SqlExecutor): Promise<Board[]> {
+  const rows = await tx.getAllAsync<BoardRow>(
+    `SELECT ${BOARD_COLUMNS} FROM boards WHERE deleted_at IS NULL ORDER BY order_key, id`,
+  );
+  return rows.map(toBoard);
+}
+
+export async function listBoardAnchorDependents(tx: SqlExecutor, boardId: BoardId): Promise<Board[]> {
+  const rows = await tx.getAllAsync<BoardRow>(
+    `SELECT ${BOARD_COLUMNS} FROM boards
+     WHERE deleted_at IS NULL AND anchor_kind = 'board' AND anchor_board_id = ?
+     ORDER BY order_key, id`,
+    [boardId],
+  );
+  return rows.map(toBoard);
+}
+
 export async function listArchivedBoards(tx: SqlExecutor): Promise<Board[]> {
   const rows = await tx.getAllAsync<BoardRow>(
     `SELECT ${BOARD_COLUMNS} FROM boards

@@ -343,7 +343,7 @@ describe('final branch coverage', () => {
       { db: stub, clock: harness.clock },
       '00000000-0000-4000-8000-000000000001' as BoardId,
     );
-    expect(counts.ok && counts.value).toEqual({ checkIns: 0, notes: 0, reminders: 0 });
+    expect(counts.ok && counts.value).toEqual({ checkIns: 0, notes: 0, reminders: 0, anchoredBoards: 0 });
     const dismissed = await getMetricsEducationDismissed({ db: stub, clock: harness.clock });
     expect(dismissed.ok && dismissed.value).toEqual([]);
     await harness.db.closeAsync();
