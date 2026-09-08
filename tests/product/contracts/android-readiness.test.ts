@@ -117,8 +117,8 @@ describe('android readiness', () => {
 
   it('lets glance consume the same widget projection shape', () => {
     const rendered = androidWidgetAdapter.render([
-      { boardId: 'b1', title: 'one', symbol: 'star.fill', accentHex: '#70A7FF', strip: [0, 1] },
-      { boardId: 'b2', title: 'two', symbol: 'star.fill', accentHex: '#70A7FF', strip: [1, 1] },
+      { boardId: 'b1', kind: 'count', title: 'one', symbol: 'star.fill', accentHex: '#70A7FF', strip: [0, 1] },
+      { boardId: 'b2', kind: 'count', title: 'two', symbol: 'star.fill', accentHex: '#70A7FF', strip: [1, 1] },
     ]);
     expect(rendered.rowCount).toBe(2);
     return expect(androidWidgetAdapter.quickCheckIn('b1')).rejects.toThrow(

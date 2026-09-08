@@ -2,6 +2,7 @@ import Foundation
 
 struct IntentWidgetRow: Codable, Equatable, Sendable {
   let boardId: String
+  let kind: IntentBoardKind
   let title: String
   let symbol: String
   let accentHex: String

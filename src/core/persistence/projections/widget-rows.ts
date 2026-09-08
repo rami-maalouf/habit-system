@@ -24,15 +24,16 @@ export async function rebuildWidgetRows(
       strip.push(counts.get(addDays(today, -offset)) ?? 0);
     }
     await tx.runAsync(
-      `INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [board.id, position, board.title, board.symbol, board.accentHex, JSON.stringify(strip), today],
+      `INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [board.id, position, board.title, board.symbol, board.accentHex, JSON.stringify(strip), today, board.kind],
     );
   }
 }
 
 type WidgetRowRecord = {
   board_id: string;
+  kind: WidgetBoardRow['kind'];
   position: number;
   title: string;
   symbol: string;
@@ -47,6 +48,7 @@ export async function readWidgetRows(tx: SqlExecutor): Promise<WidgetBoardRow[]>
   );
   return rows.map((row) => ({
     boardId: row.board_id as BoardId,
+    kind: row.kind,
     position: row.position,
     title: row.title,
     symbol: row.symbol,

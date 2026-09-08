@@ -6,6 +6,10 @@ import type { SqlExecutor } from '../database';
 
 type SettingsRow = {
   schema_revision: number;
+  wake_minute: number;
+  lunch_minute: number;
+  dinner_minute: number;
+  sleep_minute: number;
   selected_icon: string;
   icloud_sync_enabled: number;
   metrics_education_dismissed: string;
@@ -22,6 +26,10 @@ export async function getSettings(tx: SqlExecutor): Promise<AppSettings | null> 
   }
   return {
     schemaRevision: row.schema_revision,
+    wakeMinute: row.wake_minute,
+    lunchMinute: row.lunch_minute,
+    dinnerMinute: row.dinner_minute,
+    sleepMinute: row.sleep_minute,
     selectedIcon: row.selected_icon as SelectedIcon,
     iCloudSyncEnabled: row.icloud_sync_enabled === 1,
     metricsEducationDismissed: JSON.parse(row.metrics_education_dismissed) as BoardId[],
@@ -50,6 +58,18 @@ export async function saveHlc(
     hlc.wallTime,
     hlc.counter,
   ]);
+}
+
+export async function saveAnchorPresetMinutes(
+  tx: SqlExecutor,
+  minutes: Pick<AppSettings, 'wakeMinute' | 'lunchMinute' | 'dinnerMinute' | 'sleepMinute'>,
+  mutationStamp: string,
+): Promise<void> {
+  await tx.runAsync(
+    `UPDATE app_settings SET wake_minute = ?, lunch_minute = ?, dinner_minute = ?,
+       sleep_minute = ?, settings_mutation_stamp = ? WHERE id = 1`,
+    [minutes.wakeMinute, minutes.lunchMinute, minutes.dinnerMinute, minutes.sleepMinute, mutationStamp],
+  );
 }
 
 export async function saveSelectedIcon(tx: SqlExecutor, icon: SelectedIcon): Promise<void> {

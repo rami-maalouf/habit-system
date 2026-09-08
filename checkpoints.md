@@ -2,6 +2,37 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### T2 - schema 6 and habit field persistence (2026-09-08)
+
+1. Migration 6 adds the ten board fields, four preset minutes, and widget kind, with Count
+   compatibility defaults and scalar constraints. Versions 1 through 5 are unchanged.
+   Checksum `0191110b` and the Swift schema gate landed together. Future tables remain in
+   their planned migrations. Existing command/import/reference paths retain Count semantics.
+2. Board and settings repositories round-trip the new fields. Ordinary edits retain them.
+   TypeScript and Swift widget rebuilds/timelines preserve kind. The new form and Daily
+   command semantics are later tasks; no new product UI is exposed by this task.
+3. Red evidence covers missing migration fields, persistence, widget props, and Swift kind
+   loss. The populated v5 fixture preserves active/archived/deleted boards, repeated checks,
+   notes/amounts/times, settings/HLC, receipts, outbox, sync cursors/deferred data, and account
+   binding. Tests cover versions 1 through 5, fresh/repeated migration, rollback, fractional
+   scalar rejection, nullable fields, both boolean updates, and deferred-table absence.
+4. Final automated gates: `bun run validate` exit 0, 47 suites and 604 tests, global coverage
+   97.5/95.51/95.58/97.6 and every one of 33 core files at 100 percent on all four metrics.
+   `bun run test:native` exit 0, 9 plugin checks and 52 Swift tests. `git diff --check` clean.
+5. Independent review: coordinating agent reviewed production persistence/migration changes
+   and tests; plan-review agent approved native changes; data-contract agent approved the
+   migration preservation fixture and performed independent simulator verification.
+6. Simulator proof: a synthetic Count board and two checks were created through the UI under
+   schema 5 on dedicated QA simulator `62014A57-2B4A-4083-8A4D-452D4E5F764B`. After migration
+   and an in-place native simulator rebuild/install, original board/check ids and timestamps
+   remained byte-for-byte equal, schema was 6, and the detail screen still showed two checks.
+   Evidence and red/green logs are in `.artifacts/t2/` (ignored). Port 8081 and user data on
+   other simulators were untouched. The supported SDK 57 build flags are recorded in AGENTS.md.
+7. Settled cold-launch evidence: `schema6-detail.png`, `schema6-detail.json`,
+   `cold-runtime-final.json`, and `qa-native-build.log` in that directory. A transient Fast
+   Refresh warning is preserved separately and did not recur on the cold launch, whose
+   captured console was empty. The independent simulator verifier approved this checkpoint.
+
 ### Approved pre-T2 amendments and continuation (2026-09-08)
 
 1. Rami clarified: "Stacks are only within the day" and rejected stacks across back-to-back

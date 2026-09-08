@@ -31,6 +31,7 @@ describe('august 2026 reference fixture', () => {
     expect(boards.ok && boards.value.map((board) => board.title)).toEqual(
       REFERENCE_AUGUST_2026_DEMO_LABELS,
     );
+    expect(boards.ok && boards.value.every((board) => board.kind === 'count')).toBe(true);
 
     const home = await getHomeBoardProjection(harness.deps);
     expect(home.ok).toBe(true);

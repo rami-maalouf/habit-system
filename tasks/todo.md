@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 done; T2 next. Revised planning documents may be pushed, then T2 through T24 completed.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments and his same-day-only correction. T1 and T2 done; T3 next. Revised planning documents were pushed; implementation continues through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -18,7 +18,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
 
 ## Phase 1: daily habits
 
-- [ ] **T2: Schema 6, board/settings fields, and widget kind**
+- [x] **T2: Schema 6, board/settings fields, and widget kind** (done 2026-09-08; see checkpoints.md)
   - Acceptance: migration 6 adds board columns `kind`, `anchor_relation`, `anchor_kind`, `anchor_board_id`, `anchor_preset`, `anchor_text`, `usual_time_minute`, `required_in_stack`, `earns_coins`, `coin_cap_per_day`; four settings preset minutes defaulting to 420, 720, 1080, 1380; widget projection kind support. Existing boards are Count. Ledger, rewards, and miss-alert tables belong to T15/T18/T21, not migration 6.
   - T2a: atomic migration, fixture, and matching Swift gate/checksum update. Never edit migrations 1 through 5. Compute the appended checksum through `migrationChecksum`; `testNativeSchemaGateMatchesAuthoritativeMigrations` must pass in this commit.
   - T2b: `Board`, `AppSettings`, and widget types plus repository hydration/writes, explicit defaults at every command/import/fixture construction site. Omitted-kind compatibility callers and legacy imports remain Count; the new form explicitly defaults Daily in T4.

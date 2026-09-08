@@ -255,6 +255,16 @@ export async function createBoardInTransaction(
   const orderKey = orderKeyAfter(await lastActiveOrderKey(tx));
   const board: Board = {
     id: boardId,
+    kind: 'count',
+    anchorRelation: null,
+    anchorKind: null,
+    anchorBoardId: null,
+    anchorPreset: null,
+    anchorText: null,
+    usualTimeMinute: null,
+    requiredInStack: true,
+    earnsCoins: false,
+    coinCapPerDay: 1,
     title: fields.title,
     symbol: fields.symbol,
     accentHex: fields.accentHex,
@@ -889,6 +899,16 @@ export async function importSnapshotInTransaction(
       }
       const board: Board = {
         id: boardId,
+        kind: 'count',
+        anchorRelation: null,
+        anchorKind: null,
+        anchorBoardId: null,
+        anchorPreset: null,
+        anchorText: null,
+        usualTimeMinute: null,
+        requiredInStack: true,
+        earnsCoins: false,
+        coinCapPerDay: 1,
         title: fields.value.title,
         symbol: fields.value.symbol,
         accentHex: fields.value.accentHex,

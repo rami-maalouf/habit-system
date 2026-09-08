@@ -164,10 +164,13 @@ describe('cloudkit account binding migration', () => {
     await db.runAsync('PRAGMA user_version = 4');
     await db.runAsync("INSERT INTO app_settings (id, schema_revision, device_id) VALUES (1, 4, 'existing-device')");
     await db.runAsync("INSERT INTO sync_state (id, change_token, zone_created) VALUES (1, 'existing-token', 1)");
-    const settings = await db.getAllAsync('SELECT * FROM app_settings');
+    const settings = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM app_settings');
     const sync = await db.getAllAsync('SELECT * FROM sync_state');
     expect(await migrateDatabase(db)).toEqual({ ok: true, value: latestSchemaVersion });
-    expect(await db.getAllAsync('SELECT * FROM app_settings')).toEqual(settings);
+    expect(await db.getAllAsync('SELECT * FROM app_settings')).toEqual(settings.map((row) => ({
+      ...row, schema_revision: latestSchemaVersion,
+      wake_minute: 420, lunch_minute: 720, dinner_minute: 1080, sleep_minute: 1380,
+    })));
     expect(await db.getAllAsync('SELECT * FROM sync_state')).toEqual(sync);
     expect(await db.getAllAsync('SELECT * FROM sync_account_bindings')).toEqual([]);
     const columns = await db.getAllAsync<{ name: string; pk: number; notnull: number }>(

@@ -51,8 +51,13 @@ struct IntentBoard: Codable, Equatable, Sendable {
   let title: String
 }
 
+enum IntentBoardKind: String, Codable, Sendable {
+  case count, daily
+}
+
 struct IntentBoardRecord: Codable, Sendable {
   let id: String
+  let kind: IntentBoardKind
   let title: String
   let symbol: String
   let accentHex: String

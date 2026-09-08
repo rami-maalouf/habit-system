@@ -1,7 +1,22 @@
 import type { BoardId, CheckInId, CommandId, DeviceId, LogicalDate, ReminderId } from './ids';
 
+export type BoardKind = 'count' | 'daily';
+export type AnchorRelation = 'after' | 'before';
+export type AnchorKind = 'board' | 'preset' | 'text';
+export type AnchorPreset = 'wake' | 'lunch' | 'dinner' | 'sleep';
+
 export type Board = {
   id: BoardId;
+  kind: BoardKind;
+  anchorRelation: AnchorRelation | null;
+  anchorKind: AnchorKind | null;
+  anchorBoardId: BoardId | null;
+  anchorPreset: AnchorPreset | null;
+  anchorText: string | null;
+  usualTimeMinute: number | null;
+  requiredInStack: boolean;
+  earnsCoins: boolean;
+  coinCapPerDay: number;
   title: string;
   symbol: string;
   accentHex: string;
@@ -72,6 +87,10 @@ export type SelectedIcon = 'default' | 'midnight' | 'paper';
 
 export type AppSettings = {
   schemaRevision: number;
+  wakeMinute: number;
+  lunchMinute: number;
+  dinnerMinute: number;
+  sleepMinute: number;
   selectedIcon: SelectedIcon;
   iCloudSyncEnabled: boolean;
   metricsEducationDismissed: BoardId[];
@@ -83,6 +102,7 @@ export type AppSettings = {
 
 export type WidgetBoardRow = {
   boardId: BoardId;
+  kind: BoardKind;
   position: number;
   title: string;
   symbol: string;

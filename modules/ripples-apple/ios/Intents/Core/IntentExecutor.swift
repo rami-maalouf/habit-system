@@ -8,8 +8,8 @@ final class IntentExecutor {
 
   // native code never migrates. the fixture test compares these checksums
   // with the authoritative typescript migrations before executing cases.
-  static let schemaVersion = 5
-  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7"]
+  static let schemaVersion = 6
+  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b"]
 
   init(database: IntentDatabase, now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
        zone: @escaping () -> String = { TimeZone.current.identifier },
@@ -158,10 +158,11 @@ final class IntentExecutor {
       let rows = try self.database.rows("SELECT * FROM widget_board_rows ORDER BY position LIMIT 12")
       let values = try rows.map { row -> IntentWidgetRow in
         guard let id = row["board_id"]?.string, let title = row["title"]?.string,
+              let rawKind = row["kind"]?.string, let kind = IntentBoardKind(rawValue: rawKind),
               let symbol = row["symbol"]?.string, let accent = row["accent_hex"]?.string,
               let strip = row["strip"]?.string,
               let data = strip.data(using: .utf8) else { throw IntentStorageError.unavailable }
-        return IntentWidgetRow(boardId: id, title: title, symbol: symbol, accentHex: accent,
+        return IntentWidgetRow(boardId: id, kind: kind, title: title, symbol: symbol, accentHex: accent,
                                strip: try JSONDecoder().decode([Int].self, from: data))
       }
       return try IntentWidgetTimeline(rows: values, instant: self.now(), zone: self.zone())
@@ -232,9 +233,10 @@ final class IntentExecutor {
 
   private static func decodeBoard(_ row: [String: IntentSQLValue]) throws -> IntentBoardRecord {
     guard let id = row["id"]?.string, let title = row["title"]?.string, let symbol = row["symbol"]?.string,
+          let rawKind = row["kind"]?.string, let kind = IntentBoardKind(rawValue: rawKind),
           let accent = row["accent_hex"]?.string, let quickAmount = row["quick_amount"]?.number,
           let start = row["start_of_day_minute"]?.number else { throw IntentStorageError.unavailable }
-    return IntentBoardRecord(id: id, title: title, symbol: symbol, accentHex: accent,
+    return IntentBoardRecord(id: id, kind: kind, title: title, symbol: symbol, accentHex: accent,
       tracksAmount: row["tracks_amount"]?.number == 1, quickAmount: quickAmount,
       tracksTime: row["tracks_time"]?.number == 1, startOfDayMinute: Int(start),
       archived: row["archived_at"] != .null)
@@ -266,9 +268,9 @@ final class IntentExecutor {
       let strip = try (0..<7).map { byDate[try IntentCalendar.addingDays($0 - 6, to: today)] ?? 0 }
       let encoded = String(decoding: try JSONEncoder().encode(strip), as: UTF8.self)
       try database.run("""
-        INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, [.text(board.id), .integer(Int64(position)), .text(board.title), .text(board.symbol), .text(board.accentHex), .text(encoded), .text(today)])
+        INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, [.text(board.id), .integer(Int64(position)), .text(board.title), .text(board.symbol), .text(board.accentHex), .text(encoded), .text(today), .text(board.kind.rawValue)])
     }
   }
 }

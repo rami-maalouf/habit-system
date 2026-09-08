@@ -4,6 +4,16 @@ import type { SqlExecutor } from '../database';
 
 type BoardRow = {
   id: string;
+  kind: Board['kind'];
+  anchor_relation: Board['anchorRelation'];
+  anchor_kind: Board['anchorKind'];
+  anchor_board_id: string | null;
+  anchor_preset: Board['anchorPreset'];
+  anchor_text: string | null;
+  usual_time_minute: number | null;
+  required_in_stack: number;
+  earns_coins: number;
+  coin_cap_per_day: number;
   title: string;
   symbol: string;
   accent_hex: string;
@@ -25,6 +35,16 @@ type BoardRow = {
 function toBoard(row: BoardRow): Board {
   return {
     id: row.id as BoardId,
+    kind: row.kind,
+    anchorRelation: row.anchor_relation,
+    anchorKind: row.anchor_kind,
+    anchorBoardId: row.anchor_board_id as BoardId | null,
+    anchorPreset: row.anchor_preset,
+    anchorText: row.anchor_text,
+    usualTimeMinute: row.usual_time_minute,
+    requiredInStack: row.required_in_stack === 1,
+    earnsCoins: row.earns_coins === 1,
+    coinCapPerDay: row.coin_cap_per_day,
     title: row.title,
     symbol: row.symbol,
     accentHex: row.accent_hex,
@@ -46,12 +66,14 @@ function toBoard(row: BoardRow): Board {
 
 const BOARD_COLUMNS = `id, title, symbol, accent_hex, uses_tinted_background, tracks_amount,
   amount_unit, quick_amount, tracks_time, start_of_day_minute, metrics_enabled, order_key,
-  archived_at, created_at, updated_at, mutation_stamp, deleted_at`;
+  archived_at, created_at, updated_at, mutation_stamp, deleted_at,
+  kind, anchor_relation, anchor_kind, anchor_board_id, anchor_preset, anchor_text,
+  usual_time_minute, required_in_stack, earns_coins, coin_cap_per_day`;
 
 export async function insertBoard(tx: SqlExecutor, board: Board): Promise<void> {
   await tx.runAsync(
     `INSERT INTO boards (${BOARD_COLUMNS})
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       board.id,
       board.title,
@@ -70,6 +92,16 @@ export async function insertBoard(tx: SqlExecutor, board: Board): Promise<void> 
       board.updatedAt,
       board.mutationStamp,
       board.deletedAt,
+      board.kind,
+      board.anchorRelation,
+      board.anchorKind,
+      board.anchorBoardId,
+      board.anchorPreset,
+      board.anchorText,
+      board.usualTimeMinute,
+      board.requiredInStack ? 1 : 0,
+      board.earnsCoins ? 1 : 0,
+      board.coinCapPerDay,
     ],
   );
 }
@@ -86,7 +118,9 @@ export async function updateBoardRow(tx: SqlExecutor, board: Board): Promise<voi
     `UPDATE boards SET title = ?, symbol = ?, accent_hex = ?, uses_tinted_background = ?,
        tracks_amount = ?, amount_unit = ?, quick_amount = ?, tracks_time = ?,
        start_of_day_minute = ?, metrics_enabled = ?, order_key = ?, archived_at = ?,
-       updated_at = ?, mutation_stamp = ?, deleted_at = ?
+       updated_at = ?, mutation_stamp = ?, deleted_at = ?,
+       kind = ?, anchor_relation = ?, anchor_kind = ?, anchor_board_id = ?, anchor_preset = ?,
+       anchor_text = ?, usual_time_minute = ?, required_in_stack = ?, earns_coins = ?, coin_cap_per_day = ?
      WHERE id = ?`,
     [
       board.title,
@@ -104,6 +138,16 @@ export async function updateBoardRow(tx: SqlExecutor, board: Board): Promise<voi
       board.updatedAt,
       board.mutationStamp,
       board.deletedAt,
+      board.kind,
+      board.anchorRelation,
+      board.anchorKind,
+      board.anchorBoardId,
+      board.anchorPreset,
+      board.anchorText,
+      board.usualTimeMinute,
+      board.requiredInStack ? 1 : 0,
+      board.earnsCoins ? 1 : 0,
+      board.coinCapPerDay,
       board.id,
     ],
   );

@@ -67,7 +67,7 @@ final class IntentExecutorTests: XCTestCase {
                  .integer(Int64(instant)), .integer(Int64(instant))])
         try database.run("INSERT INTO board_activity_periods (board_id, start_date, end_date, mutation_stamp) VALUES (?, ?, ?, 'seed')", [.text(id), .text(date), archived ? .text(date) : .null])
         if !archived {
-          try database.run("INSERT INTO widget_board_rows VALUES (?, ?, ?, 'star.fill', '#70A7FF', '[0,0,0,0,0,0,0]', ?)", [.text(id), .integer(Int64(index)), .text(title), .text(date)])
+          try database.run("INSERT INTO widget_board_rows (board_id, position, title, symbol, accent_hex, strip, strip_end_date, kind) VALUES (?, ?, ?, 'star.fill', '#70A7FF', '[0,0,0,0,0,0,0]', ?, 'count')", [.text(id), .integer(Int64(index)), .text(title), .text(date)])
         }
       }
     }
@@ -223,6 +223,19 @@ final class IntentExecutorTests: XCTestCase {
     harness.instant += 86_400_000
     XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: id, boardId: board)).get(), result)
     XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox").count, 1)
+  }
+
+  func testCountCommandRetainsDailyKindInWidgetStorageAndTimeline() throws {
+    let harness = try harness()
+    let count = "00000000-0000-4000-8000-00000000a001"
+    let daily = "00000000-0000-4000-8000-00000000a002"
+    try harness.database.run("UPDATE boards SET kind = 'daily', tracks_amount = 0, tracks_time = 0 WHERE id = ?", [.text(daily)])
+    XCTAssertTrue(harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: count)).ok)
+    XCTAssertEqual(try harness.database.rows("SELECT kind FROM widget_board_rows WHERE board_id = ?", [.text(daily)]).first?["kind"]?.string, "daily")
+    let timeline = try harness.executor.widgetTimeline().get()
+    let rows = try JSONSerialization.jsonObject(with: JSONEncoder().encode(timeline.entries[0].props.rows)) as! [[String: Any]]
+    XCTAssertEqual(rows.first { $0["boardId"] as? String == count }?["kind"] as? String, "count")
+    XCTAssertEqual(rows.first { $0["boardId"] as? String == daily }?["kind"] as? String, "daily")
   }
 
   func testStorageFailureRollsBackEveryMutationAndCanRetrySameCommand() throws {

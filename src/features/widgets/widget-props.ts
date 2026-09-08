@@ -4,6 +4,7 @@ import type { WidgetBoardRow } from '@/core/domain/entities';
 // carry everything a family needs to render without ad hoc queries
 export type WidgetRowProps = {
   boardId: string;
+  kind: WidgetBoardRow['kind'];
   title: string;
   symbol: string;
   accentHex: string;
@@ -32,6 +33,7 @@ export function widgetPropsFromProjection(rows: WidgetBoardRow[]): RipplesWidget
   return {
     rows: rows.slice(0, MAX_ROWS).map((row) => ({
       boardId: row.boardId,
+      kind: row.kind,
       title: row.title,
       symbol: row.symbol,
       accentHex: row.accentHex,

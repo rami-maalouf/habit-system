@@ -176,6 +176,36 @@ export const migrations: readonly Migration[] = [
       )`,
     ],
   },
+  {
+    version: 6,
+    name: 'habit_board_settings_fields',
+    statements: [
+      // existing history retains count semantics; daily behavior is opt-in.
+      `ALTER TABLE boards ADD COLUMN kind TEXT NOT NULL DEFAULT 'count' CHECK (kind IN ('count', 'daily'))`,
+      `ALTER TABLE boards ADD COLUMN anchor_relation TEXT CHECK (anchor_relation IN ('after', 'before'))`,
+      `ALTER TABLE boards ADD COLUMN anchor_kind TEXT CHECK (anchor_kind IN ('board', 'preset', 'text'))`,
+      `ALTER TABLE boards ADD COLUMN anchor_board_id TEXT REFERENCES boards (id)`,
+      `ALTER TABLE boards ADD COLUMN anchor_preset TEXT CHECK (anchor_preset IN ('wake', 'lunch', 'dinner', 'sleep'))`,
+      `ALTER TABLE boards ADD COLUMN anchor_text TEXT`,
+      `ALTER TABLE boards ADD COLUMN usual_time_minute INTEGER CHECK (
+        usual_time_minute IS NULL OR (typeof(usual_time_minute) = 'integer'
+          AND usual_time_minute BETWEEN 0 AND 1439 AND usual_time_minute % 15 = 0))`,
+      `ALTER TABLE boards ADD COLUMN required_in_stack INTEGER NOT NULL DEFAULT 1 CHECK (required_in_stack IN (0, 1))`,
+      `ALTER TABLE boards ADD COLUMN earns_coins INTEGER NOT NULL DEFAULT 0 CHECK (earns_coins IN (0, 1))`,
+      `ALTER TABLE boards ADD COLUMN coin_cap_per_day INTEGER NOT NULL DEFAULT 1 CHECK (
+        typeof(coin_cap_per_day) = 'integer' AND coin_cap_per_day BETWEEN 1 AND 10)`,
+      `ALTER TABLE app_settings ADD COLUMN wake_minute INTEGER NOT NULL DEFAULT 420 CHECK (
+        typeof(wake_minute) = 'integer' AND wake_minute BETWEEN 0 AND 1439 AND wake_minute % 15 = 0)`,
+      `ALTER TABLE app_settings ADD COLUMN lunch_minute INTEGER NOT NULL DEFAULT 720 CHECK (
+        typeof(lunch_minute) = 'integer' AND lunch_minute BETWEEN 0 AND 1439 AND lunch_minute % 15 = 0)`,
+      `ALTER TABLE app_settings ADD COLUMN dinner_minute INTEGER NOT NULL DEFAULT 1080 CHECK (
+        typeof(dinner_minute) = 'integer' AND dinner_minute BETWEEN 0 AND 1439 AND dinner_minute % 15 = 0)`,
+      `ALTER TABLE app_settings ADD COLUMN sleep_minute INTEGER NOT NULL DEFAULT 1380 CHECK (
+        typeof(sleep_minute) = 'integer' AND sleep_minute BETWEEN 0 AND 1439 AND sleep_minute % 15 = 0)`,
+      `ALTER TABLE widget_board_rows ADD COLUMN kind TEXT NOT NULL DEFAULT 'count' CHECK (kind IN ('count', 'daily'))`,
+      `UPDATE app_settings SET schema_revision = 6 WHERE id = 1`,
+    ],
+  },
 ];
 
 export const latestSchemaVersion = migrations[migrations.length - 1].version;

@@ -23,6 +23,7 @@ jest.mock('expo-haptics', () => ({
 
 function projectionRow(index: number): WidgetBoardRow {
   return {
+    kind: 'count',
     boardId: `00000000-0000-4000-8000-0000000000${String(index).padStart(2, '0')}` as BoardId,
     position: index,
     title: `board ${index}`,
@@ -45,6 +46,16 @@ describe('widget props', () => {
 
   it('keeps an empty projection empty', () => {
     expect(widgetPropsFromProjection([]).rows).toHaveLength(0);
+  });
+
+  it('carries both board kinds into the timeline without changing count strips', () => {
+    const count = projectionRow(0);
+    const daily: WidgetBoardRow = { ...projectionRow(1), kind: 'daily' };
+    const props = widgetPropsFromProjection([count, daily]);
+    expect(props.rows).toEqual([
+      expect.objectContaining({ kind: 'count', strip: count.strip }),
+      expect.objectContaining({ kind: 'daily', strip: daily.strip }),
+    ]);
   });
 
   it('schedules the stale entry just past the next local midnight', () => {
