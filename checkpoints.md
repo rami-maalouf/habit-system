@@ -2,6 +2,27 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Pre-T2 plan review (2026-09-08)
+
+1. Rami authorized reviewing the whole plan and continuing T2 through the remaining tasks,
+   with sub-agents for implementation and validation. The review found unresolved product
+   contracts; T2 has not started. Recommendations are recorded in `tasks/plan-review.md`.
+2. Three decisions were presented to Rami: untimed overnight run attribution, restoring a
+   reversed bonus on re-completion, and concurrent offline daily actions with ledger
+   reconciliation. These recommendations remain pending, not approved product changes.
+3. The review also identifies missing coin controls and native mutation coverage, sync/export
+   sequencing and compatibility gaps, widget toggle routing, and migration scope corrections.
+   The approved spec, implementation plan, task completion states, and product code are unchanged.
+4. Baseline validation: `bun run validate` exit 0, 45 suites and 570 tests, all 33 `src/core`
+   files at 100 percent on all four metrics. `bun run test:native` exit 0, 9 plugin tests and
+   51 Swift tests. Logs: `.artifacts/readiness/validate.log` and `native.log` (ignored).
+5. Argent CLI is available. The existing T1 simulator has the correct fork bundle installed.
+   Port 8082 is free for the fork; port 8081 belongs to Ripples. No simulator data, installed
+   apps, or Metro processes were changed during this review.
+6. Review authors: coordinating agent and separate plan-review agent. Independent data-contract
+   reviewer approved both documentation files without corrections. This checkpoint and the
+   review document form the documentation-only pre-T2 review commit.
+
 ### T1 - fork identity and EAS project (2026-09-08)
 
 1. Task id: T1. Acceptance: `app.json` name and slug `habit-system`, bundle `studio.orbitlabs.habitsystem`,
