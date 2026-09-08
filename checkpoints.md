@@ -2231,3 +2231,59 @@ none can be built or verified without a signed Apple Developer team:
    Evidence: `.artifacts/t17/qa/qa-proof.md`, `verification.json`, `verify.py`,
    `after-shutdown.db`, final screenshots and accessibility captures;
    `.artifacts/t17/independent-layout-final.md` approves the final corrections.
+
+### T18 - reward storage, claims and screens (2026-09-08)
+
+1. T18a/b adds migration 10 (`5d0cab85`) and the matching Swift schema gate.
+   Released migrations 1 through 9 remain byte-stable. The reward table stores
+   user-defined metadata, bounded integer costs and safe timestamps, with an
+   active-order index and no foreign key from immutable historical claims.
+   Twelve migration cases prove empty initialization, retained schema-nine
+   history, indexed ordering and rollback/retry at each later write boundary.
+2. Reward leaf commands implement create, full-field update, reorder, archive,
+   restore and tombstone deletion through the existing transaction/receipt
+   envelope. Validation preserves code-point title limits, rejects unpaired
+   surrogates and malformed runtime scalars, and normalizes approved styles.
+   Equal or exhausted ordering keys trigger a deterministic transactional
+   rebalance, stamping and queuing only affected active rows. Metadata changes
+   never alter earlier claims or habit evidence.
+3. Atomic claim preview reads the active reward and totals in one snapshot.
+   A nullable projected balance represents insufficient funds without unsafe
+   subtraction. Confirmation carries the reward stamp. Claim replays first,
+   then checks active status, stamp and current affordable balance inside the
+   acquired exclusive transaction. It appends one immutable debit and title
+   snapshot with its outbox, HLC and receipt. Claims use acquired local midnight
+   dates; replay retains the original date, title, cost and resulting balance.
+4. Fifty-eight focused real-SQL tests cover scalar endpoints, query failures,
+   a two-connection WAL snapshot, metadata lifecycle, ties, receipt replays,
+   competing/queued claims, acquired clock/zone, stale confirmations and later
+   write rollback. Independent review also passes 300 model-based ordering
+   operations and two independently affordable claims merged to balance -1,
+   preserving both rows after reward deletion. A malformed route array was
+   reproduced before its parser guard fix and regression test.
+5. T18a/b full validation exits 0: 110 suites / 1,740 tests, global coverage
+   97.75/96.34/95.88/98.01, every one of 77 core files at 100 percent. Native
+   gates pass 9 plugin and 131 Swift tests. The development build succeeds;
+   its signing-only copy preserves AppIntent metadata and executable sections,
+   with all 20 targets carrying the expected team and deep strict verification
+   passing. The inherited ExpoDevLauncher ambiguous-script warning remains
+   recorded for T24. Evidence is under `.artifacts/t18/`.
+6. T18a/b actual in-place simulator migration preserves every prior T17 row
+   and starts with an empty reward table. All 16 installed executables match
+   the signed candidate. A fresh Count fixture created through normal forms
+   earns through actual Shortcuts Check and reverses through Remove Latest;
+   both actions use the intended title, policy and exact immutable source.
+   A separately disclosed picker-selection mistake checked the prior synthetic
+   T17 board; targeted public Undo reversed only that new check and retained
+   its award/reversal pair. Both pairs net to zero and all older rows stay exact.
+7. Final cold Home shows balance 8 with zero captured runtime entries. Owned
+   apps/services are stopped and QA is shut down. The final database is schema
+   10 with 33 boards, 75 checks, 105 actions, 28 ledger rows, 337 receipts and
+   338 outbox rows. Its SHA256 is
+   `54620ed44c78e5b08793cf7f1a65196909f929e4bf9715144ba7a8e132994b1e`.
+   Evidence: `.artifacts/t18/qa/qa-proof.md`, `verification.json`, `verify.py`,
+   `after-shutdown.db`; source, schema and independent core acceptance plus
+   aggregate/native/build logs are in `.artifacts/t18/`.
+8. T18a/b is complete. T18c will replace the temporary Rewards placeholder with
+   normal forms, active/archived lists and the guarded confirmation/retry flow,
+   then verify the complete user path before marking T18 done.

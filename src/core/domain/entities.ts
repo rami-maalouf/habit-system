@@ -1,4 +1,18 @@
-import type { BoardId, CheckInId, CommandId, DeviceId, LogicalDate, ReminderId } from './ids';
+import type { BoardId, CheckInId, CommandId, DeviceId, LogicalDate, ReminderId, RewardId } from './ids';
+
+export type Reward = {
+  id: RewardId;
+  title: string;
+  costCoins: number;
+  symbol: string;
+  accentHex: string;
+  orderKey: string;
+  archivedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+  mutationStamp: string;
+  deletedAt: number | null;
+};
 
 export type BoardKind = 'count' | 'daily';
 export type AnchorRelation = 'after' | 'before';

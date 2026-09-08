@@ -39,3 +39,7 @@ export function parseReminderId(value: string): ReminderId | null {
 export function parseCommandId(value: string): CommandId | null {
   return isUuidV4(value) ? (value.toLowerCase() as CommandId) : null;
 }
+
+export function parseRewardId(value: string): RewardId | null {
+  return typeof value === 'string' && isUuidV4(value) ? (value.toLowerCase() as RewardId) : null;
+}

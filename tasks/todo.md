@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T17 and Checkpoint B are done; T18 reward storage and claims is next. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T17 and Checkpoint B are done; T18a/b reward storage and claims is complete; T18c reward screens is next. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -143,6 +143,7 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Depends on: T16.
 
 - [ ] **T18: Schema 10 and rewards**
+  - Status: T18a/b done. Schema 10 and atomic reward commands pass 1,740 tests with all 77 core files at 100 percent, 9 plugin and 131 Swift tests, independent review and preserved in-place migration/native-action QA. T18c forms/list/confirmation is next; reward sync/export remains T19/T20.
   - T18a acceptance: schema 10 adds rewards with branded ids, approved constraints/indexes, and matching Swift gate/checksum. Repository and commands create/update/reorder/archive/delete; ledger rows remain untouched by reward deletion.
   - T18b acceptance: `claimReward` checks balance inside its exclusive transaction, fails below cost, writes immutable debit plus title snapshot, and replays safely. Editing/deleting a reward preserves prior claim cost/title. Distinct offline claims remain accepted after merge even if their combined balance is negative.
   - T18c acceptance: native-style new/edit forms, reward list, empty state, and Claim confirmation showing cost and resulting balance.

@@ -230,6 +230,9 @@ Rules:
 
 - Rewards are user-defined. Nothing is seeded. The empty state explains in one sentence and offers Create Reward.
 - Claiming requires a confirmation that states the cost and the balance after. Successful claim writes the ledger row and shows the claim in Coin History.
+- Confirmation uses one snapshot of the active reward and current balance. The claim rechecks the reward's mutation stamp and balance inside its exclusive transaction; a changed reward requires fresh confirmation, while intervening balance changes are allowed if the cost is still affordable. An uncertain retry uses the original command receipt, including after later reward edits or deletion.
+- Claims use the acquired current local date with a midnight boundary, since rewards have no habit-specific start of day. A successful receipt retains that original date on replay.
+- Archived rewards remain readable and can be restored to the end of the active list. Editing and claiming require an active reward; archive, restore, reorder and deletion never alter earlier ledger rows.
 - Editing a reward's cost does not change past claims.
 - Deleting a reward tombstones it. Its past claims remain in the ledger with the reward's title copied into the confirmation history at claim time (`claim` rows store `rewardTitleSnapshot`, trimmed, 80 code points, so history survives deletion).
 - Rewards sync and export like boards.

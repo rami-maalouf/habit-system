@@ -293,6 +293,27 @@ export const migrations: readonly Migration[] = [
       `UPDATE app_settings SET schema_revision = 9 WHERE id = 1`,
     ],
   },
+  {
+    version: 10,
+    name: 'user_rewards',
+    statements: [
+      `CREATE TABLE rewards (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        cost_coins INTEGER NOT NULL CHECK (typeof(cost_coins) = 'integer' AND cost_coins BETWEEN 1 AND 100000),
+        symbol TEXT NOT NULL,
+        accent_hex TEXT NOT NULL,
+        order_key TEXT NOT NULL,
+        archived_at INTEGER CHECK (archived_at IS NULL OR (typeof(archived_at) = 'integer' AND archived_at BETWEEN 0 AND 9007199254740991)),
+        created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at BETWEEN 0 AND 9007199254740991),
+        updated_at INTEGER NOT NULL CHECK (typeof(updated_at) = 'integer' AND updated_at BETWEEN 0 AND 9007199254740991),
+        mutation_stamp TEXT NOT NULL,
+        deleted_at INTEGER CHECK (deleted_at IS NULL OR (typeof(deleted_at) = 'integer' AND deleted_at BETWEEN 0 AND 9007199254740991))
+      )`,
+      `CREATE INDEX idx_rewards_active ON rewards (deleted_at, archived_at, order_key, id)`,
+      `UPDATE app_settings SET schema_revision = 10 WHERE id = 1`,
+    ],
+  },
 ];
 
 export const latestSchemaVersion = migrations[migrations.length - 1].version;
