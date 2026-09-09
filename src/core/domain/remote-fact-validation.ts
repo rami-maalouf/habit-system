@@ -4,6 +4,7 @@ import { COIN_RECORD_BYTES, CoinContractError } from './coin-policy';
 import { baselineAction, canonicalHabitAction, validateHabitAction, type HabitAction } from './habit-actions';
 import { isUuidV4, isUuidV5, type CheckInId, type LogicalDate } from './ids';
 import type { Hashing } from './ports';
+import { guardRemoteFactHashing } from './remote-fact-hashing';
 
 export type RemoteFactType = 'habit_action' | 'ledger_entry';
 export type RemoteFactIdentity = { factType: RemoteFactType; factId: string };
@@ -31,6 +32,9 @@ export class RemoteFactAdmissionError extends Error {
 
 const actionFields = ['id', 'commandId', 'boardId', 'logicalDate', 'checkInId', 'kind',
   'createdAt', 'mutationStamp', 'policyJson'];
+const ledgerFields = ['id', 'kind', 'delta', 'boardId', 'checkInId', 'runKey', 'rewardId',
+  'rewardTitleSnapshot', 'reversesId', 'scopeKey', 'sourceActionId', 'reconciliationKey',
+  'adjustsId', 'provenanceJson', 'logicalDate', 'createdAt', 'mutationStamp', 'deletedAt'];
 
 function snapshotJson(value: unknown): { payload: string; value: unknown; signedZero: boolean } {
   let payload: string;
@@ -100,22 +104,79 @@ export async function prepareRemoteFact(candidate: RemoteFactCandidate, hashing:
     typeof enqueueOnAdmission !== 'boolean') throw new RemoteFactAdmissionError('envelope');
   const snapshot = snapshotJson(value);
   let fact = snapshot.signedZero ? null : validateShape(factType, factId, snapshot.value);
+  fact = await validateBaseline(fact, hashing);
+  const payload = fact === null ? snapshot.payload : canonicalPayload(fact);
+  const payloadEncoding = fact === null ? 'rejected_json_v1' : 'canonical_v1';
+  const payloadBytes = new TextEncoder().encode(payload).length;
+  if (payloadBytes > COIN_RECORD_BYTES) throw new RemoteFactAdmissionError('capacity');
+  const payloadDigest = await digestPayload(factType, factId, payloadEncoding, payload, hashing);
+  return { factType, factId, payloadDigest,
+    payloadEncoding, payload, payloadBytes, ...selectors(factType, snapshot.value), enqueueOnAdmission, fact };
+}
+
+async function validateBaseline(fact: CanonicalRemoteFact | null, hashing: Hashing) {
   if (fact?.factType === 'habit_action' && fact.value.kind === 'baseline') {
     // hashing is outside shape catches: an unavailable port is never a rejected fact.
     const expected = await baselineAction({ id: fact.value.checkInId as CheckInId,
       boardId: fact.value.boardId, logicalDate: fact.value.logicalDate }, hashing);
-    if (expected.id !== fact.value.id) fact = null;
+    if (expected.id !== fact.value.id) return null;
   }
-  const payload = fact === null ? snapshot.payload : fact.factType === 'habit_action'
-    ? canonicalHabitAction(fact.value) : canonicalCoinLedger(fact.value);
-  const payloadEncoding = fact === null ? 'rejected_json_v1' : 'canonical_v1';
-  const payloadBytes = new TextEncoder().encode(payload).length;
-  if (payloadBytes > COIN_RECORD_BYTES) throw new RemoteFactAdmissionError('capacity');
-  const digestInput = fact === null
+  return fact;
+}
+
+function canonicalPayload(fact: CanonicalRemoteFact) {
+  return fact.factType === 'habit_action' ? canonicalHabitAction(fact.value) : canonicalCoinLedger(fact.value);
+}
+
+async function digestPayload(factType: RemoteFactType, factId: string,
+  encoding: PreparedRemoteFact['payloadEncoding'], payload: string, hashing: Hashing) {
+  const digestInput = encoding === 'rejected_json_v1'
     ? JSON.stringify(['habit-remote-rejected-json-v1', factType, factId, payload]) : payload;
   const digest = await hashing.sha256(new TextEncoder().encode(digestInput));
   if (digest.length !== 32) throw new Error('SHA-256 must return 32 bytes.');
-  return { factType, factId,
-    payloadDigest: [...digest].map(byte => byte.toString(16).padStart(2, '0')).join(''),
-    payloadEncoding, payload, payloadBytes, ...selectors(factType, snapshot.value), enqueueOnAdmission, fact };
+  return [...digest].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// recovery verifies stored bytes; rejected diagnostics never acquire admission authority.
+export async function restorePreparedRemoteFact(input: Omit<PreparedRemoteFact, 'fact'>,
+  sourceHashing: Hashing): Promise<PreparedRemoteFact> {
+  if (!input) throw new RemoteFactAdmissionError('integrity');
+  const { factType, factId, payloadEncoding, payload, payloadBytes, payloadDigest,
+    logicalDate, scopeKey, enqueueOnAdmission } = input;
+  if ((factType !== 'habit_action' && factType !== 'ledger_entry') ||
+    typeof factId !== 'string' || !(isUuidV4(factId) || isUuidV5(factId)) ||
+    typeof enqueueOnAdmission !== 'boolean' ||
+    (payloadEncoding !== 'canonical_v1' && payloadEncoding !== 'rejected_json_v1') ||
+    typeof payload !== 'string' || !Number.isSafeInteger(payloadBytes) || payloadBytes < 1 ||
+    payloadBytes > COIN_RECORD_BYTES || new TextEncoder().encode(payload).length !== payloadBytes ||
+    typeof payloadDigest !== 'string' || !/^[0-9a-f]{64}$/.test(payloadDigest)) {
+    throw new RemoteFactAdmissionError('integrity');
+  }
+  let value: unknown;
+  try { value = JSON.parse(payload) as unknown; }
+  catch { throw new RemoteFactAdmissionError('integrity'); }
+  const hashing = guardRemoteFactHashing(sourceHashing);
+  let fact: CanonicalRemoteFact | null = null;
+  if (payloadEncoding === 'canonical_v1') {
+    const fields = factType === 'habit_action' ? actionFields : ledgerFields;
+    const offset = factType === 'habit_action' ? 0 : 1;
+    if (!Array.isArray(value) || value.length !== fields.length + offset ||
+      (offset === 1 && value[0] !== 'habit-ledger-row-v1')) throw new RemoteFactAdmissionError('integrity');
+    const tuple = value;
+    value = Object.fromEntries(fields.map((field, index) => [field, tuple[index + offset]]));
+    try { fact = validateShape(factType, factId, value); }
+    catch (cause) {
+      if (cause instanceof RemoteFactAdmissionError) throw new RemoteFactAdmissionError('integrity');
+      throw cause;
+    }
+    fact = await validateBaseline(fact, hashing);
+    if (fact === null || canonicalPayload(fact) !== payload) throw new RemoteFactAdmissionError('integrity');
+  } else if (JSON.stringify(value) !== payload) throw new RemoteFactAdmissionError('integrity');
+  const expected = selectors(factType, value);
+  if (expected.logicalDate !== logicalDate || expected.scopeKey !== scopeKey ||
+    await digestPayload(factType, factId, payloadEncoding, payload, hashing) !== payloadDigest) {
+    throw new RemoteFactAdmissionError('integrity');
+  }
+  return { factType, factId, payloadEncoding, payload, payloadBytes, payloadDigest,
+    logicalDate, scopeKey, enqueueOnAdmission, fact };
 }

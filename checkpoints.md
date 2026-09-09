@@ -2465,3 +2465,24 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     passing gates and signed UI proof. Red/green logs and review are retained under
     `.artifacts/t19/evidence-reads/`. These uncalled prerequisites do not yet perform
     economic admission; exact-scope planning and transactional composition are next.
+19. Persisted inbox recovery now verifies canonical tuple fieldsets, exact bytes,
+    selectors, baseline identities and digests before reconstructing facts. Rejected
+    diagnostic JSON remains rejected, including signed zero that serialization
+    converts to zero. Stored corruption fails the operation; guarded hashing causes
+    escape semantic verdicts. Preparation and recovery share private canonical,
+    baseline and digest helpers without changing formats or economic formulas.
+20. The test-first recovery increment passes 128 suites / 1,917 tests, global coverage
+    97.45/96.02/96.02/98.04 and all 84 core files at 100 percent. Independent review
+    approves the two-file implementation, repeats 30 focused tests, and round-trips
+    165 existing check/bonus/writer fixture rows exactly. Real file-database restart
+    preserves retryable facts, quarantined diagnostics and deferred upload intent
+    without accepted writes. Evidence is in `.artifacts/t19/inbox-recovery/`.
+    Native sources and user-visible behavior retain the previous passing gates;
+    this is a prerequisite for the still-incomplete admission composer.
+21. The separate native animation probe attempted one exact-process debugger attach.
+    It stalled at `task_for_pid` and was cancelled before logpoints or trigger
+    navigation ran. No native trace or permission-denial cause was established.
+    Preserved source/executable/original-database checks pass; the clone retains
+    all prior data plus one enumerated startup reminder no-op receipt. Devices are
+    shut down and debugger processes stopped. The relocatable verifier passes in
+    `.artifacts/t24/animation-probe/`; the warning's cause remains unresolved.
