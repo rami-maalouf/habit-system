@@ -1,7 +1,7 @@
 import type { SqlDatabase, SqlExecutor } from '../persistence/database';
 import { getReceipt, getSettings, insertReceipt, saveHlc } from '../persistence/repositories/support';
 import type { HlcState } from '../sync/hybrid-clock';
-import { advance, encodeStamp } from '../sync/hybrid-clock';
+import { advance, encodeStamp, observe } from '../sync/hybrid-clock';
 import type { CommandId } from './ids';
 import { isUuidV4 } from './ids';
 import type { Clock, Hashing, IdGenerator } from './ports';
@@ -21,6 +21,8 @@ export type CommandContext = {
   timeZoneId: string;
   settings: NonNullable<Awaited<ReturnType<typeof getSettings>>>;
   stamp(): string;
+  // callers supply stamps only after accepting their validated records.
+  observeStamp(stamp: string): void;
 };
 
 // preflight users can replay before calling platform services; commands
@@ -78,6 +80,7 @@ export async function runCommand<Value>(
           hlc = advance(hlc, now);
           return encodeStamp(hlc, settings.deviceId);
         },
+        observeStamp: stamp => { hlc = observe(hlc, stamp); },
       };
       const result = await work(context);
       await saveHlc(tx, hlc);

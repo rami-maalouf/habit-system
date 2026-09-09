@@ -2609,3 +2609,14 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     untouched; owned services stop and all three devices are shut down. Existing
     ExpoDevLauncher build diagnostics and four nil-selection picker warnings are
     recorded for T24; this evidence does not establish CloudKit convergence.
+
+40. Commands expose accepted-stamp observation through the same private HLC
+    accumulator used for local allocation and final persistence. This prevents
+    a future import observation from being overwritten by stale command state.
+    Three real SQLite tests cover receive/write/receive order, observation without
+    allocation, late receipt rollback, exact retry and replay before poisoned work.
+    Independent review additionally queues a public create behind an observation.
+    The exact combined source passes 137 suites / 2,055 tests, all 90 core files
+    at 100 percent, global coverage 97.62/96.24/96.28/98.16. Evidence is retained
+    in `.artifacts/t19/command-clock/`. Native source is identical to the verified
+    9 plugin / 146 Swift clock candidate; no visible flow is changed by this seam.
