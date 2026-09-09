@@ -47,6 +47,7 @@ export function ICloudScreen() {
     return () => { cancelled = true; subscription.remove(); };
   }, [status]);
   const ready = summary.status === 'ready' ? summary.value : null;
+  const summaryPlaceholder = summary.status === 'error' ? 'Unavailable' : '…';
   const enabled = ready !== null && ready.enabled;
 
   const setEnabled = useCallback(
@@ -87,7 +88,7 @@ export function ICloudScreen() {
     [core, invalidate, nextCommandId, pauseSync, resumeSync],
   );
 
-  const pending = ready === null ? 0 : ready.pendingChanges;
+  const pending = ready === null ? summaryPlaceholder : String(ready.pendingChanges);
   const lastSuccess = ready === null ? null : ready.lastSuccessAtUtc;
 
   return (
@@ -113,22 +114,31 @@ export function ICloudScreen() {
           <Switch
             accessibilityLabel="iCloud Sync"
             value={enabled}
+            disabled={ready === null}
+            accessibilityState={{ disabled: ready === null }}
             onValueChange={setEnabled}
             testID="icloud-toggle"
           />
         </View>
 
+        {summary.status === 'error' ? (
+          <View style={{ gap: spacing.md }}>
+            <InlineError message="Sync information could not be loaded." testID="icloud-summary-error" />
+            <PrimaryButton title="Retry" onPress={summary.refresh} testID="icloud-summary-retry" />
+          </View>
+        ) : null}
+
         <SettingsGroup>
           <SettingsRow
             title="Status"
-            detail={enabled ? STATUS_LABELS[status] : 'Off'}
+            detail={ready === null ? summaryPlaceholder : enabled ? STATUS_LABELS[status] : 'Off'}
             testID="icloud-status"
           />
-          <SettingsRow title="Waiting to upload" detail={String(pending)} testID="icloud-pending" />
+          <SettingsRow title="Waiting to upload" detail={pending} testID="icloud-pending" />
           <SettingsRow
             title="Last sync"
             detail={
-              lastSuccess === null
+              ready === null ? summaryPlaceholder : lastSuccess === null
                 ? 'Never'
                 : new Intl.DateTimeFormat(undefined, {
                     dateStyle: 'medium',
@@ -136,6 +146,24 @@ export function ICloudScreen() {
                   }).format(new Date(lastSuccess))
             }
             testID="icloud-last-sync"
+          />
+        </SettingsGroup>
+
+        <SettingsGroup title="Incoming data on this device">
+          <SettingsRow
+            title="Waiting for related data"
+            detail={ready === null ? summaryPlaceholder : String(ready.incoming.pending)}
+            testID="icloud-incoming-pending"
+          />
+          <SettingsRow
+            title="At processing limit"
+            detail={ready === null ? summaryPlaceholder : String(ready.incoming.blocked)}
+            testID="icloud-incoming-blocked"
+          />
+          <SettingsRow
+            title="Conflicting or invalid data"
+            detail={ready === null ? summaryPlaceholder : String(ready.incoming.quarantined)}
+            testID="icloud-incoming-quarantined"
           />
         </SettingsGroup>
 

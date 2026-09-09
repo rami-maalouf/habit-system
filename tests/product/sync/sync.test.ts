@@ -659,7 +659,9 @@ describe('sync engine edges', () => {
       withTransactionAsync: async <T,>(work: (tx: unknown) => Promise<T>) =>
         work({
           getFirstAsync: async (sql: string) =>
-            sql.includes('sync_state') || sql.includes('app_settings') ? null : null,
+            sql.includes('remote_fact_inbox')
+              ? { variants: '0', payloadBytes: '0', pending: '0', blocked: '0', quarantined: '0' }
+              : null,
         }),
     };
     const result = await actual(
@@ -671,6 +673,7 @@ describe('sync engine edges', () => {
     expect(result.value).toEqual({
       enabled: false,
       pendingChanges: 0,
+      incoming: { pending: 0, blocked: 0, quarantined: 0 },
       lastSuccessAtUtc: null,
     });
   });

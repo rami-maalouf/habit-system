@@ -50,6 +50,7 @@ import {
   listRemindersForReconcile,
 } from '../persistence/repositories/reminders';
 import { getSettings, getSyncState, listBoardPeriods } from '../persistence/repositories/support';
+import { readRemoteFactInboxCounts } from '../persistence/repositories/remote-fact-inbox';
 import type { AnchorPreset, Board, CheckIn, Reminder, WidgetBoardRow } from './entities';
 import type { BoardId, CheckInId, LogicalDate, ReminderId } from './ids';
 import type { Clock } from './ports';
@@ -698,6 +699,7 @@ export type SyncSummary = {
   enabled: boolean;
   // outbox depth, so the ui can say what is still waiting to upload
   pendingChanges: number;
+  incoming: { pending: number; blocked: number; quarantined: number };
   lastSuccessAtUtc: number | null;
 };
 
@@ -708,9 +710,11 @@ export function getSyncSummary(deps: QueryDeps): Promise<DomainResult<SyncSummar
     );
     const state = await getSyncState(tx);
     const settings = await getSettings(tx);
+    const { pending, blocked, quarantined } = await readRemoteFactInboxCounts(tx);
     return {
       enabled: settings?.iCloudSyncEnabled === true,
       pendingChanges: row?.total ?? 0,
+      incoming: { pending, blocked, quarantined },
       lastSuccessAtUtc: state.lastSuccessAtUtc,
     };
   });

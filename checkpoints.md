@@ -2420,3 +2420,28 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     `.artifacts/t19/validator-extraction/`. The reviewed period/backup additions in
     `docs/period-sync-compatibility-proposal.md` remain proposals awaiting user
     approval; no such schema or export change is implemented by this increment.
+13. The iCloud screen now distinguishes local waiting, capacity-blocked and
+    quarantined records from the upload queue, including while sync is off. One
+    read transaction returns only aggregate counts. Failed reads show static,
+    privacy-safe error text and Unavailable values, disable the toggle with matching
+    accessibility state, and offer Retry. Routed tests reproduce the missing summary
+    and database-read failure before the fixes, then prove recovery without exposing
+    diagnostic payloads. Independent review approves the four-file increment.
+14. Full validation passes 125 suites / 1,874 tests, global coverage
+    97.39/95.93/95.96/98.00, all 82 core files at 100 percent, and noncore branches
+    1,927/2,137. Native sources retain the passing 9 plugin/141 Swift gate. Actual
+    signed-clone QA passes zero and 1/2/3 incoming counts, separate uploads 367,
+    light/dark and accessibility-extra-large layout, transaction-local read failure,
+    inert disabled toggle, reader restoration before Retry, confirmation Cancel and
+    cold restart. All 331 recorded sources and 20 signed executables remain exact.
+15. Clone QA preserves every original product/immutable/outbox/settings row and
+    prior receipt, with balance 7. Exact additions are six presentation-only inbox
+    fixtures and three enumerated reminder no-op receipts; 28 derived widget strips
+    advance at the real day rollover. The original Migration QA database/WAL/SHM
+    remain byte-identical and both devices are shut down. Root reran the packaged
+    verifier in `.artifacts/t19/inbox-ui/qa/` successfully; final clone backup SHA256
+    is `1bc8c85b29f9d29b727c904a9193878c3000ffe9fba4d687b5934a87a2387102`.
+    Both scoped console captures are empty, but the complete native log retains one
+    recurrence of the known animation warning, repeated across native/JS categories.
+    It remains an explicit T24 diagnostic investigation; this UI proof does not claim
+    a warning-free native process or completed remote admission.
