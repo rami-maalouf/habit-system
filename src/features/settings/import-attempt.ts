@@ -37,7 +37,8 @@ class ImportAttemptStore {
     this.state = Object.freeze(state);
     for (const listener of this.listeners) listener();
   }
-  async start(owner: ImportOwner, fileName: string, draft: ImportDraft, nextCommandId: () => CommandId, invalidate: () => void) {
+  async start(owner: ImportOwner, fileName: string, draft: ImportDraft, nextCommandId: () => CommandId, invalidate: () => void,
+    executionCore: ProductCore = this.core) {
     if (!owner.active || this.state.phase !== 'idle') return;
     const captured = captureImportDraft(draft);
     if (!captured.ok) throw new Error(captured.error.message);
@@ -46,11 +47,11 @@ class ImportAttemptStore {
     const attempt = { input: Object.freeze({ commandId: nextCommandId(), draft: captured.value }),
       details: { ...preview.value, fileName, source: captured.value.source, exportVersion: captured.value.exportVersion } };
     this.attempt = attempt;
-    await this.run(attempt, invalidate);
+    await this.run(attempt, invalidate, executionCore);
   }
-  async retry(owner: ImportOwner, commandId: CommandId, invalidate: () => void) {
+  async retry(owner: ImportOwner, commandId: CommandId, invalidate: () => void, executionCore: ProductCore = this.core) {
     if (!owner.active || this.state.phase !== 'uncertain' || this.state.commandId !== commandId || this.attempt === null) return;
-    await this.run(this.attempt, invalidate);
+    await this.run(this.attempt, invalidate, executionCore);
   }
   startAnother(owner: ImportOwner, commandId: CommandId) {
     if (!owner.active || (this.state.phase !== 'done' && this.state.phase !== 'failed') || this.state.commandId !== commandId) return false;
@@ -58,12 +59,12 @@ class ImportAttemptStore {
     this.publish({ phase: 'idle' });
     return true;
   }
-  private async run(attempt: Attempt, invalidate: () => void) {
+  private async run(attempt: Attempt, invalidate: () => void, executionCore: ProductCore) {
     const view = { ...attempt.details, commandId: attempt.input.commandId };
     // this immediate transition blocks queued callbacks before react renders.
     this.publish({ ...view, phase: 'running', error: null });
     try {
-      const result = await importSnapshot(this.core, attempt.input);
+      const result = await importSnapshot(executionCore, attempt.input);
       if (this.attempt !== attempt) return;
       if (result.ok) {
         this.attempt = null;

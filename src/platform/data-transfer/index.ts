@@ -1,24 +1,13 @@
-import * as Application from 'expo-application';
 import { File, Paths } from 'expo-file-system';
-import { getLocales } from 'expo-localization';
 import * as Sharing from 'expo-sharing';
 
-import type { ExportMeta } from '@/core/export/serialize';
-import { latestSchemaVersion } from '@/core/persistence/schema';
 import type { DomainResult } from '@/core/domain/result';
 import { err, ok } from '@/core/domain/result';
 
 // device-side file plumbing for export and import; all product decisions
 // stay in the core - this module only moves bytes
 
-export function getExportMeta(): ExportMeta {
-  return {
-    databaseSchemaVersion: latestSchemaVersion,
-    appVersion: Application.nativeApplicationVersion ?? 'development',
-    buildVersion: Application.nativeBuildVersion ?? 'development',
-    locale: getLocales()[0]?.languageTag ?? 'en-US',
-  };
-}
+export { getExportMeta } from '../app-metadata';
 
 // writes the export into the cache directory and hands it to the native
 // share sheet; a cancelled share is success and the temp file is removed

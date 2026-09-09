@@ -416,18 +416,13 @@ describe('notification settings states', () => {
   });
 
   it('shows the settings path when permission is denied', async () => {
-    const { notificationsMock } = jest.requireActual<{
-      notificationsMock: { granted: boolean; canAskAgain: boolean; reject: boolean };
-    }>('../../../src/testing/expo-notifications.mock');
-    notificationsMock.granted = false;
-    notificationsMock.canAskAgain = false;
+    notificationsPlatformMock.auth = 'denied';
     renderRouter('src/app', { initialUrl: '/settings/notifications' });
     await screen.findByTestId('notifications-status');
     await settle();
     expect(screen.getByTestId('notifications-status')).toHaveTextContent(/Denied/);
     expect(screen.getByTestId('notifications-open-settings')).toBeOnTheScreen();
-    notificationsMock.granted = false;
-    notificationsMock.canAskAgain = true;
+    notificationsPlatformMock.auth = 'undetermined';
   });
 
   it('labels schedule failures and unknown codes', async () => {
@@ -533,11 +528,7 @@ describe('sol reminder remediation - ui and wiring', () => {
   });
 
   it('surfaces an open-settings failure inline', async () => {
-    const { notificationsMock } = jest.requireActual<{
-      notificationsMock: { granted: boolean; canAskAgain: boolean; reject: boolean };
-    }>('../../../src/testing/expo-notifications.mock');
-    notificationsMock.granted = false;
-    notificationsMock.canAskAgain = false;
+    notificationsPlatformMock.auth = 'denied';
     const { Linking } = jest.requireActual<typeof import('react-native')>('react-native');
     const openSpy = jest
       .spyOn(Linking, 'openSettings')
@@ -549,8 +540,7 @@ describe('sol reminder remediation - ui and wiring', () => {
       /Settings could not be opened/,
     );
     openSpy.mockRestore();
-    notificationsMock.granted = false;
-    notificationsMock.canAskAgain = true;
+    notificationsPlatformMock.auth = 'undetermined';
   });
 });
 

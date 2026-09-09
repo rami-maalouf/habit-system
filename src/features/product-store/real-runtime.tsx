@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { AppState, View } from 'react-native';
+import { AppState, Linking, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { createCheckIn } from '@/core/domain/commands';
@@ -52,6 +52,7 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
   const [effects] = useState<FeatureEffects>(() => ({
     kind: 'real', reminders: reminderScheduler, missAlerts: missAlertSchedulerOverride ?? missAlertScheduler,
     cloudKitAvailable, pickImportFile, saveAndShareExport, supportsAlternateIcons, setAlternateIcon,
+    openSystemSettings: Linking.openSettings,
   }));
   const ready = useCallback((core: ProductCore): Extract<ProviderState, { status: 'ready' }> => {
     const owner = createOperationOwner(core, effects);

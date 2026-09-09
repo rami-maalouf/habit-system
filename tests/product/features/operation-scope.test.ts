@@ -126,6 +126,7 @@ describe('product operation ownership', () => {
       kind: 'real', reminders: scheduler, missAlerts: missAlertScheduler,
       cloudKitAvailable: jest.fn(), pickImportFile: jest.fn(), saveAndShareExport: jest.fn(),
       supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(),
+      openSystemSettings: jest.fn(),
     };
     const owner = createOperationOwner(harness.deps, effects);
     const original = owner.getScope();

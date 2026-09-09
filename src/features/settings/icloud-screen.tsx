@@ -1,17 +1,18 @@
 import { Stack } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, ScrollView, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { setICloudSyncEnabled } from '@/core/domain/commands';
 import { getSyncSummary } from '@/core/domain/queries';
 import type { SyncStatus } from '@/core/sync/engine';
-import { cloudKitAvailable } from '@/platform/sync';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { InlineError, PrimaryButton, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import { SettingsGroup, SettingsRow } from './rows';
+import { SampleDisabledScreen } from '../sample/disabled-screen';
+import { useSettingsActivity } from './use-settings-activity';
 
 const STATUS_LABELS: Record<SyncStatus, string> = {
   idle: 'Off',
@@ -25,19 +26,33 @@ const STATUS_LABELS: Record<SyncStatus, string> = {
 // the toggle explains where the data goes before it turns on, then shows
 // the engine's own status. raw provider errors never reach this screen.
 export function ICloudScreen() {
+  const { scope } = useProduct();
+  if (scope.kind === 'sample') return <SampleDisabledScreen title="iCloud Sync" message="iCloud Sync is disabled in sample mode." />;
+  return <ICloudBody />;
+}
+
+function ICloudBody() {
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId, sync: syncState, syncNow, pauseSync, resumeSync } = useProduct();
+  const { scope, invalidate, nextCommandId, sync: syncState, syncNow, pauseSync, resumeSync } = useProduct();
+  const activity = useSettingsActivity(scope);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const summary = useProductQuery((c) => getSyncSummary(c), []);
   const { status, busy } = syncState;
   const [error, setError] = useState<string | null>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (!activity.active) return;
     let cancelled = false;
     const refresh = () => {
-      void cloudKitAvailable().then(
-        (value) => { if (!cancelled) setAvailable(value); },
-        () => { if (!cancelled) setAvailable(false); },
+      if (cancelled || !activity.active) return;
+      void scope.run(({ effects }) => {
+        if (effects.kind !== 'real') throw new Error('iCloud Sync is disabled in sample mode.');
+        return effects.cloudKitAvailable();
+      }).then(
+        dispatch => { if (!cancelled && activity.active && dispatch.started) setAvailable(dispatch.value); },
+        () => { if (!cancelled && activity.active) setAvailable(false); },
       );
     };
     refresh();
@@ -45,29 +60,35 @@ export function ICloudScreen() {
       if (state === 'active') refresh();
     });
     return () => { cancelled = true; subscription.remove(); };
-  }, [status]);
+  }, [status, scope, activity]);
   const ready = summary.status === 'ready' ? summary.value : null;
   const summaryPlaceholder = summary.status === 'error' ? 'Unavailable' : '…';
   const enabled = ready !== null && ready.enabled;
 
   const setEnabled = useCallback(
     (next: boolean) => {
+      if (!activity.active) return;
       const apply = () => {
+        if (!activity.active || !mounted.current) return;
         setError(null);
         if (!next) {
           // stop before the write, so nothing in flight can outlive the
           // moment the person turned sync off
           pauseSync();
         }
-        void setICloudSyncEnabled(core, { commandId: nextCommandId(), enabled: next }).then(
-          (result) => {
-            if (!result.ok) {
-              setError(result.error.message);
+        void scope.run(({ core }) => setICloudSyncEnabled(core, { commandId: nextCommandId(), enabled: next })).then(
+          dispatch => {
+            if (!dispatch.started) return;
+            const result = dispatch.value;
+            if (result.ok) { invalidate(); resumeSync(); }
+            else {
+              if (activity.active) setError(result.error.message);
               if (!next) resumeSync();
-              return;
             }
-            invalidate();
-            resumeSync();
+          },
+          () => {
+            if (activity.active) setError('Sync settings could not be saved. Try again.');
+            if (!next) resumeSync();
           },
         );
       };
@@ -84,7 +105,7 @@ export function ICloudScreen() {
         ],
       );
     },
-    [core, invalidate, nextCommandId, pauseSync, resumeSync],
+    [scope, activity, invalidate, nextCommandId, pauseSync, resumeSync],
   );
 
   const pending = ready === null ? summaryPlaceholder : String(ready.pendingChanges);
@@ -124,7 +145,7 @@ export function ICloudScreen() {
         {summary.status === 'error' ? (
           <View style={{ gap: spacing.md }}>
             <InlineError message="Sync information could not be loaded." testID="icloud-summary-error" />
-            <PrimaryButton title="Retry" onPress={summary.refresh} testID="icloud-summary-retry" />
+            <PrimaryButton title="Retry" onPress={() => { if (activity.active) summary.refresh(); }} testID="icloud-summary-retry" />
           </View>
         ) : null}
 
@@ -170,7 +191,7 @@ export function ICloudScreen() {
         {enabled ? (
           <PrimaryButton
             title={busy ? 'Syncing…' : 'Sync Now'}
-            onPress={syncNow}
+            onPress={() => { if (activity.active) syncNow(); }}
             disabled={busy}
             testID="icloud-sync-now"
           />

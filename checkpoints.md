@@ -3309,3 +3309,15 @@ T19/Checkpoint C external gates remain open.
     with lint/typecheck clean. Root reviewed the seven production diffs and
     complete routed test, verified all eight final hashes and approved this
     caller increment. Production routes and native acceptance remain open.
+12. Sample Settings now stop before native adapters or queries. Real import,
+    export, icon, permission, account and system-settings actions use captured
+    effects and join accepted work before sample creation. Focus ownership
+    retires stale callbacks and foreground listeners. Exact import receipts
+    and icon confirmation/compensation survive suspension; read-only app
+    metadata no longer imports file/sharing effects. The focused candidate
+    passes 102 tests across fourteen suites, with lint/typecheck clean. Two
+    inherited permission fixtures then use the captured scheduler port;
+    their broader rerun passes 91 tests across eight suites. Root reviewed
+    all nineteen files, requested reproduced stale-scene fixes and verified
+    final hashes. The author independently approved root's four-file native
+    Settings port seam. Full routes and native acceptance remain open.

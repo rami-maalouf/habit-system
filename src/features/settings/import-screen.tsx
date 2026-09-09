@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -6,13 +6,14 @@ import { AppText } from '@/components/foundation/app-text';
 import type { ImportSummary } from '@/core/domain/commands';
 import type { ImportDraft, ImportPreview } from '@/core/export/import-parsers';
 import { getImportPreview, parseOwnExport, parseRipplesCsv } from '@/core/export/import-parsers';
-import { pickImportFile } from '@/platform/data-transfer';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { InlineError, PrimaryButton, useScheme } from '../ui';
 import { useProduct } from '../product-store';
 import { SettingsGroup, SettingsRow } from './rows';
+import { useSettingsActivity } from './use-settings-activity';
 import { importAttemptStoreFor, type ImportOwner } from './import-attempt';
+import { SampleDisabledScreen } from '../sample/disabled-screen';
 
 type ImportState =
   | { step: 'choose' }
@@ -47,30 +48,37 @@ function V2Summary({ summary }: { summary: NonNullable<ImportSummary['v2']> }) {
 // two import sources: a ripples csv export from the original app, and this
 // app's own json export (a restore that skips records it already has)
 export function ImportScreen() {
+  const { scope } = useProduct();
+  if (scope.kind === 'sample') return <SampleDisabledScreen title="Import Data" message="Import is disabled in sample mode." />;
+  return <ImportBody />;
+}
+
+function ImportBody() {
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { core, scope, invalidate, nextCommandId } = useProduct();
   const store = useMemo(() => importAttemptStoreFor(core), [core]);
   const attempt = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-  const owner = useRef<ImportOwner | null>(null);
+  const owner = useSettingsActivity(scope);
   const picking = useRef<ImportOwner | null>(null);
   const [state, setState] = useState<ImportState>({ step: 'choose' });
   const selection = useRef<ImportState>(state);
   const [pickError, setPickError] = useState<string | null>(null);
-  useFocusEffect(useCallback(() => {
-    const current = { active: true }; owner.current = current;
-    return () => { current.active = false; };
-  }, []));
   useEffect(() => store.registerInvalidation(invalidate), [store, invalidate]);
 
   const pick = useCallback(
     async (source: 'ripples-csv' | 'own') => {
-      const current = owner.current;
+      if (!scope.isCurrent()) return;
+      const current = owner;
       if (!current?.active || picking.current === current || store.getSnapshot().phase !== 'idle') return;
       picking.current = current;
       setPickError(null);
       try {
-        const picked = await pickImportFile();
-        if (!current.active || store.getSnapshot().phase !== 'idle') return;
+        const dispatch = await scope.run(({ effects }) => {
+          if (effects.kind !== 'real') throw new Error('Import is disabled in sample mode.');
+          return effects.pickImportFile();
+        });
+        if (!scope.isCurrent() || !current.active || !dispatch.started || store.getSnapshot().phase !== 'idle') return;
+        const picked = dispatch.value;
         if (!picked.ok) {
           setPickError(picked.error.message);
           return;
@@ -96,22 +104,23 @@ export function ImportScreen() {
         selection.current = preview;
         setState(preview);
       } catch {
-        if (current.active) setPickError('The file could not be read. Try again.');
+        if (scope.isCurrent() && current.active) setPickError('The file could not be read. Try again.');
       } finally {
         if (picking.current === current) picking.current = null;
       }
     },
-    [store],
+    [store, scope, owner],
   );
 
   const runImport = useCallback(async () => {
-    const current = owner.current;
+    if (!scope.isCurrent()) return;
+    const current = owner;
     if (!current?.active) return;
     setPickError(null);
     try {
-      if (attempt.phase === 'uncertain') await store.retry(current, attempt.commandId, invalidate);
+      if (attempt.phase === 'uncertain') await scope.run(({ core: accepted }) => store.retry(current, attempt.commandId, invalidate, accepted));
       else if (attempt.phase === 'idle' && state.step === 'preview' && selection.current === state) {
-        const pending = store.start(current, state.fileName, state.draft, nextCommandId, invalidate);
+        const pending = scope.run(({ core: accepted }) => store.start(current, state.fileName, state.draft, nextCommandId, invalidate, accepted));
         if (store.getSnapshot().phase === 'running') {
           selection.current = { step: 'choose' };
           setState(selection.current);
@@ -119,9 +128,9 @@ export function ImportScreen() {
         await pending;
       }
     } catch {
-      if (current.active) setPickError('The import could not be started. Try again.');
+      if (scope.isCurrent() && current.active) setPickError('The import could not be started. Try again.');
     }
-  }, [store, invalidate, nextCommandId, state, attempt]);
+  }, [store, scope, owner, invalidate, nextCommandId, state, attempt]);
 
   const preview = attempt.phase === 'running' || attempt.phase === 'uncertain' ? attempt
     : attempt.phase === 'idle' && state.step === 'preview'
@@ -129,7 +138,8 @@ export function ImportScreen() {
       : null;
   const error = attempt.phase === 'uncertain' || attempt.phase === 'failed' ? attempt.error?.message : pickError;
   const another = () => {
-    const current = owner.current;
+    if (!scope.isCurrent()) return;
+    const current = owner;
     if (current && (attempt.phase === 'done' || attempt.phase === 'failed') && store.startAnother(current, attempt.commandId)) {
       selection.current = { step: 'choose' };
       setState(selection.current); setPickError(null);

@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
-import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
-import { AppState, Linking, ScrollView, View } from 'react-native';
+import { AppState, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { getNotificationOverview } from '@/core/domain/queries';
@@ -12,6 +11,8 @@ import { semanticColor, spacing } from '@/theme';
 import { InlineError, PrimaryButton, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import { SettingsGroup, SettingsRow } from './rows';
+import { SampleDisabledScreen } from '../sample/disabled-screen';
+import { useSettingsActivity } from './use-settings-activity';
 
 type AuthorizationState = 'loading' | 'granted' | 'denied' | 'undetermined';
 
@@ -28,13 +29,8 @@ function errorLabel(code: string): string {
 // current authorization, enabled reminder count, and schedule errors, with
 // the settings path when permission was denied
 export function NotificationsScreen() {
-  const { missAlertScheduler } = useProduct();
-  if (missAlertScheduler === null) {
-    return <View style={{ flex: 1, padding: spacing.lg }}>
-      <Stack.Screen options={{ title: 'Notifications' }} />
-      <AppText>Notifications are disabled in sample mode.</AppText>
-    </View>;
-  }
+  const { scope, missAlertScheduler } = useProduct();
+  if (scope.kind === 'sample' || missAlertScheduler === null) return <SampleDisabledScreen title="Notifications" message="Notifications are disabled in sample mode." />;
   return <NotificationsBody scheduler={missAlertScheduler} />;
 }
 
@@ -43,30 +39,30 @@ function NotificationsBody({ scheduler }: { scheduler: MissAlertScheduler }) {
   const [authorization, setAuthorization] = useState<AuthorizationState>('loading');
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const overview = useProductQuery((c) => getNotificationOverview(c), []);
-  const { missAlertVersion } = useProduct();
+  const { scope, missAlertVersion } = useProduct();
+  const activity = useSettingsActivity(scope);
   const missCount = useProductQuery(core => getPendingMissAlertCount({ db: core.db, scheduler }),
     [scheduler, missAlertVersion]);
 
   // the status re-reads on every return to the foreground, so coming back
   // from the system settings app shows the fresh authorization
   useEffect(() => {
+    if (!activity.active) return;
     let cancelled = false;
     const read = () => {
-      Notifications.getPermissionsAsync().then(
-        (permissions) => {
-          if (cancelled) {
+      if (cancelled || !activity.active) return;
+      scope.run(({ effects }) => {
+        if (effects.kind !== 'real') throw new Error('Notifications are disabled in sample mode.');
+        return effects.reminders.authorization();
+      }).then(
+        dispatch => {
+          if (cancelled || !activity.active || !dispatch.started) {
             return;
           }
-          setAuthorization(
-            permissions.granted
-              ? 'granted'
-              : permissions.canAskAgain
-                ? 'undetermined'
-                : 'denied',
-          );
+          setAuthorization(dispatch.value);
         },
         () => {
-          if (!cancelled) {
+          if (!cancelled && activity.active) {
             setAuthorization('undetermined');
           }
         },
@@ -82,7 +78,7 @@ function NotificationsBody({ scheduler }: { scheduler: MissAlertScheduler }) {
       cancelled = true;
       subscription?.remove?.();
     };
-  }, []);
+  }, [scope, activity]);
 
   const statusLabel =
     authorization === 'loading'
@@ -131,9 +127,13 @@ function NotificationsBody({ scheduler }: { scheduler: MissAlertScheduler }) {
           <PrimaryButton
             title="Open Settings"
             onPress={() => {
+              if (!activity.active) return;
               setSettingsError(null);
-              Linking.openSettings().catch(() => {
-                setSettingsError('Settings could not be opened. Open the Settings app manually.');
+              void scope.run(({ effects }) => {
+                if (effects.kind !== 'real') throw new Error('Notifications are disabled in sample mode.');
+                return effects.openSystemSettings();
+              }).catch(() => {
+                if (activity.active) setSettingsError('Settings could not be opened. Open the Settings app manually.');
               });
             }}
             testID="notifications-open-settings"

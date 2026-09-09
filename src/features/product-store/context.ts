@@ -23,6 +23,7 @@ export type FeatureEffects = Readonly<
     saveAndShareExport: typeof saveAndShareExport;
     supportsAlternateIcons: typeof supportsAlternateIcons;
     setAlternateIcon: typeof setAlternateIcon;
+    openSystemSettings(): Promise<void>;
   }
 >;
 

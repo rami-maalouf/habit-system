@@ -8,7 +8,7 @@ import {
   dataTransferMock,
   resetDataTransferMock,
 } from '../../../src/testing/data-transfer.mock';
-import { notificationsMock } from '../../../src/testing/expo-notifications.mock';
+import { notificationsPlatformMock, reminderScheduler } from '../../../src/testing/notifications-platform.mock';
 import {
   getProductCore,
   newCommandId,
@@ -17,6 +17,8 @@ import {
 import { act } from '@testing-library/react-native';
 
 import { fireEvent, renderRouter, screen, settle } from '../../../src/testing/render';
+
+jest.mock('expo-application', () => ({ nativeApplicationVersion: 'test', nativeBuildVersion: 'test' }));
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(() => Promise.resolve()),
@@ -285,8 +287,7 @@ describe('release link validation', () => {
 describe('notifications, icloud, icon, and timeline surfaces', () => {
   beforeEach(() => {
     resetProductCoreForTests();
-    notificationsMock.granted = false;
-    notificationsMock.canAskAgain = true;
+    notificationsPlatformMock.auth = 'undetermined';
   });
 
   it('reports the current notification authorization', async () => {
@@ -296,26 +297,25 @@ describe('notifications, icloud, icon, and timeline surfaces', () => {
   });
 
   it('offers open settings when permission is denied', async () => {
-    notificationsMock.granted = false;
-    notificationsMock.canAskAgain = false;
+    notificationsPlatformMock.auth = 'denied';
     renderRouter('src/app', { initialUrl: '/settings/notifications' });
     expect(await screen.findByTestId('notifications-status')).toHaveTextContent(/Denied/);
     expect(screen.getByTestId('notifications-open-settings')).toBeOnTheScreen();
   });
 
   it('shows allowed when permission is granted', async () => {
-    notificationsMock.granted = true;
+    notificationsPlatformMock.auth = 'granted';
     renderRouter('src/app', { initialUrl: '/settings/notifications' });
     expect(await screen.findByTestId('notifications-status')).toHaveTextContent(/Allowed/);
   });
 
   it('treats a failed permission read as not requested', async () => {
-    notificationsMock.reject = true;
+    const read = jest.spyOn(reminderScheduler, 'authorization').mockRejectedValue(new Error('permission unavailable'));
     renderRouter('src/app', { initialUrl: '/settings/notifications' });
     expect(await screen.findByTestId('notifications-status')).toHaveTextContent(
       /Not requested yet/,
     );
-    notificationsMock.reject = false;
+    read.mockRestore();
   });
 
   it('renders the explicit icon and timeline states', async () => {

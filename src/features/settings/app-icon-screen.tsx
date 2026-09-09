@@ -5,13 +5,15 @@ import { ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { setSelectedIcon } from '@/core/domain/commands';
+import type { CommandId } from '@/core/domain/ids';
 import type { SelectedIcon } from '@/core/domain/entities';
 import { getAppSettings } from '@/core/domain/queries';
-import { setAlternateIcon, supportsAlternateIcons } from '@/platform/alternate-icons';
 import { radius, semanticColor, spacing } from '@/theme';
 
 import { useProduct, useProductQuery } from '../product-store';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
+import { SampleDisabledScreen } from '../sample/disabled-screen';
+import { useSettingsActivity } from './use-settings-activity';
 
 const ICON_PREVIEWS = [
   { id: 'default', name: 'Default', source: require('../../../assets/images/icon.png') },
@@ -24,8 +26,17 @@ function nativeName(icon: SelectedIcon) {
 }
 
 export function AppIconScreen() {
+  const { scope } = useProduct();
+  if (scope.kind === 'sample') return <SampleDisabledScreen title="App Icon" message="App icons are disabled in sample mode." />;
+  return <AppIconBody />;
+}
+
+function AppIconBody() {
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { scope, invalidate } = useProduct();
+  const activity = useSettingsActivity(scope);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const settings = useProductQuery(getAppSettings, []);
   const [availability, setAvailability] = useState<'loading' | 'supported' | 'unsupported' | 'error'>('loading');
   const [revision, setRevision] = useState(0);
@@ -38,47 +49,57 @@ export function AppIconScreen() {
   const selected = confirmedSelection ?? savedSelection;
 
   useEffect(() => {
+    if (!activity.active) return;
     let cancelled = false;
-    supportsAlternateIcons().then(
-      (supported) => { if (!cancelled) setAvailability(supported ? 'supported' : 'unsupported'); },
-      () => { if (!cancelled) setAvailability('error'); },
+    scope.run(({ effects }) => {
+      if (effects.kind !== 'real') throw new Error('App icons are disabled in sample mode.');
+      return effects.supportsAlternateIcons();
+    }).then(
+      dispatch => { if (!cancelled && activity.active && dispatch.started) setAvailability(dispatch.value ? 'supported' : 'unsupported'); },
+      () => { if (!cancelled && activity.active) setAvailability('error'); },
     );
     return () => { cancelled = true; };
-  }, [revision]);
+  }, [scope, activity, revision]);
 
   async function choose(icon: SelectedIcon) {
-    if (busyRef.current || availability !== 'supported' || selected === undefined) return;
+    if (!activity.active || busyRef.current || availability !== 'supported' || selected === undefined) return;
     busyRef.current = true;
     setBusy(true);
     setFailure(null);
     const previous = confirmedRef.current ?? selected;
-    let platformChanged = false;
     try {
-      await setAlternateIcon(nativeName(icon));
-      platformChanged = true;
-      const result = await setSelectedIcon(core, { commandId: nextCommandId(), icon });
-      if (!result.ok) throw new Error('icon setting could not be saved');
-      confirmedRef.current = icon;
-      setConfirmedSelection(icon);
-      invalidate();
-    } catch {
-      let restored = true;
-      if (platformChanged) {
-        try { await setAlternateIcon(nativeName(previous)); } catch { restored = false; }
-      }
-      setFailure({
-        icon,
-        message: restored
-          ? 'The app icon could not be changed. Try again.'
-          : 'The icon changed, but its setting could not be saved. Try again to finish the change.',
+      await scope.run(async ({ core, effects }) => {
+        if (effects.kind !== 'real') throw new Error('App icons are disabled in sample mode.');
+        let platformChanged = false;
+        try {
+          await effects.setAlternateIcon(nativeName(icon));
+          platformChanged = true;
+          const result = await setSelectedIcon(core, { commandId: core.ids.uuid() as CommandId, icon });
+          if (!result.ok) throw new Error('icon setting could not be saved');
+          // retain the factual outcome before the join, even while this body is covered.
+          confirmedRef.current = icon;
+          if (mounted.current) setConfirmedSelection(icon);
+          invalidate();
+        } catch {
+          let restored = true;
+          if (platformChanged) {
+            try { await effects.setAlternateIcon(nativeName(previous)); } catch { restored = false; }
+          }
+          if (mounted.current) setFailure({ icon, message: restored
+            ? 'The app icon could not be changed. Try again.'
+            : 'The icon changed, but its setting could not be saved. Try again to finish the change.' });
+        }
       });
+    } catch {
+      if (mounted.current) setFailure({ icon, message: 'The app icon could not be changed. Try again.' });
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
   function retryAvailability() {
+    if (!activity.active) return;
     setAvailability('loading');
     setRevision((value) => value + 1);
     invalidate();
