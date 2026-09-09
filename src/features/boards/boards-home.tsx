@@ -1,5 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Stack, useNavigation } from 'expo-router';
+import { useIsFocused } from 'expo-router/react-navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +17,7 @@ import { BoardCard } from './board-card';
 import { confirmDailyUncheck } from './confirm-daily-uncheck';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
 import { CoinBalancePill } from '../coins/coin-balance-pill';
 
 type UndoState = {
@@ -28,10 +30,24 @@ type UndoState = {
 const UNDO_WINDOW_MS = 5000;
 
 export function BoardsHomeScreen() {
-  const router = useRouter();
+  const router = useProductRouter();
+  const navigation = useNavigation();
+  const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { scope, invalidate, nextCommandId } = useProduct();
+  // callbacks retain the focus owner and product generation that created them.
+  const activeScene = useRef<object | null>(null);
+  const scene = useMemo(() => ({}), [scope, focused]);
+  useEffect(() => {
+    activeScene.current = scene;
+    return () => { if (activeScene.current === scene) activeScene.current = null; };
+  }, [scene]);
+  const isCurrent = useCallback(
+    () => activeScene.current === scene && scope.isCurrent() && focused && navigation.isFocused(),
+    [scene, scope, focused, navigation],
+  );
+
   const boards = useProductQuery((c) => getHomeBoardProjection(c), []);
   const [editMode, setEditMode] = useState(false);
   // pending is a set: concurrent quick check-ins on different boards must
@@ -39,22 +55,28 @@ export function BoardsHomeScreen() {
   const [pendingBoardIds, setPendingBoardIds] = useState<ReadonlySet<BoardId>>(new Set());
   const pendingBoards = useRef(new Set<BoardId>());
   const [quickError, setQuickError] = useState<string | null>(null);
-  const [undo, setUndo] = useState<UndoState | null>(null);
+  const [undo, setUndo] = useState<(UndoState & { scene: object }) | null>(null);
   const undoTarget = useRef<UndoState | null>(null);
   const undoPending = useRef(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmations = useRef(new Set<() => void>());
+  const mounted = useRef(false);
+  const reorderPending = useRef(false);
+  const [moving, setMoving] = useState(false);
   const [scrollHeaderReady, setScrollHeaderReady] = useState(false);
   const resetScrollHeader = useCallback((view: FlatList<HomeBoardCard> | null) => {
     if (view === null) setScrollHeaderReady(false);
   }, []);
 
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
+    const waits = confirmations.current;
     return () => {
-      if (undoTimer.current) {
-        clearTimeout(undoTimer.current);
-      }
+      for (const cancel of waits) cancel();
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      undoTarget.current = null;
     };
-  }, []);
+  }, [scene]);
 
   const clearUndo = useCallback(() => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -66,125 +88,122 @@ export function BoardsHomeScreen() {
   const offerUndo = useCallback((target: UndoState) => {
     clearUndo();
     undoTarget.current = target;
-    setUndo(target);
-    undoTimer.current = setTimeout(clearUndo, UNDO_WINDOW_MS);
-  }, [clearUndo]);
+    setUndo({ ...target, scene });
+    undoTimer.current = setTimeout(() => { if (isCurrent()) clearUndo(); }, UNDO_WINDOW_MS);
+  }, [clearUndo, isCurrent, scene]);
 
   const releaseBoard = useCallback((boardId: BoardId) => {
     pendingBoards.current.delete(boardId);
-    setPendingBoardIds(new Set(pendingBoards.current));
+    if (mounted.current) setPendingBoardIds(new Set(pendingBoards.current));
   }, []);
 
   const quickCheckIn = useCallback(async (card: HomeBoardCard) => {
     const boardId = card.board.id;
     // claim before the first await; rendered disabled state cannot guard queued taps.
-    if (pendingBoards.current.has(boardId)) return;
+    if (!isCurrent() || pendingBoards.current.has(boardId)) return;
     pendingBoards.current.add(boardId);
     setPendingBoardIds(new Set(pendingBoards.current));
     setQuickError(null);
     try {
-      const commandId = nextCommandId();
       if (card.daily) {
-        const snapshot = await getDailyToggleSnapshot(core, boardId);
-        if (!snapshot.ok) {
-          setQuickError(snapshot.error.message);
-          invalidate();
-          return;
-        }
+        const preview = await scope.run(({ core }) => getDailyToggleSnapshot(core, boardId));
+        if (!isCurrent() || !preview.started) return;
+        const snapshot = preview.value;
+        if (!snapshot.ok) { setQuickError(snapshot.error.message); invalidate(); return; }
         if (snapshot.value.logicalDate !== card.today || snapshot.value.checked !== card.daily.checkedToday) {
           setQuickError('This habit changed since it was displayed. Review its current state and try again.');
-          invalidate();
-          return;
+          invalidate(); return;
         }
-        if (snapshot.value.checked && snapshot.value.noteCount > 0 && !await confirmDailyUncheck(snapshot.value)) return;
-        const result = await toggleDailyCheckIn(core, {
-          commandId, boardId, logicalDate: snapshot.value.logicalDate,
-          expectedCheckIns: snapshot.value.expectedCheckIns,
+        if (snapshot.value.checked && snapshot.value.noteCount > 0) {
+          const confirmed = await new Promise<boolean>((resolve, reject) => {
+            const cancel = () => decide(false);
+            const decide = (value: boolean) => {
+              if (!confirmations.current.delete(cancel)) return;
+              resolve(value);
+            };
+            confirmations.current.add(cancel);
+            void confirmDailyUncheck(snapshot.value).then(decide, cause => {
+              if (confirmations.current.delete(cancel)) reject(cause);
+            });
+          });
+          if (!confirmed || !isCurrent()) return;
+        }
+        await scope.run(async ({ core }) => {
+          const commandId = nextCommandId();
+          const result = await toggleDailyCheckIn(core, {
+            commandId, boardId, logicalDate: snapshot.value.logicalDate,
+            expectedCheckIns: snapshot.value.expectedCheckIns,
+          });
+          invalidate();
+          if (!isCurrent()) return;
+          if (!result.ok) { setQuickError(result.error.message); return; }
+          if (result.value.created && result.value.checkInId) {
+            offerUndo({ boardId, boardTitle: snapshot.value.boardTitle, checkInId: result.value.checkInId, createdByCommandId: commandId });
+            await triggerActionHaptic();
+          } else if (!result.value.checked) {
+            if (undoTarget.current && result.value.removedCheckInIds.includes(undoTarget.current.checkInId)) clearUndo();
+            await triggerActionHaptic();
+          }
         });
-        if (!result.ok) {
-          setQuickError(result.error.message);
-          invalidate();
-          return;
-        }
-        invalidate();
-        if (result.value.created && result.value.checkInId) {
-          void triggerActionHaptic();
-          offerUndo({ boardId, boardTitle: snapshot.value.boardTitle, checkInId: result.value.checkInId, createdByCommandId: commandId });
-        } else if (!result.value.checked) {
-          void triggerActionHaptic();
-          if (undoTarget.current && result.value.removedCheckInIds.includes(undoTarget.current.checkInId)) clearUndo();
-        }
       } else {
-        const result = await createCheckIn(core, { commandId, boardId, source: 'app' });
-        if (!result.ok) {
-          setQuickError(result.error.message);
+        await scope.run(async ({ core }) => {
+          const commandId = nextCommandId();
+          const result = await createCheckIn(core, { commandId, boardId, source: 'app' });
           invalidate();
-          return;
-        }
-        invalidate();
-        if (result.value.created) {
-          void triggerActionHaptic();
-          offerUndo({ boardId, boardTitle: card.board.title, checkInId: result.value.checkInId, createdByCommandId: commandId });
-        }
+          if (!isCurrent()) return;
+          if (!result.ok) { setQuickError(result.error.message); return; }
+          if (result.value.created) {
+            offerUndo({ boardId, boardTitle: card.board.title, checkInId: result.value.checkInId, createdByCommandId: commandId });
+            await triggerActionHaptic();
+          }
+        });
       }
     } catch {
-      setQuickError('Could not update this habit. Try again.');
+      if (isCurrent()) setQuickError('Could not update this habit. Try again.');
       invalidate();
-    } finally {
-      releaseBoard(boardId);
-    }
-  }, [clearUndo, core, invalidate, nextCommandId, offerUndo, releaseBoard]);
+    } finally { releaseBoard(boardId); }
+  }, [clearUndo, invalidate, isCurrent, nextCommandId, offerUndo, releaseBoard, scope]);
 
   const undoLast = useCallback(async () => {
     const target = undoTarget.current;
-    if (!target || undoPending.current || pendingBoards.current.has(target.boardId)) return;
+    if (!isCurrent() || !target || undoPending.current || pendingBoards.current.has(target.boardId)) return;
     undoPending.current = true;
     pendingBoards.current.add(target.boardId);
     setPendingBoardIds(new Set(pendingBoards.current));
-    clearUndo();
-    setQuickError(null);
+    clearUndo(); setQuickError(null);
     try {
-      const result = await undoCreatedCheckIn(core, {
-        commandId: nextCommandId(), checkInId: target.checkInId,
-        createdByCommandId: target.createdByCommandId,
-      });
-      invalidate();
-      if (!result.ok) setQuickError(result.error.message);
-    } catch {
-      setQuickError('Could not undo this check-in. Try again.');
-      invalidate();
-    } finally {
-      undoPending.current = false;
-      releaseBoard(target.boardId);
-    }
-  }, [clearUndo, core, invalidate, nextCommandId, releaseBoard]);
-
-  const move = useCallback(
-    async (cards: HomeBoardCard[], index: number, direction: -1 | 1) => {
-      const target = cards[index + direction];
-      if (!target) {
-        return;
-      }
-      // moving up places the board before its previous neighbor
-      const newIndex = index + direction;
-      const previous = direction === -1 ? cards[newIndex - 1] : cards[newIndex];
-      const next = direction === -1 ? cards[newIndex] : cards[newIndex + 1];
-      const result = await reorderBoard(core, {
-        commandId: nextCommandId(),
-        boardId: cards[index].board.id,
-        previousBoardId: previous ? previous.board.id : null,
-        nextBoardId: next ? next.board.id : null,
-      });
-      if (result.ok) {
+      await scope.run(async ({ core }) => {
+        const result = await undoCreatedCheckIn(core, {
+          commandId: nextCommandId(), checkInId: target.checkInId, createdByCommandId: target.createdByCommandId,
+        });
         invalidate();
-      } else {
-        // a neighbor may have vanished concurrently; say so instead of a
-        // silently dead control
-        setQuickError(result.error.message);
-      }
-    },
-    [core, invalidate, nextCommandId],
-  );
+        if (!result.ok && isCurrent()) setQuickError(result.error.message);
+      });
+    } catch {
+      if (isCurrent()) setQuickError('Could not undo this check-in. Try again.');
+      invalidate();
+    } finally { undoPending.current = false; releaseBoard(target.boardId); }
+  }, [clearUndo, invalidate, isCurrent, nextCommandId, releaseBoard, scope]);
+
+  const move = useCallback(async (cards: HomeBoardCard[], index: number, direction: -1 | 1) => {
+    if (!isCurrent() || reorderPending.current || !cards[index + direction]) return;
+    reorderPending.current = true; setMoving(true);
+    const newIndex = index + direction;
+    const previous = direction === -1 ? cards[newIndex - 1] : cards[newIndex];
+    const next = direction === -1 ? cards[newIndex] : cards[newIndex + 1];
+    try {
+      await scope.run(async ({ core }) => {
+        const result = await reorderBoard(core, {
+          commandId: nextCommandId(), boardId: cards[index].board.id,
+          previousBoardId: previous ? previous.board.id : null, nextBoardId: next ? next.board.id : null,
+        });
+        invalidate();
+        if (!result.ok && isCurrent()) setQuickError(result.error.message);
+      });
+    } catch {
+      if (isCurrent()) setQuickError('Could not reorder these boards. Try again.');
+    } finally { reorderPending.current = false; if (mounted.current) setMoving(false); }
+  }, [invalidate, isCurrent, nextCommandId, scope]);
 
   // keep the scroll view in the first native descendant chain for ios edge effects.
   return (
@@ -197,14 +216,14 @@ export function BoardsHomeScreen() {
           headerLeft: () => (
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <ProductPressable
-                onPress={() => router.push('/settings')}
+                onPress={() => { if (isCurrent()) router.push('/settings'); }}
                 label="Settings"
                 hint="Opens settings"
                 testID="open-settings"
               >
                 <Icon name="settings" size={22} color={semanticFallbacks.label[scheme]} />
               </ProductPressable>
-              <ProductPressable onPress={() => router.push('/stacks')} label="Stacks" hint="Opens habit stacks" testID="open-stacks">
+              <ProductPressable onPress={() => { if (isCurrent()) router.push('/stacks'); }} label="Stacks" hint="Opens habit stacks" testID="open-stacks">
                 <Icon name="stacks" size={22} color={semanticFallbacks.label[scheme]} />
               </ProductPressable>
             </View>
@@ -213,7 +232,7 @@ export function BoardsHomeScreen() {
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
               <CoinBalancePill />
               <ProductPressable
-                onPress={() => setEditMode((current) => !current)}
+                onPress={() => { if (isCurrent()) setEditMode((current) => !current); }}
                 label={editMode ? 'Done editing boards' : 'Edit boards'}
                 selected={editMode}
                 testID="toggle-edit-boards"
@@ -221,7 +240,7 @@ export function BoardsHomeScreen() {
                 <Icon name={editMode ? 'checkmark' : 'pencil'} size={22} color={semanticFallbacks.label[scheme]} />
               </ProductPressable>
               <ProductPressable
-                onPress={() => router.push('/boards/new')}
+                onPress={() => { if (isCurrent()) router.push('/boards/new'); }}
                 label="Create board"
                 testID="create-board"
               >
@@ -236,7 +255,7 @@ export function BoardsHomeScreen() {
       ) : boards.status === 'error' ? (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
           <InlineError message={boards.error.message} testID="boards-error" />
-          <PrimaryButton title="Try again" onPress={boards.refresh} />
+          <PrimaryButton title="Try again" onPress={() => { if (isCurrent()) boards.refresh(); }} />
         </ScrollView>
       ) : boards.value.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.lg }}>
@@ -245,7 +264,7 @@ export function BoardsHomeScreen() {
           </AppText>
           <PrimaryButton
             title="Create Board"
-            onPress={() => router.push('/boards/new')}
+            onPress={() => { if (isCurrent()) router.push('/boards/new'); }}
             testID="empty-create-board"
           />
         </View>
@@ -261,12 +280,12 @@ export function BoardsHomeScreen() {
             <BoardCard
               card={item}
               testID={`board-card-${index}`}
-              onOpen={() => router.push(`/boards/${item.board.id}`)}
+              onOpen={() => { if (isCurrent()) router.push(`/boards/${item.board.id}`); }}
               onQuickCheckIn={() => quickCheckIn(item)}
               quickPending={pendingBoardIds.has(item.board.id)}
               editMode={editMode}
-              canMoveUp={index > 0}
-              canMoveDown={index < boards.value.length - 1}
+              canMoveUp={!moving && index > 0}
+              canMoveDown={!moving && index < boards.value.length - 1}
               onMoveUp={() => move(boards.value, index, -1)}
               onMoveDown={() => move(boards.value, index, 1)}
             />
@@ -278,7 +297,7 @@ export function BoardsHomeScreen() {
           <InlineError message={quickError} testID="quick-error" />
         </View>
       ) : null}
-      {undo ? (
+      {undo?.scene === scene ? (
         <View
           style={{
             padding: spacing.lg,

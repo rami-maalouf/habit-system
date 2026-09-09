@@ -1,4 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useNavigation } from 'expo-router';
+import { useIsFocused } from 'expo-router/react-navigation';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -7,11 +9,27 @@ import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { BoardSymbol, deriveBoardColors } from '../boards';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
-import { useProductQuery } from '../product-store';
+import { useProduct, useProductQuery } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
 
 export function ArchivedBoardsScreen() {
-  const router = useRouter();
+  const router = useProductRouter();
+  const navigation = useNavigation();
+  const focused = useIsFocused();
   const scheme = useScheme();
+  const { scope } = useProduct();
+  // callbacks retain the focus owner and product generation that created them.
+  const activeScene = useRef<object | null>(null);
+  const scene = useMemo(() => ({}), [scope, focused]);
+  useEffect(() => {
+    activeScene.current = scene;
+    return () => { if (activeScene.current === scene) activeScene.current = null; };
+  }, [scene]);
+  const isCurrent = useCallback(
+    () => activeScene.current === scene && scope.isCurrent() && focused && navigation.isFocused(),
+    [scene, scope, focused, navigation],
+  );
+
   const archived = useProductQuery((c) => listArchivedBoards(c), []);
 
   return (
@@ -26,7 +44,7 @@ export function ArchivedBoardsScreen() {
         ) : archived.status === 'error' ? (
           <View style={{ gap: spacing.md }}>
             <InlineError message={archived.error.message} testID="archived-error" />
-            <PrimaryButton title="Try again" onPress={archived.refresh} testID="archived-retry" />
+            <PrimaryButton title="Try again" onPress={() => { if (isCurrent()) archived.refresh(); }} testID="archived-retry" />
           </View>
         ) : archived.value.length === 0 ? (
           <AppText variant="subheadline" testID="archived-empty">
@@ -39,7 +57,7 @@ export function ArchivedBoardsScreen() {
               return (
                 <ProductPressable
                   key={board.id}
-                  onPress={() => router.push(`/boards/${board.id}`)}
+                  onPress={() => { if (isCurrent()) router.push(`/boards/${board.id}`); }}
                   label={`${board.title}, archived board`}
                   hint="Opens the archived board to restore or delete it"
                   stretch

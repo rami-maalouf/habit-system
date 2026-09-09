@@ -3340,3 +3340,13 @@ T19/Checkpoint C external gates remain open.
     reviewed both complete files and independently reran the seven directed
     cases, verifying final hashes. Native delivery and final sample routes
     remain outside this bounded caller acceptance.
+15. Home, detail, history and archived-board callers now retain their scene
+    and product scope through accepted operations. Daily reads precede
+    cancelable human confirmations; per-board locks, Undo timers, native
+    history deletion and reorder reject duplicate or retired callbacks.
+    All destinations remain inside the sample navigator. Thirteen actual
+    routed SQLite regressions first reproduce; eighty-six tests across nine
+    suites pass, with owned lint and composed typecheck clean. Root reviewed
+    all five complete files, verified their frozen hashes and independently
+    reran the thirteen directed cases. This caller acceptance does not claim
+    production route activation or native presentation acceptance.

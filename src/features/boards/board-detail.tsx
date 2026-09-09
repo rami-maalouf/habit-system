@@ -1,5 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { Stack, useNavigation } from 'expo-router';
+import { useIsFocused } from 'expo-router/react-navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +11,7 @@ import {
   restoreBoard,
   updateBoard,
 } from '@/core/domain/commands';
+import type { Board } from '@/core/domain/entities';
 import type { BoardId } from '@/core/domain/ids';
 import {
   getBoard,
@@ -23,13 +25,28 @@ import { deriveBoardColors } from './board-colors';
 import { HeatmapView } from './heatmap-view';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
 import { HabitProgress } from '../analytics';
 
 export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
-  const router = useRouter();
+  const router = useProductRouter();
+  const navigation = useNavigation();
+  const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { scope, invalidate, nextCommandId } = useProduct();
+  // callbacks retain the focus owner and product generation that created them.
+  const activeScene = useRef<object | null>(null);
+  const scene = useMemo(() => ({}), [scope, focused, boardId]);
+  useEffect(() => {
+    activeScene.current = scene;
+    return () => { if (activeScene.current === scene) activeScene.current = null; };
+  }, [scene]);
+  const isCurrent = useCallback(
+    () => activeScene.current === scene && scope.isCurrent() && focused && navigation.isFocused(),
+    [scene, scope, focused, navigation],
+  );
+
   const board = useProductQuery((c) => getBoard(c, boardId), [boardId]);
   const summary = useProductQuery((c) => getBoardSummary(c, boardId), [boardId]);
   const heatmap = useProductQuery((c) => getBoardHeatmap(c, boardId), [boardId]);
@@ -39,35 +56,75 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
     if (view === null) setScrollHeaderReady(false);
   }, []);
 
-  const confirmDelete = useCallback(async () => {
-    const counts = await getBoardDependentCounts(core, boardId);
-    const summaryText = counts.ok
-      ? `This permanently deletes ${counts.value.checkIns} check-ins, ${counts.value.notes} notes, and ${counts.value.reminders} reminders.`
-      : 'This permanently deletes the board and everything it contains.';
-    const anchoredBoards = counts.ok ? counts.value.anchoredBoards : null;
-    const anchorSummary = anchoredBoards === null
-      ? 'Habits anchored to this board will lose that anchor. Those habits and their history remain.'
-      : anchoredBoards === 0
-        ? ''
-        : `This also removes the anchor from ${anchoredBoards} habit${anchoredBoards === 1 ? '' : 's'}. ${anchoredBoards === 1 ? 'That habit and its history remain.' : 'Those habits and their history remain.'}`;
-    Alert.alert('Delete Board', [summaryText, anchorSummary].filter(Boolean).join('\n\n'), [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete Board',
-        style: 'destructive',
-        onPress: () => {
-          void deleteBoard(core, { commandId: nextCommandId(), boardId }).then((result) => {
-            if (result.ok) {
-              invalidate();
-              router.dismissTo('/');
-            } else {
-              setActionError(result.error.message);
-            }
+  const pendingRef = useRef(false);
+  const [pending, setPending] = useState(false);
+  const mounted = useRef(false);
+  const cancelConfirmation = useRef<(() => void) | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => () => { cancelConfirmation.current?.(); }, [scene]);
+
+  const changeBoard = useCallback(async (action: { kind: 'restore' } | { kind: 'metrics'; record: Board }) => {
+    if (!isCurrent() || pendingRef.current) return;
+    pendingRef.current = true; setPending(true); setActionError(null);
+    try {
+      await scope.run(async ({ core }) => {
+        const result = action.kind === 'restore'
+          ? await restoreBoard(core, { commandId: nextCommandId(), boardId })
+          : await updateBoard(core, {
+            commandId: nextCommandId(), boardId, expectedMutationStamp: action.record.mutationStamp,
+            title: action.record.title, symbol: action.record.symbol, accentHex: action.record.accentHex,
+            usesTintedBackground: action.record.usesTintedBackground, tracksAmount: action.record.tracksAmount,
+            tracksTime: action.record.tracksTime, startOfDayMinute: action.record.startOfDayMinute, metricsEnabled: true,
           });
-        },
-      },
-    ]);
-  }, [boardId, core, invalidate, nextCommandId, router]);
+        invalidate();
+        if (!result.ok && isCurrent()) setActionError(result.error.message);
+      });
+    } catch {
+      if (isCurrent()) setActionError('Could not update this board. Try again.');
+      invalidate();
+    } finally { pendingRef.current = false; if (mounted.current) setPending(false); }
+  }, [boardId, invalidate, isCurrent, nextCommandId, scope]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!isCurrent() || pendingRef.current) return;
+    pendingRef.current = true; setPending(true); setActionError(null);
+    try {
+      const preview = await scope.run(({ core }) => getBoardDependentCounts(core, boardId));
+      if (!isCurrent() || !preview.started) return;
+      const counts = preview.value;
+      const summaryText = counts.ok
+        ? `This permanently deletes ${counts.value.checkIns} check-ins, ${counts.value.notes} notes, and ${counts.value.reminders} reminders.`
+        : 'This permanently deletes the board and everything it contains.';
+      const anchoredBoards = counts.ok ? counts.value.anchoredBoards : null;
+      const anchorSummary = anchoredBoards === null
+        ? 'Habits anchored to this board will lose that anchor. Those habits and their history remain.'
+        : anchoredBoards === 0 ? ''
+          : `This also removes the anchor from ${anchoredBoards} habit${anchoredBoards === 1 ? '' : 's'}. ${anchoredBoards === 1 ? 'That habit and its history remain.' : 'Those habits and their history remain.'}`;
+      const confirmed = await new Promise<boolean>(resolve => {
+        const cancel = () => decide(false);
+        const decide = (value: boolean) => {
+          if (cancelConfirmation.current !== cancel) return;
+          cancelConfirmation.current = null; resolve(value);
+        };
+        cancelConfirmation.current = cancel;
+        Alert.alert('Delete Board', [summaryText, anchorSummary].filter(Boolean).join('\n\n'), [
+          { text: 'Cancel', style: 'cancel', onPress: cancel },
+          { text: 'Delete Board', style: 'destructive', onPress: () => decide(true) },
+        ]);
+      });
+      if (!confirmed || !isCurrent()) return;
+      await scope.run(async ({ core }) => {
+        const result = await deleteBoard(core, { commandId: nextCommandId(), boardId });
+        invalidate();
+        if (!isCurrent()) return;
+        if (result.ok) router.dismissTo('/');
+        else setActionError(result.error.message);
+      });
+    } catch {
+      if (isCurrent()) setActionError('Could not delete this board. Try again.');
+      invalidate();
+    } finally { pendingRef.current = false; if (mounted.current) setPending(false); }
+  }, [boardId, invalidate, isCurrent, nextCommandId, router, scope]);
 
   if (board.status === 'loading') {
     return <View testID="board-loading" style={{ flex: 1 }} />;
@@ -82,7 +139,7 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
           This board is not available.
         </AppText>
         <AppText>{board.error.message}</AppText>
-        <PrimaryButton title="Back to Boards" onPress={() => router.dismissTo('/')} testID="board-recovery-home" />
+        <PrimaryButton title="Back to Boards" onPress={() => { if (isCurrent()) router.dismissTo('/'); }} testID="board-recovery-home" />
       </View>
     );
   }
@@ -109,7 +166,7 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
             ? undefined
             : () => (
                 <ProductPressable
-                  onPress={() => router.push(`/boards/${record.id}/edit`)}
+                  onPress={() => { if (isCurrent()) router.push(`/boards/${record.id}/edit`); }}
                   label="Edit board"
                   testID="edit-board"
                 >
@@ -142,17 +199,10 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
             <PrimaryButton
               title="Restore Board"
               testID="restore-board"
-              onPress={() => {
-                void restoreBoard(core, { commandId: nextCommandId(), boardId }).then((result) => {
-                  if (result.ok) {
-                    invalidate();
-                  } else {
-                    setActionError(result.error.message);
-                  }
-                });
-              }}
+              disabled={pending}
+              onPress={() => { void changeBoard({ kind: 'restore' }); }}
             />
-            <PrimaryButton title="Delete Board" destructive onPress={confirmDelete} testID="delete-board" />
+            <PrimaryButton title="Delete Board" destructive disabled={pending} onPress={confirmDelete} testID="delete-board" />
           </View>
         ) : null}
 
@@ -161,7 +211,7 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
             <InlineError message={supportError.message} />
             <PrimaryButton
               title="Try again"
-              onPress={invalidate}
+              onPress={() => { if (isCurrent()) invalidate(); }}
               testID="detail-query-retry"
             />
           </View>
@@ -195,27 +245,8 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
             <PrimaryButton
               title="Enable Metrics"
               testID="enable-metrics"
-              onPress={() => {
-                void updateBoard(core, {
-                  commandId: nextCommandId(),
-                  boardId,
-                  expectedMutationStamp: record.mutationStamp,
-                  title: record.title,
-                  symbol: record.symbol,
-                  accentHex: record.accentHex,
-                  usesTintedBackground: record.usesTintedBackground,
-                  tracksAmount: record.tracksAmount,
-                  tracksTime: record.tracksTime,
-                  startOfDayMinute: record.startOfDayMinute,
-                  metricsEnabled: true,
-                }).then((result) => {
-                  if (result.ok) {
-                    invalidate();
-                  } else {
-                    setActionError(result.error.message);
-                  }
-                });
-              }}
+              disabled={pending}
+              onPress={() => { void changeBoard({ kind: 'metrics', record }); }}
             />
           </View>
         ) : null}
@@ -256,7 +287,7 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
             }}
           >
             <ProductPressable
-              onPress={record.metricsEnabled ? () => router.push(`/boards/${record.id}/analytics`) : undefined}
+              onPress={record.metricsEnabled ? () => { if (isCurrent()) router.push(`/boards/${record.id}/analytics`); } : undefined}
               disabled={!record.metricsEnabled}
               label="Analytics"
               testID="open-analytics"
@@ -264,14 +295,14 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
               <Icon name="analytics" size={23} color={semanticFallbacks.label[scheme]} />
             </ProductPressable>
             <ProductPressable
-              onPress={() => router.push(`/boards/${record.id}/check-ins`)}
+              onPress={() => { if (isCurrent()) router.push(`/boards/${record.id}/check-ins`); }}
               label="Check-Ins"
               testID="open-check-ins"
             >
               <Icon name="checkIns" size={23} color={semanticFallbacks.label[scheme]} />
             </ProductPressable>
             <ProductPressable
-              onPress={() => router.push(`/boards/${record.id}/journal`)}
+              onPress={() => { if (isCurrent()) router.push(`/boards/${record.id}/journal`); }}
               label="Journal"
               testID="open-journal"
             >
@@ -281,7 +312,7 @@ export function BoardDetailScreen({ boardId }: { boardId: BoardId }) {
           <ProductPressable
             // the reference opens the add check-in sheet: date defaults to
             // today and any past date is selectable there
-            onPress={() => router.push(`/boards/${record.id}/check-ins/new`)}
+            onPress={() => { if (isCurrent()) router.push(`/boards/${record.id}/check-ins/new`); }}
             label="Add check-in"
             hint="Opens the add check-in sheet"
             testID="detail-add-check-in"

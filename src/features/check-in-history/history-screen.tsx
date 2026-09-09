@@ -1,5 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { Stack, useNavigation } from 'expo-router';
+import { useIsFocused } from 'expo-router/react-navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -10,6 +11,7 @@ import { semanticColor, spacing } from '@/theme';
 
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
 import { HistoryList } from './history-list';
 import type { HistoryDaySection } from './history-list-types';
 
@@ -36,13 +38,28 @@ function dayTitle(date: string): string {
 }
 
 export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
-  const router = useRouter();
+  const router = useProductRouter();
+  const navigation = useNavigation();
+  const focused = useIsFocused();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { core, scope, invalidate, nextCommandId } = useProduct();
+  // callbacks retain the focus owner and product generation that created them.
+  const activeScene = useRef<object | null>(null);
+  const scene = useMemo(() => ({}), [scope, focused, boardId]);
+  useEffect(() => {
+    activeScene.current = scene;
+    return () => { if (activeScene.current === scene) activeScene.current = null; };
+  }, [scene]);
+  const isCurrent = useCallback(
+    () => activeScene.current === scene && scope.isCurrent() && focused && navigation.isFocused(),
+    [scene, scope, focused, navigation],
+  );
+
   // history loads in pages so very large boards stay responsive; the page
   // grows as the reader approaches the end of the list
   const [pageLimit, setPageLimit] = useState(200);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleting = useRef(new Set<string>());
   const board = useProductQuery((c) => getBoard(c, boardId), [boardId]);
   const history = useProductQuery(
     (c) => getGroupedCheckInHistory(c, boardId, { limit: pageLimit }),
@@ -56,22 +73,20 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
   );
 
   // a native swipe delete commits immediately, like the platform does
-  const deleteCheckIn = useCallback(
-    (checkInId: string) => {
-      setDeleteError(null);
-      void removeCheckIn(core, {
-        commandId: nextCommandId(),
-        checkInId: checkInId as CheckInId,
-      }).then((result) => {
-        if (result.ok) {
-          invalidate();
-        } else {
-          setDeleteError(result.error.message);
-        }
+  const deleteCheckIn = useCallback(async (checkInId: string) => {
+    if (!isCurrent() || deleting.current.has(checkInId)) return;
+    deleting.current.add(checkInId); setDeleteError(null);
+    try {
+      await scope.run(async ({ core }) => {
+        const result = await removeCheckIn(core, { commandId: nextCommandId(), checkInId: checkInId as CheckInId });
+        invalidate();
+        if (!result.ok && isCurrent()) setDeleteError(result.error.message);
       });
-    },
-    [core, invalidate, nextCommandId],
-  );
+    } catch {
+      if (isCurrent()) setDeleteError('Could not delete this check-in. Try again.');
+      invalidate();
+    } finally { deleting.current.delete(checkInId); }
+  }, [invalidate, isCurrent, nextCommandId, scope]);
 
   if (board.status === 'error') {
     return (
@@ -79,7 +94,7 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
         <AppText variant="title2" accessibilityRole="header">
           This board is not available.
         </AppText>
-        <PrimaryButton title="Back to Boards" onPress={() => router.dismissTo('/')} />
+        <PrimaryButton title="Back to Boards" onPress={() => { if (isCurrent()) router.dismissTo('/'); }} />
       </View>
     );
   }
@@ -112,7 +127,7 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
             record && !archived
               ? () => (
                   <ProductPressable
-                    onPress={() => router.push(`/boards/${boardId}/check-ins/new`)}
+                    onPress={() => { if (isCurrent()) router.push(`/boards/${boardId}/check-ins/new`); }}
                     label="Add check-in"
                     testID="add-check-in"
                   >
@@ -134,7 +149,7 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
       ) : history.status === 'error' ? (
         <View style={{ padding: spacing.lg, gap: spacing.md }}>
           <InlineError message={history.error.message} testID="history-error" />
-          <PrimaryButton title="Try again" onPress={history.refresh} />
+          <PrimaryButton title="Try again" onPress={() => { if (isCurrent()) history.refresh(); }} />
         </View>
       ) : sections.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.lg }}>
@@ -144,7 +159,7 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
           {!archived ? (
             <PrimaryButton
               title="Add Check-In"
-              onPress={() => router.push(`/boards/${boardId}/check-ins/new`)}
+              onPress={() => { if (isCurrent()) router.push(`/boards/${boardId}/check-ins/new`); }}
             />
           ) : null}
         </View>
@@ -154,10 +169,10 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
           boardTitle={record?.title ?? 'Check-in'}
           amountUnit={record?.amountUnit ?? null}
           archived={archived}
-          onOpen={(checkInId) => router.push(`/boards/${boardId}/check-ins/${checkInId}`)}
+          onOpen={(checkInId) => { if (isCurrent()) router.push(`/boards/${boardId}/check-ins/${checkInId}`); }}
           onDelete={deleteCheckIn}
           hasMore={hasMore}
-          onLoadMore={() => setPageLimit((current) => current + 200)}
+          onLoadMore={() => { if (isCurrent() && hasMore) setPageLimit((current) => current + 200); }}
         />
       )}
     </View>
