@@ -22,6 +22,7 @@ import {
   saveSyncState,
 } from '../persistence/repositories/support';
 import { observe } from './hybrid-clock';
+import { recoverLocalFacts } from './local-fact-recovery';
 import { validateInboundRecord } from './inbound-validation';
 import {
   SETTINGS_ENTITY_ID,
@@ -45,6 +46,7 @@ export type SyncOutcome = {
   status: SyncStatus;
   uploaded: number;
   applied: number;
+  localChanged: boolean;
   // retry delay in ms when the run failed and another attempt is worth it
   retryAfterMs: number | null;
 };
@@ -398,7 +400,7 @@ export function runSync(deps: SyncDeps): Promise<DomainResult<SyncOutcome>> {
     try {
       checkpoint(deps);
     } catch {
-      return ok({ status: 'idle' as SyncStatus, uploaded: 0, applied: 0, retryAfterMs: null });
+      return ok({ status: 'idle' as SyncStatus, uploaded: 0, applied: 0, localChanged: false, retryAfterMs: null });
     }
     const now = deps.clock.nowUtcMs();
 
@@ -410,8 +412,17 @@ export function runSync(deps: SyncDeps): Promise<DomainResult<SyncOutcome>> {
     if (!preflight.settings) {
       return err('database', 'The database is not initialized.');
     }
+    let localChanged: boolean;
+    try {
+      localChanged = await recoverLocalFacts(deps, () => checkpoint(deps));
+    } catch (cause) {
+      if (cause instanceof SyncCancelled || deps.shouldContinue?.() === false) {
+        return ok({ status: 'idle', uploaded: 0, applied: 0, localChanged: false, retryAfterMs: null });
+      }
+      return err('database', 'Local data could not be processed. Try again.', { retryable: true });
+    }
     if (!preflight.settings.iCloudSyncEnabled) {
-      return ok({ status: 'idle' as SyncStatus, uploaded: 0, applied: 0, retryAfterMs: null });
+      return ok({ status: 'idle' as SyncStatus, uploaded: 0, applied: 0, localChanged, retryAfterMs: null });
     }
 
     const retry = readRetry(preflight.state.retryState);
@@ -544,14 +555,15 @@ export function runSync(deps: SyncDeps): Promise<DomainResult<SyncOutcome>> {
         status: (unresolved ? 'needs_attention' : 'up_to_date') as SyncStatus,
         uploaded,
         applied,
+        localChanged,
         retryAfterMs: null,
       });
     } catch (cause) {
       if (cause instanceof SyncCancelled) {
-        return ok({ status: 'idle' as SyncStatus, uploaded, applied, retryAfterMs: null });
+        return ok({ status: 'idle' as SyncStatus, uploaded, applied, localChanged, retryAfterMs: null });
       }
       if (deps.shouldContinue?.() === false) {
-        return ok({ status: 'idle' as SyncStatus, uploaded, applied, retryAfterMs: null });
+        return ok({ status: 'idle' as SyncStatus, uploaded, applied, localChanged, retryAfterMs: null });
       }
       const attempt = retry.attempt + 1;
       const retryAfterMs = retryDelayMs(attempt, deps.random);
@@ -566,12 +578,12 @@ export function runSync(deps: SyncDeps): Promise<DomainResult<SyncOutcome>> {
         });
       } catch (retryCause) {
         if (retryCause instanceof SyncCancelled) {
-          return ok({ status: 'idle' as SyncStatus, uploaded, applied, retryAfterMs: null });
+          return ok({ status: 'idle' as SyncStatus, uploaded, applied, localChanged, retryAfterMs: null });
         }
         throw retryCause;
       }
       // raw provider errors and account data never reach the ui or logs
-      return ok({ status: statusForFailure(cause), uploaded, applied, retryAfterMs });
+      return ok({ status: statusForFailure(cause), uploaded, applied, localChanged, retryAfterMs });
     }
   })();
 }

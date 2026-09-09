@@ -1313,14 +1313,13 @@ describe('sync engine edges', () => {
     const failedSetup = await setup();
     failedSetup.transport.failNext = new SyncTransportError('offline', 'down');
     const databaseFailure = new Error('retry state unavailable');
-    const db = {
-      ...failedSetup.deps.db,
-      withTransactionAsync: failedSetup.deps.db.withTransactionAsync.bind(failedSetup.deps.db),
-      withExclusiveTransactionAsync: async () => {
-        throw databaseFailure;
-      },
-    };
-    await expect(runSync({ ...failedSetup.deps, db })).rejects.toBe(databaseFailure);
+    const originalWrite = failedSetup.harness.db.runAsync.bind(failedSetup.harness.db);
+    const write = jest.spyOn(failedSetup.harness.db, 'runAsync').mockImplementation(async (sql, params) => {
+      if (sql.includes('INSERT INTO sync_state') && params?.some(value => value === '{"attempt":1}')) throw databaseFailure;
+      return originalWrite(sql, params);
+    });
+    await expect(runSync(failedSetup.deps)).rejects.toBe(databaseFailure);
+    write.mockRestore();
     await failedSetup.harness.db.closeAsync();
   });
 

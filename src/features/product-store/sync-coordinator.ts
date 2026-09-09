@@ -85,15 +85,13 @@ export class SyncCoordinator {
     while (this.pending && !this.disposed && !this.paused) {
       this.pending = false;
       const generation = this.generation;
+      let enabled = false;
       try {
         const summary = await getSyncSummary(this.core);
         if (this.disposed || generation !== this.generation) continue;
         if (!summary.ok) throw new Error('sync settings unavailable');
-        if (!summary.value.enabled) {
-          this.publish(INITIAL_SYNC);
-          continue;
-        }
-        this.publish({ status: 'syncing', busy: true, error: null });
+        enabled = summary.value.enabled;
+        if (summary.value.enabled) this.publish({ status: 'syncing', busy: true, error: null });
         const result = await runSync({
           ...this.core, transport: this.guardedTransport(generation), random: Math.random,
           shouldContinue: () => !this.disposed && !this.paused && generation === this.generation,
@@ -101,13 +99,15 @@ export class SyncCoordinator {
         if (this.disposed || generation !== this.generation) continue;
         if (!result.ok) throw new Error('sync unavailable');
         this.publish({ status: result.value.status, busy: false, error: null });
-        this.refreshQueries();
+        if (summary.value.enabled || result.value.localChanged) this.refreshQueries();
         if (result.value.retryAfterMs !== null && !this.pending) {
           this.retry = setTimeout(() => { void this.request(); }, result.value.retryAfterMs);
         }
       } catch {
         if (!this.disposed && generation === this.generation) {
           this.publish({ status: 'needs_attention', busy: false, error: 'Sync could not finish. Try again.' });
+          // recovery or earlier pages can commit before later retry metadata fails.
+          if (enabled) this.refreshQueries();
         }
       }
     }

@@ -18,7 +18,7 @@ describe('local incoming data summary', () => {
     expect(screen.getByRole('text', { name: 'Status' })).toHaveAccessibilityValue({ text: 'Off' });
   });
 
-  it('reads distinct persisted states without showing diagnostic payloads or counting them as uploads', async () => {
+  it('recovers processable local states while keeping quarantined diagnostics private and separate from uploads', async () => {
     const opened = await getProductCore();
     if (!opened.ok) throw new Error('core failed');
     const core = opened.value;
@@ -48,13 +48,14 @@ describe('local incoming data summary', () => {
 
     renderRouter('src/app', { initialUrl: '/settings/sync' });
     await settle();
-    for (const [name, count] of [['Waiting to upload', '0'], ['Waiting for related data', '1'],
-      ['At processing limit', '2'], ['Conflicting or invalid data', '3']]) {
+    for (const [name, count] of [['Waiting to upload', '0'], ['Waiting for related data', '0'],
+      ['At processing limit', '0'], ['Conflicting or invalid data', '3']]) {
       expect(screen.getByRole('text', { name })).toHaveAccessibilityValue({ text: count });
     }
     expect(JSON.stringify(screen.toJSON())).not.toContain('never display this private payload');
-    expect(await core.db.getAllAsync('SELECT * FROM remote_fact_inbox ORDER BY fact_id')).toEqual(before);
-    expect(await core.db.getAllAsync('SELECT * FROM habit_actions')).toEqual([]);
+    expect(await core.db.getAllAsync('SELECT * FROM remote_fact_inbox ORDER BY fact_id'))
+      .toEqual(before.filter(row => (row as { state: string }).state === 'quarantined'));
+    expect(await core.db.getAllAsync('SELECT * FROM habit_actions')).toHaveLength(3);
     expect(await core.db.getAllAsync('SELECT * FROM coin_ledger')).toEqual([]);
   });
 

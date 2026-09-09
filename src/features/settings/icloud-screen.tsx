@@ -67,8 +67,7 @@ export function ICloudScreen() {
               return;
             }
             invalidate();
-            if (next) resumeSync();
-
+            resumeSync();
           },
         );
       };

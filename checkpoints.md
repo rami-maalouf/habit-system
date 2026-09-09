@@ -2637,3 +2637,38 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     and reports are retained in `.artifacts/t19/admission-composer/`. Native source
     remains the verified 9 plugin / 146 Swift clock candidate. This increment
     provides the shared sync/import boundary without activating schema-2 transport.
+
+44. Local immutable recovery now runs before the iCloud enablement/account gate.
+    One exclusive transaction admits retained evidence, settles coins and updates
+    visibility, accepted-stamp observation and widgets without network state or a
+    command receipt. Empty retries make no writes; cancellation and late storage
+    failures roll back the entire pass and preserve the original hash error.
+45. Settings resumes the coordinator after either successful toggle direction,
+    so turning iCloud Off no longer permanently pauses local recovery. A routed
+    real SQLite regression additionally reproduces recovery committing before
+    both transport and retry-metadata persistence fail. The current-generation
+    enabled error path now refreshes query state, preserving the saved award and
+    displaying the actual incoming count. Disabled, retired and disposed failure
+    guards remain covered. Public Retry preserves the original immutable rows.
+46. Independent review and combined main validation pass 143 suites / 2,169 tests,
+    all 93 core files at 100 percent, global coverage 97.82/96.45/96.51/98.28.
+    Native source remains the verified 9 plugin / 146 Swift clock candidate.
+    Exact final hashes, behavioral red and green logs, actual SQLite probes and
+    independent reviews are retained in `.artifacts/t19/local-recovery/`.
+
+47. Signed clone UI evidence proves actual On-to-Off recovery, Home/check history/
+    Coins updates and cold preservation. The original QA verifier passes 89 checks.
+    Supplemental actual On confirmation and Sync Now exercise committed recovery
+    followed by guarded offline and retry-INSERT failures: incoming count reaches
+    zero, balance reaches 8, and repeated retry adds no action, award or outbox
+    duplicate. All original native transport methods are fail-closed during that
+    interval, then restored by identity before cold launch. The supplemental
+    verifier passes 94 checks. A Hermes debugger closure issue initially mislabels
+    a per-method counter; preserved evidence distinguishes that interval from the
+    corrected ensureZone-only attempt. No native transport execution occurred.
+    All original product rows remain exact; the final stopped database SHA-256 is
+    `55085f85b4d579cdf49bad71327c67a994d9ad877d9e92c142f3590d12500672`.
+    Both QA clones and the original remain shut down, the original raw database
+    files are unchanged, and source/native hashes stay exact. Existing framework/
+    dev-client diagnostics are retained without suppression; neither QA run proves
+    live CloudKit convergence. Supplemental evidence is under `error-qa/`.
