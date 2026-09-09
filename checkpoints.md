@@ -2405,3 +2405,18 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     sources; this uncalled preparation/storage increment adds no device behavior.
     Review and red/green evidence are in `.artifacts/t19/admission-preparation/`.
     Economic admission and sync/import composition remain subsequent work.
+11. Shared ordinary-cause and correction validation helpers are extracted without
+    changing formulas, UUIDs or TS/Swift fixture bytes. Prepared evidence snapshots
+    unique typed facts before hashing. Each correction validates its own declared
+    subset; cancellation requires a validated parent and a strict superset of that
+    same evidence. Public reconciliation tests reproduce and fix swallowed hashing
+    and abort failures. Independent review also reproduced copied-handle authority
+    bypasses; exact issued-instance checks now reject copied parents or evidence.
+12. The extraction passes 124 suites / 1,871 tests, global coverage
+    97.39/95.90/95.96/98.00 and all 82 core files at 100 percent; 9 plugin and 141
+    Swift tests also pass. Independent review
+    approves the three-file implementation and confirms the caller must establish
+    admitted exact-scope evidence before preparing it. Evidence is retained under
+    `.artifacts/t19/validator-extraction/`. The reviewed period/backup additions in
+    `docs/period-sync-compatibility-proposal.md` remain proposals awaiting user
+    approval; no such schema or export change is implemented by this increment.
