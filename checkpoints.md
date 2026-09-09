@@ -2531,3 +2531,13 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     candidate. Evidence is in `.artifacts/t19/scope-planning/`. The caller must still
     establish unique admissible identities, complete scope evidence and all mandatory
     cross-scope components before committing; a valid scope plan alone is not admission.
+
+29. Whole-batch preparation captures every envelope, body, signed-zero diagnostic and
+    provider method before the first await, then hashes sequentially in original order.
+    Later caller mutations cannot change incoming evidence, and any failure returns no
+    prepared prefix. Existing single-record and persisted recovery behavior is preserved.
+30. Independent review verifies later baseline SHA-1 and SHA-256 failures, exact provider
+    cause identity and mutation isolation. Full validation passes 132 suites / 1,983 tests,
+    global coverage 97.55/96.17/96.16/98.11 and all 87 core files at 100 percent. Evidence
+    is retained in `.artifacts/t19/batch-preparation/`. Native sources and visible behavior
+    are unchanged; the prior 9 plugin / 141 Swift gate remains applicable.

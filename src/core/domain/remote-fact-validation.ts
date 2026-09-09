@@ -96,15 +96,20 @@ function validateShape(factType: RemoteFactType, factId: string, value: unknown)
   }
 }
 
-export async function prepareRemoteFact(candidate: RemoteFactCandidate, hashing: Hashing): Promise<PreparedRemoteFact> {
+function captureRemoteFact(candidate: RemoteFactCandidate) {
   if (!candidate) throw new RemoteFactAdmissionError('envelope');
   const { factType, factId, enqueueOnAdmission, value } = candidate;
   if ((factType !== 'habit_action' && factType !== 'ledger_entry') ||
     typeof factId !== 'string' || !(isUuidV4(factId) || isUuidV5(factId)) ||
     typeof enqueueOnAdmission !== 'boolean') throw new RemoteFactAdmissionError('envelope');
   const snapshot = snapshotJson(value);
-  let fact = snapshot.signedZero ? null : validateShape(factType, factId, snapshot.value);
-  fact = await validateBaseline(fact, hashing);
+  const fact = snapshot.signedZero ? null : validateShape(factType, factId, snapshot.value);
+  return { factType, factId, enqueueOnAdmission, snapshot, fact };
+}
+
+async function finishRemoteFact(captured: ReturnType<typeof captureRemoteFact>, hashing: Hashing): Promise<PreparedRemoteFact> {
+  const { factType, factId, enqueueOnAdmission, snapshot } = captured;
+  const fact = await validateBaseline(captured.fact, hashing);
   const payload = fact === null ? snapshot.payload : canonicalPayload(fact);
   const payloadEncoding = fact === null ? 'rejected_json_v1' : 'canonical_v1';
   const payloadBytes = new TextEncoder().encode(payload).length;
@@ -112,6 +117,20 @@ export async function prepareRemoteFact(candidate: RemoteFactCandidate, hashing:
   const payloadDigest = await digestPayload(factType, factId, payloadEncoding, payload, hashing);
   return { factType, factId, payloadDigest,
     payloadEncoding, payload, payloadBytes, ...selectors(factType, snapshot.value), enqueueOnAdmission, fact };
+}
+
+export async function prepareRemoteFact(candidate: RemoteFactCandidate, hashing: Hashing): Promise<PreparedRemoteFact> {
+  return finishRemoteFact(captureRemoteFact(candidate), hashing);
+}
+
+// capture the complete batch before awaiting any provider; hashing stays sequential.
+export async function prepareRemoteFacts(candidates: readonly RemoteFactCandidate[], sourceHashing: Hashing): Promise<PreparedRemoteFact[]> {
+  if (!Array.isArray(candidates)) throw new RemoteFactAdmissionError('envelope');
+  const hashing = guardRemoteFactHashing(sourceHashing);
+  const captured = candidates.map(captureRemoteFact);
+  const prepared: PreparedRemoteFact[] = [];
+  for (const item of captured) prepared.push(await finishRemoteFact(item, hashing));
+  return prepared;
 }
 
 async function validateBaseline(fact: CanonicalRemoteFact | null, hashing: Hashing) {
