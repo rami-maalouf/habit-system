@@ -3264,3 +3264,16 @@ T19/Checkpoint C external gates remain open.
    both source hashes are independently verified, with lint and composed
    typecheck passing. Real destinations remain unchanged. This helper still
    awaits adoption by the production route graph and feature callers.
+8. Check-in date/time pickers now use the product clock's zone for civil
+   conversion, preserving untouched and selected repeated-hour instants,
+   shifted logical days, minute precision and stored-zone note-only edits.
+   Actual routed historical noon first reproduces incorrect UTC/Tokyo saves.
+   iOS uses explicit-zone native instants; Android separates UTC selected
+   dates, host-local bounds and presentation-only clocks when zones differ.
+   Independent source review found Android bounds use a different native
+   conversion from selected dates: a second routed red proved logical today
+   was disabled. A host-noon bound corrects it. Final Toronto 47 tests across
+   two suites and UTC/Tokyo 20 each pass, with lint/typecheck clean. Root
+   reviewed both full files, installed native contracts and corrected bounds,
+   and verified their final hashes. Core/calendar/schema and dependencies
+   are unchanged; actual native picker interaction remains the final QA.

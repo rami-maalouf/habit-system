@@ -7,10 +7,13 @@ import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import { useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useCallback, useRef, useState, type MutableRefObject } from 'react';
-import { Alert, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
-import { currentLogicalDate, parseLogicalDate, toLogicalDate } from '@/core/calendar/logical-date';
+import {
+  addDays, currentLogicalDate, localDateOfInstant, localWallClock, parseLogicalDate, toLogicalDate,
+} from '@/core/calendar/logical-date';
+import { createOffsetSecondsReader } from '@/core/calendar/time-zone-offset';
 import { createCheckIn, removeCheckIn, updateCheckIn } from '@/core/domain/commands';
 import type { Board, CheckIn } from '@/core/domain/entities';
 import type { BoardId, CheckInId, LogicalDate } from '@/core/domain/ids';
@@ -35,30 +38,55 @@ type CheckInFormScreenProps = {
 // the user actually selected; it is dropped once the date changes
 type TimeOfDay = { hour: number; minute: number; exactInstant: number | null };
 
-function dateFromLogical(date: LogicalDate): Date {
+function utcWallTime(date: LogicalDate, hour: number, minute: number): number {
   const { year, month, day } = parseLogicalDate(date);
-  return new Date(year, month - 1, day, 12, 0, 0);
+  const value = new Date(0);
+  value.setUTCFullYear(year, month - 1, day);
+  value.setUTCHours(hour, minute, 0, 0);
+  return value.getTime();
 }
 
-function logicalFromDate(value: Date): LogicalDate {
-  return toLogicalDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+// resolve civil time in the product zone, independent of the host date zone.
+// like date construction, prefer the first repeated time and move gaps forward.
+function civilInstant(date: LogicalDate, hour: number, minute: number, zone: string): number {
+  const wall = utcWallTime(date, hour, minute);
+  const offset = createOffsetSecondsReader(zone);
+  const offsets = new Set([-86400000, 0, 86400000].map((delta) => offset(wall + delta)));
+  const candidates = [...offsets].map((seconds) => wall - seconds * 1000).sort((a, b) => a - b);
+  return candidates.find((instant) => instant + offset(instant) * 1000 === wall)
+    ?? candidates[candidates.length - 1];
+}
+
+function dateFromLogical(date: LogicalDate, zone: string): Date {
+  // material3 dates are utc midnights; swiftui dates use the explicit zone.
+  return new Date(Platform.OS === 'android'
+    ? utcWallTime(date, 0, 0) : civilInstant(date, 12, 0, zone));
+}
+
+function dateCeiling(date: LogicalDate, zone: string): Date {
+  if (Platform.OS !== 'android') return dateFromLogical(date, zone);
+  // the android wrapper converts bounds from host civil parts to utc days.
+  const { year, month, day } = parseLogicalDate(date);
+  const value = new Date(0);
+  value.setFullYear(year, month - 1, day);
+  value.setHours(12, 0, 0, 0);
+  return value;
+}
+
+function logicalFromDate(value: Date, zone: string): LogicalDate {
+  return Platform.OS === 'android'
+    ? toLogicalDate(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate())
+    : localDateOfInstant(value.getTime(), zone);
 }
 
 // the wall-clock time a stored instant showed in its own recorded zone
 function timeOfDayFromInstant(instantMs: number, timeZoneId: string): TimeOfDay {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-    timeZone: timeZoneId,
-  }).formatToParts(new Date(instantMs));
-  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0) % 24;
-  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
+  const { hour, minute } = localWallClock(instantMs, timeZoneId);
   return { hour, minute, exactInstant: instantMs };
 }
 
-// the device-zone instant for a logical date at a wall-clock time; the
-// occurrence always belongs to the selected LOGICAL date under the board's
+// the product-zone instant for a logical date at a wall-clock time; the
+// occurrence always belongs to the selected logical date under the board's
 // start-of-day shift, never to "now"
 function instantFor(
   date: LogicalDate,
@@ -75,29 +103,20 @@ function instantFor(
   ) {
     return time.exactInstant;
   }
-  const { year, month, day } = parseLogicalDate(date);
-  const base = new Date(year, month - 1, day, time.hour, time.minute, 0, 0).getTime();
+  const base = civilInstant(date, time.hour, time.minute, timeZoneId);
   if (currentLogicalDate(base, timeZoneId, startOfDayMinute) === date) {
     return base;
   }
   // inside a shifted day an early wall clock belongs to the next calendar
   // day; recombine there when that assignment matches the selection
-  const nextDay = new Date(year, month - 1, day + 1, time.hour, time.minute, 0, 0).getTime();
+  const nextDay = civilInstant(addDays(date, 1), time.hour, time.minute, timeZoneId);
   if (currentLogicalDate(nextDay, timeZoneId, startOfDayMinute) === date) {
     return nextDay;
   }
   // a spring-forward gap can invalidate both candidates; the next valid
   // time inside the selected logical day is its start-of-day wall clock
   // (date construction normalizes forward out of a gap, staying inside)
-  return new Date(
-    year,
-    month - 1,
-    day,
-    Math.floor(startOfDayMinute / 60),
-    startOfDayMinute % 60,
-    0,
-    0,
-  ).getTime();
+  return civilInstant(date, Math.floor(startOfDayMinute / 60), startOfDayMinute % 60, timeZoneId);
 }
 
 export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckInFormScreenProps) {
@@ -249,7 +268,7 @@ function CheckInFormBody({
   const navigation = useNavigation();
   const scheme = useScheme();
   const { core, invalidate, nextCommandId } = useProduct();
-  const deviceZone = core.clock.timeZoneId();
+  const productZone = core.clock.timeZoneId();
   const [dirty, setDirtyState] = useState(false);
   // the parent's sheet-close guard reads the ref; react state still drives
   // the removal guard below
@@ -265,12 +284,12 @@ function CheckInFormBody({
   // selected date at save, so a historical date never carries today's instant
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>(() => {
     if (record && record.occurredAtUtc !== null) {
-      return timeOfDayFromInstant(record.occurredAtUtc, record.timeZoneId ?? deviceZone);
+      return timeOfDayFromInstant(record.occurredAtUtc, record.timeZoneId ?? productZone);
     }
     if (record || !board.tracksTime) {
       return null;
     }
-    return timeOfDayFromInstant(core.clock.nowUtcMs(), deviceZone);
+    return timeOfDayFromInstant(core.clock.nowUtcMs(), productZone);
   });
   const [timeTouched, setTimeTouched] = useState(record !== null);
   // a record edit resubmits its occurrence only when the user changed the
@@ -311,7 +330,7 @@ function CheckInFormBody({
 
   const changeDate = useCallback(
     (value: Date) => {
-      const next = logicalFromDate(value);
+      const next = logicalFromDate(value, productZone);
       setLogicalDate(next);
       setDirty(true);
       setOccurrenceEdited(true);
@@ -319,7 +338,7 @@ function CheckInFormBody({
       if (!timeTouched && board.tracksTime) {
         setTimeOfDay(
           next === today
-            ? timeOfDayFromInstant(core.clock.nowUtcMs(), deviceZone)
+            ? timeOfDayFromInstant(core.clock.nowUtcMs(), productZone)
             : { hour: 12, minute: 0, exactInstant: null },
         );
       } else if (board.tracksTime) {
@@ -330,7 +349,7 @@ function CheckInFormBody({
         );
       }
     },
-    [board.tracksTime, core, deviceZone, setDirty, timeTouched, today],
+    [board.tracksTime, core, productZone, setDirty, timeTouched, today],
   );
 
   const save = useCallback(async () => {
@@ -353,7 +372,7 @@ function CheckInFormBody({
     const amount = board.tracksAmount ? Number(amountText.replace(',', '.')) : undefined;
     const occurredAtUtc =
       board.tracksTime && timeOfDay !== null && (record === null || occurrenceEdited)
-        ? instantFor(logicalDate, timeOfDay, deviceZone, board.startOfDayMinute)
+        ? instantFor(logicalDate, timeOfDay, productZone, board.startOfDayMinute)
         : undefined;
     const result = record
       ? await updateCheckIn(core, {
@@ -388,7 +407,7 @@ function CheckInFormBody({
     }
     setError(result.error);
     setSaving(false);
-  }, [amountText, board, core, deviceZone, invalidate, logicalDate, nextCommandId, note, occurrenceEdited, onConflict, record, router, saving, skipGuardRef, source, timeOfDay]);
+  }, [amountText, board, core, productZone, invalidate, logicalDate, nextCommandId, note, occurrenceEdited, onConflict, record, router, saving, skipGuardRef, source, timeOfDay]);
 
   const confirmDelete = useCallback(() => {
     if (!record) {
@@ -417,15 +436,16 @@ function CheckInFormBody({
   }, [core, invalidate, nextCommandId, record, router, skipGuardRef]);
 
   const colors = deriveBoardColors(board.accentHex, scheme);
-  const timePickerValue =
-    timeOfDay === null
-      ? // an untimed record shows a neutral noon of its date; the value is
-        // only persisted once the user actually picks a time
-        dateFromLogical(logicalDate)
-      : (() => {
-          const { year, month, day } = parseLogicalDate(logicalDate);
-          return new Date(year, month - 1, day, timeOfDay.hour, timeOfDay.minute, 0, 0);
-        })();
+  const timeZone = record && !occurrenceEdited ? record.timeZoneId ?? productZone : productZone;
+  const displayedTime = timeOfDay ?? { hour: 12, minute: 0, exactInstant: null };
+  const nativeTimeZone = Platform.OS === 'android'
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone : timeZone;
+  const timePickerValue = nativeTimeZone === timeZone
+    ? new Date(displayedTime.exactInstant
+      ?? instantFor(logicalDate, displayedTime, timeZone, board.startOfDayMinute))
+    // a mismatched android zone is presentation-only, on a neutral date so
+    // an unrelated host dst gap cannot alter the product clock face.
+    : new Date(2000, 0, 15, displayedTime.hour, displayedTime.minute);
 
   return (
     <View style={{ flex: 1, backgroundColor: semanticColor('groupedBackground', scheme) }}>
@@ -486,12 +506,13 @@ function CheckInFormBody({
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <AppText>Date</AppText>
             <DateTimePicker
-              value={dateFromLogical(logicalDate)}
+              value={dateFromLogical(logicalDate, productZone)}
+              timeZoneName={productZone}
               mode="date"
               display="compact"
               // the ceiling is the logical today: inside a shifted start of
               // day the physical date is already tomorrow's logical future
-              maximumDate={dateFromLogical(today)}
+              maximumDate={dateCeiling(today, productZone)}
               accentColor={colors.accent}
               onValueChange={(_event, date) => changeDate(date)}
               style={{ width: 150, height: 36 }}
@@ -503,16 +524,20 @@ function CheckInFormBody({
               <AppText>Time</AppText>
               <DateTimePicker
                 value={timePickerValue}
+                timeZoneName={timeZone}
                 mode="time"
                 display="compact"
                 style={{ width: 110, height: 36 }}
                 accentColor={colors.accent}
                 onValueChange={(_event, date) => {
-                  setTimeOfDay({
-                    hour: date.getHours(),
-                    minute: date.getMinutes(),
-                    exactInstant: date.getTime(),
-                  });
+                  const selected = Platform.OS === 'android'
+                    ? { hour: date.getHours(), minute: date.getMinutes(),
+                      exactInstant: nativeTimeZone === productZone ? date.getTime() : null }
+                    : timeOfDayFromInstant(date.getTime(), timeZone);
+                  // an edited occurrence is captured in the current product zone;
+                  // an old record's display zone supplies only its civil time.
+                  if (timeZone !== productZone) selected.exactInstant = null;
+                  setTimeOfDay(selected);
                   setTimeTouched(true);
                   setOccurrenceEdited(true);
                   setDirty(true);
