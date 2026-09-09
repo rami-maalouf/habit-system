@@ -2620,3 +2620,20 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     at 100 percent, global coverage 97.62/96.24/96.28/98.16. Evidence is retained
     in `.artifacts/t19/command-clock/`. Native source is identical to the verified
     9 plugin / 146 Swift clock candidate; no visible flow is changed by this seam.
+
+41. The composed admission boundary now captures complete input before awaiting,
+    loads exact identities and relevant scopes, resolves per-role evidence and
+    mandatory components, and commits immutable rows plus retained upload intent
+    inside the caller transaction. Generated identities are completed before use;
+    monotone exclusions replan affected scopes without global graph enumeration.
+    The caller retains ownership through visibility, clock, projections and markers.
+42. Independent review covers 101 focused tests including six late SQL trigger
+    failures, post-receipt failure, cancellation, mutation isolation and exact hash
+    error identity. Four reordered real SQLite replica pairs converge after two
+    exchanges to three actions / three ledger rows / balance 3; empty retries make
+    no writes. This is local replica evidence, not live CloudKit acceptance.
+43. Combined main validation passes 140 suites / 2,156 tests, all 92 core files
+    at 100 percent, global coverage 97.78/96.42/96.45/98.25. Exact approved hashes
+    and reports are retained in `.artifacts/t19/admission-composer/`. Native source
+    remains the verified 9 plugin / 146 Swift clock candidate. This increment
+    provides the shared sync/import boundary without activating schema-2 transport.
