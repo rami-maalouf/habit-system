@@ -34,6 +34,26 @@ async function applyAppDelegateMod(contents, language = 'swift') {
   });
 }
 
+test('native generation keeps react and expo modules in the same source build mode', async () => {
+  const apply = async (properties) => {
+    const config = withRipplesApple({ ios: { bundleIdentifier: 'studio.orbitlabs.habitsystem' } });
+    assert.equal(typeof config.mods.ios.podfileProperties, 'function');
+    return (await config.mods.ios.podfileProperties({
+      ...config,
+      modRequest: { platform: 'ios', modName: 'podfileProperties' },
+      modResults: properties,
+    })).modResults;
+  };
+  const existing = { 'expo.jsEngine': 'hermes', 'ios.useFrameworks': 'static',
+    'ios.buildReactNativeFromSource': 'false', EXPO_USE_PRECOMPILED_MODULES: 'true' };
+  const first = await apply(existing);
+  assert.deepEqual(first, { 'expo.jsEngine': 'hermes', 'ios.useFrameworks': 'static',
+    'ios.buildReactNativeFromSource': 'true', EXPO_USE_PRECOMPILED_MODULES: 'false' });
+  assert.deepEqual(await apply(first), first);
+  assert.deepEqual(await apply({}), {
+    'ios.buildReactNativeFromSource': 'true', EXPO_USE_PRECOMPILED_MODULES: 'false' });
+});
+
 test('native startup registers the three app shortcuts once across repeated prebuilds', async () => {
   const first = (await applyAppDelegateMod(appDelegateFixture)).modResults.contents;
   const second = (await applyAppDelegateMod(first)).modResults.contents;

@@ -1,6 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { IOSConfig, withAppDelegate, withDangerousMod, withEntitlementsPlist, withInfoPlist, withXcodeProject } = require('expo/config-plugins');
+const { IOSConfig, withAppDelegate, withDangerousMod, withEntitlementsPlist, withInfoPlist, withPodfileProperties, withXcodeProject } = require('expo/config-plugins');
 const { generateImageAsync } = require('@expo/image-utils');
 
 const alternateIcons = ['midnight', 'paper'];
@@ -74,6 +74,13 @@ async function writeAlternateIcons(projectRoot, catalogDirectory) {
 function withRipplesApple(config) {
   const bundleIdentifier = config.ios?.bundleIdentifier;
   if (!bundleIdentifier) throw new Error('ripples-apple requires ios.bundleIdentifier');
+
+  config = withPodfileProperties(config, (mod) => {
+    // precompiled expo modules cannot load against a source-only react native build.
+    mod.modResults['ios.buildReactNativeFromSource'] = 'true';
+    mod.modResults.EXPO_USE_PRECOMPILED_MODULES = 'false';
+    return mod;
+  });
 
   config = withAppDelegate(config, (mod) => {
     mod.modResults = registerAppShortcuts(mod.modResults);
