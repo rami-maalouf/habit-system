@@ -3361,3 +3361,13 @@ T19/Checkpoint C external gates remain open.
     concurrent form-composition failure is retained with successful unchanged
     reproductions; its exact cause is unproven. Four form-test act warnings
     are assigned to the pending form slice, not suppressed or called clean.
+17. Anchor-time Settings now scope accepted saves and retire old edit,
+    picker, Cancel, Save and retry callbacks. An uncertain save retains its
+    original receipt and settings snapshot through resumed read failures;
+    replay preserves a later public settings change. Independent review
+    also reproduced an ID-allocation failure that left Save busy. The
+    corrected error boundary releases controls before any command exists.
+    Thirteen tests across two suites and lint/typecheck pass. A non-author
+    reviewed both complete files, reran the original allocation-failure
+    probe successfully and verified both final hashes. No core or native
+    contract changes were required.
