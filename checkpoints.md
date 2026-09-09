@@ -3321,3 +3321,14 @@ T19/Checkpoint C external gates remain open.
     all nineteen files, requested reproduced stale-scene fixes and verified
     final hashes. The author independently approved root's four-file native
     Settings port seam. Full routes and native acceptance remain open.
+13. Board and check-in saves now join their full accepted commands and
+    retain exact Retry or completed Done state across suspension. Sample
+    board creation omits reminder dispatch. Independent review reproduced
+    lost outcomes after resumed query failure/archive and native Back from
+    clean pending forms. The corrected locked editor/result lifetime keeps
+    those receipts accessible, rejects new edits and preserves definitive
+    conflict reloads. Seventy-eight tests across four suites, lint and
+    typecheck pass; root reviewed all final files and reran the four original
+    scenarios with explicit SQL-state oracles. All final hashes match.
+    Archive/delete/reminder callbacks and native route acceptance remain
+    subsequent work.

@@ -1,10 +1,10 @@
-import { Stack, useNavigation, useRouter } from 'expo-router';
+import { Stack, useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, ScrollView, Switch, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
-import { archiveBoard, deleteBoard, updateBoard } from '@/core/domain/commands';
+import { archiveBoard, createBoard, deleteBoard, updateBoard } from '@/core/domain/commands';
 import { createBoardWithReminders } from '@/core/domain/create-board-with-reminders';
 import { boardPalette } from '@/core/domain/entities';
 import type { BoardId } from '@/core/domain/ids';
@@ -19,6 +19,7 @@ import { BoardSymbol, SevenDayStrip, deriveBoardColors } from '../boards';
 import { formatMinuteOfDay, weekdaySummary } from '../reminders';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
 import { getBoardIcon } from '../boards/board-icon-catalog';
 import { BoardIconPicker } from './board-icon-picker';
 import { BoardKindPicker } from './board-kind-picker';
@@ -75,7 +76,7 @@ function ExistingReminderRows({
   boardId: BoardId;
   onError: (error: DomainError) => void;
 }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const { core, invalidate, nextCommandId } = useProduct();
   const reminders = useProductQuery((c) => listBoardReminders(c, boardId), [boardId]);
   if (reminders.status !== 'ready') {
@@ -174,12 +175,16 @@ function ToggleRow({
   );
 }
 
+type SaveAttempt =
+  | { kind: 'create'; input: Parameters<typeof createBoardWithReminders>[1] }
+  | { kind: 'update'; input: Parameters<typeof updateBoard>[1] };
+
 // shared by create board and edit board; a null boardId means creation
 export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const navigation = useNavigation();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { core, scope, invalidate, nextCommandId } = useProduct();
   const existing = useProductQuery(
     (c) => (boardId ? getBoard(c, boardId) : Promise.resolve({ ok: true as const, value: null })),
     [boardId],
@@ -190,6 +195,11 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const [error, setError] = useState<DomainError | null>(null);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [attempt, setAttempt] = useState<SaveAttempt | null>(null);
+  const [completed, setCompleted] = useState(false);
+  const attemptRef = useRef<SaveAttempt | null>(null);
+  const busyRef = useRef(false);
+  const completedRef = useRef(false);
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false);
   const [customColorOpen, setCustomColorOpen] = useState(false);
   // set before a deliberate exit (save, archive, delete, confirmed discard)
@@ -200,8 +210,8 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const [ownerId] = useState(newDraftOwner);
   const ownsDraft = useCallback(() => draftStore.owns(ownerId, boardId), [boardId, draftStore, ownerId]);
   const updateDraft = useCallback((patch: Partial<BoardDraft>) => {
-    if (ownsDraft()) draftStore.update(ownerId, patch);
-  }, [draftStore, ownerId, ownsDraft]);
+    if (scope.isCurrent() && navigation.isFocused() && ownsDraft() && !busyRef.current && !attemptRef.current && !completedRef.current) draftStore.update(ownerId, patch);
+  }, [draftStore, navigation, ownerId, ownsDraft, scope]);
 
   // reserve this route's session before its asynchronous board read finishes.
   // query refreshes may seed this owner, but never reclaim a successor's draft.
@@ -214,9 +224,13 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   // keeps the stamp stable across the create query's loading-to-ready flip
   // so the fresh draft is not reseeded mid-typing
   const seedStamp =
-    existing.status === 'ready' ? (existing.value?.mutationStamp ?? null) : null;
+    attempt || completed ? draft.expectedMutationStamp
+      : existing.status === 'ready' ? (existing.value?.mutationStamp ?? null) : null;
   useEffect(() => {
     if (draftStore.getSnapshot().owner !== ownerId) return;
+    // a receipt attempt/result keeps its owner and locked surface even if
+    // a resumed query reports that the board is archived or unavailable.
+    if (attemptRef.current || completedRef.current) return;
     if (boardId === null) {
       draftStore.start(newBoardDraft(), ownerId);
     } else if (existing.status === 'ready' && existing.value) {
@@ -239,7 +253,9 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
     draftState.active && draftState.owner === ownerId && draft.boardId === boardId;
 
   // a swipe-down or any other removal of a dirty sheet must confirm first
-  usePreventRemove(draftMatches && draft.dirty, ({ data }) => {
+  usePreventRemove(scope.active && !completed && (saving || attempt !== null || (draftMatches && draft.dirty)), ({ data }) => {
+    if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft()) return;
+    if (busyRef.current || attemptRef.current) return;
     if (skipGuardRef.current) {
       navigation.dispatch(data.action);
       return;
@@ -250,7 +266,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          if (!ownsDraft()) return;
+          if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft() || busyRef.current || attemptRef.current) return;
           skipGuardRef.current = true;
           navigation.dispatch(data.action);
         },
@@ -260,55 +276,53 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
 
   const colors = deriveBoardColors(draft.accentHex, scheme);
 
+  const finish = useCallback(() => {
+    if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft()) return;
+    skipGuardRef.current = true;
+    router.back();
+  }, [navigation, ownsDraft, router, scope]);
+
   const save = useCallback(async () => {
-    if (!ownsDraft() || saving) {
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    setConflict(false);
+    if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft() || busyRef.current || completedRef.current) return;
+    busyRef.current = true;
+    setSaving(true); setError(null); setConflict(false);
     const currentDraft = draftStore.getSnapshot().draft;
     const fields = draftToCommandFields(currentDraft);
-    // the route id is the authority for which board a save mutates
-    const result = editing
-      ? await updateBoard(core, {
-          commandId: nextCommandId(),
-          boardId: boardId as BoardId,
-          expectedMutationStamp: currentDraft.expectedMutationStamp ?? '',
-          ...fields,
-        })
-      : await createBoardWithReminders(
-          { ...core, scheduler: reminderScheduler },
-          { commandId: nextCommandId(), ...fields, reminders: currentDraft.reminders },
-        );
-    if (result.ok) {
-      invalidate();
-      if (!ownsDraft()) return;
-      if ('remindersDenied' in result.value && result.value.remindersDenied) {
-        Alert.alert(
-          'Notifications are off',
-          'The reminder is saved but disabled. Allow notifications in Settings to turn it on.',
-        );
+    const current: SaveAttempt = attemptRef.current ?? (editing
+      ? { kind: 'update', input: { commandId: nextCommandId(), boardId: boardId as BoardId,
+        expectedMutationStamp: currentDraft.expectedMutationStamp ?? '', ...fields } }
+      : { kind: 'create', input: { commandId: nextCommandId(), ...fields,
+        reminders: currentDraft.reminders.map(reminder => ({ ...reminder })) } });
+    attemptRef.current = current; setAttempt(current);
+    await scope.run(async ({ core: accepted, effects }) => {
+      try {
+        const result = current.kind === 'update' ? await updateBoard(accepted, current.input)
+          : effects.kind === 'real' ? await createBoardWithReminders({ ...accepted, scheduler: effects.reminders }, current.input)
+            : await createBoard(accepted, current.input);
+        if (result.ok) {
+          attemptRef.current = null; completedRef.current = true;
+          // record the factual result before the operation join settles.
+          if (!ownsDraft()) return;
+          setAttempt(null); setCompleted(true); invalidate();
+          if (!scope.isCurrent() || !navigation.isFocused()) return;
+          if ('remindersDenied' in result.value && result.value.remindersDenied) {
+            Alert.alert('Notifications are off', 'The reminder is saved but disabled. Allow notifications in Settings to turn it on.');
+          }
+          finish();
+        } else if (ownsDraft()) {
+          setError(result.error);
+          if (!result.error.retryable) { attemptRef.current = null; setAttempt(null); }
+          if (result.error.code === 'conflict') { setConflict(true); invalidate(); }
+          if (result.error.code === 'archived') invalidate();
+        }
+      } catch {
+        if (ownsDraft()) setError({ code: 'database', message: 'The saved result could not be confirmed. Retry to check it.', retryable: true });
+      } finally {
+        busyRef.current = false;
+        if (ownsDraft()) setSaving(false);
       }
-      skipGuardRef.current = true;
-      router.back();
-      return;
-    }
-    if (!ownsDraft()) return;
-    setSaving(false);
-    if (result.error.code === 'conflict') {
-      // a stale edit reloads the latest record for review
-      setConflict(true);
-      invalidate();
-      return;
-    }
-    if (result.error.code === 'archived') {
-      // the board archived under this sheet: refresh so the edit surface
-      // converges to the read-only lockout and releases its session
-      invalidate();
-    }
-    setError(result.error);
-  }, [boardId, core, draftStore, editing, invalidate, nextCommandId, ownsDraft, router, saving]);
+    });
+  }, [boardId, draftStore, editing, finish, invalidate, navigation, nextCommandId, ownsDraft, scope]);
 
   const confirmArchive = useCallback(() => {
     if (!editing || !boardId || !ownsDraft()) {
@@ -371,6 +385,14 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
       },
     ]);
   }, [boardId, core, editing, invalidate, nextCommandId, ownsDraft, router]);
+
+  if (attempt || completed) return <View style={{ flex: 1, padding: spacing.lg, gap: spacing.md }}>
+    <Stack.Screen options={{ title: editing ? 'Edit Board' : 'Create Board', headerLeft: () => null, headerRight: () => null }} />
+    <AppText>{completed ? 'Your board was saved.' : saving ? 'Saving board...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
+    {error ? <InlineError message={error.message} testID="board-form-error" /> : null}
+    {completed ? <PrimaryButton title="Done" onPress={finish} />
+      : <PrimaryButton title="Retry" onPress={save} disabled={saving || !scope.active} testID="board-form-retry" />}
+  </View>;
 
   if (editing && existing.status === 'error') {
     return (

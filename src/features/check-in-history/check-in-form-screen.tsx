@@ -4,9 +4,9 @@ import {
   type BottomSheetMethods,
 } from '@expo/ui/community/bottom-sheet';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { useCallback, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Alert, Platform, ScrollView, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -25,6 +25,7 @@ import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 import { BoardSymbol, deriveBoardColors } from '../boards';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
 
 type CheckInFormScreenProps = {
   boardId: BoardId;
@@ -32,6 +33,7 @@ type CheckInFormScreenProps = {
   // null creates a new check-in; otherwise the existing record is edited
   checkInId: CheckInId | null;
 };
+type RetainedEditor = { board: Board; record: CheckIn | null };
 
 // exactInstant preserves the picker's own instant so an ambiguous wall
 // clock (the repeated hour of a backward dst shift) keeps the occurrence
@@ -120,27 +122,36 @@ function instantFor(
 }
 
 export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckInFormScreenProps) {
-  const router = useRouter();
+  const router = useProductRouter();
   const scheme = useScheme();
-  const { core } = useProduct();
+  const { core, scope } = useProduct();
+  const navigation = useNavigation();
   // conflicts remount the body with the reloaded record, so the notice
   // lives here where the remount cannot wipe it
   const [conflict, setConflict] = useState(false);
+  const [retained, setRetained] = useState<RetainedEditor | null>(null);
   const sheetRef = useRef<BottomSheetMethods>(null);
   // the sheet closes natively before react hears about it, so the dirty
   // guard reads a ref the body keeps current instead of body state
   const dirtyRef = useRef(false);
+  const pendingRef = useRef(false);
   const skipGuardRef = useRef(false);
-  const board = useProductQuery((c) => getBoard(c, boardId), [boardId]);
-  const existing = useProductQuery(
+  const boardQuery = useProductQuery((c) => getBoard(c, boardId), [boardId]);
+  const existingQuery = useProductQuery(
     (c) =>
       checkInId ? getCheckIn(c, checkInId) : Promise.resolve({ ok: true as const, value: null }),
     [checkInId],
   );
+  // accepted attempts retain a locked result surface through query failures,
+  // archival and resumed record changes; definitive failures release it.
+  const board = retained ? { status: 'ready' as const, value: retained.board } : boardQuery;
+  const existing = retained ? { status: 'ready' as const, value: retained.record } : existingQuery;
 
   // a pan-down or backdrop tap already dismissed the native sheet; either
   // leave the route, or reopen the sheet when unsaved edits need a decision
   const closeFromSheet = useCallback(() => {
+    if (!scope.isCurrent() || !navigation.isFocused()) return;
+    if (pendingRef.current) { sheetRef.current?.present(); return; }
     if (skipGuardRef.current) {
       return;
     }
@@ -155,6 +166,7 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
           text: 'Discard',
           style: 'destructive',
           onPress: () => {
+            if (!scope.isCurrent() || !navigation.isFocused() || pendingRef.current) return;
             skipGuardRef.current = true;
             router.back();
           },
@@ -164,7 +176,7 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
     }
     skipGuardRef.current = true;
     router.back();
-  }, [router]);
+  }, [navigation, router, scope]);
 
   const loadedRecord =
     checkInId && existing.status === 'ready' ? existing.value : null;
@@ -214,13 +226,15 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
           </View>
         ) : null}
         <CheckInFormBody
-          // a reloaded record reseeds every field, so a conflict retry carries
-          // the fresh mutation stamp instead of failing forever
-          key={loadedRecord ? loadedRecord.mutationStamp : 'new'}
+          // an accepted attempt keeps its body through resumed query refreshes.
+          // definitive failures release it so conflict reloads reseed all fields.
+          key={loadedRecord?.mutationStamp ?? 'new'}
           board={board.value}
           source={source}
           record={loadedRecord}
           onConflict={() => setConflict(true)}
+          retainEditor={setRetained}
+          pendingRef={pendingRef}
           dirtyRef={dirtyRef}
           skipGuardRef={skipGuardRef}
           today={currentLogicalDate(
@@ -246,6 +260,10 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
   );
 }
 
+type SaveAttempt =
+  | { kind: 'create'; input: Parameters<typeof createCheckIn>[1] }
+  | { kind: 'update'; input: Parameters<typeof updateCheckIn>[1] };
+
 // mounted only once its data exists, so form state seeds in useState
 function CheckInFormBody({
   board,
@@ -253,7 +271,9 @@ function CheckInFormBody({
   record,
   today,
   onConflict,
+  retainEditor,
   dirtyRef,
+  pendingRef,
   skipGuardRef,
 }: {
   board: Board;
@@ -261,13 +281,15 @@ function CheckInFormBody({
   record: CheckIn | null;
   today: LogicalDate;
   onConflict: () => void;
+  retainEditor: (editor: RetainedEditor | null) => void;
   dirtyRef: MutableRefObject<boolean>;
+  pendingRef: MutableRefObject<boolean>;
   skipGuardRef: MutableRefObject<boolean>;
 }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const navigation = useNavigation();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { core, scope, invalidate, nextCommandId } = useProduct();
   const productZone = core.clock.timeZoneId();
   const [dirty, setDirtyState] = useState(false);
   // the parent's sheet-close guard reads the ref; react state still drives
@@ -308,9 +330,15 @@ function CheckInFormBody({
   const [note, setNote] = useState(record?.note ?? '');
   const [error, setError] = useState<DomainError | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attempt, setAttempt] = useState<SaveAttempt | null>(null);
+  const [completed, setCompleted] = useState(false);
+  const attemptRef = useRef<SaveAttempt | null>(null);
+  const busyRef = useRef(false), completedRef = useRef(false), mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   // a swipe-down or other removal of an edited form must confirm first
-  usePreventRemove(dirty, ({ data }) => {
+  usePreventRemove(scope.active && !completed && (dirty || saving || attempt !== null), ({ data }) => {
+    if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current) return;
     if (skipGuardRef.current) {
       navigation.dispatch(data.action);
       return;
@@ -321,6 +349,7 @@ function CheckInFormBody({
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
+          if (!mounted.current || !scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current) return;
           skipGuardRef.current = true;
           navigation.dispatch(data.action);
         },
@@ -330,6 +359,7 @@ function CheckInFormBody({
 
   const changeDate = useCallback(
     (value: Date) => {
+      if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
       const next = logicalFromDate(value, productZone);
       setLogicalDate(next);
       setDirty(true);
@@ -349,65 +379,56 @@ function CheckInFormBody({
         );
       }
     },
-    [board.tracksTime, core, productZone, setDirty, timeTouched, today],
+    [board.tracksTime, core, navigation, productZone, scope, setDirty, timeTouched, today],
   );
 
+  const finish = useCallback(() => {
+    if (!scope.isCurrent() || !navigation.isFocused() || !mounted.current) return;
+    skipGuardRef.current = true;
+    router.back();
+  }, [navigation, router, scope, skipGuardRef]);
+
   const save = useCallback(async () => {
-    if (saving) {
+    if (!scope.isCurrent() || !navigation.isFocused() || !mounted.current || busyRef.current || completedRef.current) return;
+    if (!attemptRef.current && board.tracksAmount && amountText.trim().length === 0) {
+      setError({ code: 'validation', message: 'Enter an amount greater than zero.', retryable: false });
       return;
     }
-    setSaving(true);
-    setError(null);
-    // an amount board needs an explicit value: a cleared field must not
-    // silently fall back to the quick amount or keep the old value
-    if (board.tracksAmount && amountText.trim().length === 0) {
-      setError({
-        code: 'validation',
-        message: 'Enter an amount greater than zero.',
-        retryable: false,
-      });
-      setSaving(false);
-      return;
-    }
+    busyRef.current = true; pendingRef.current = true;
+    setSaving(true); setError(null);
     const amount = board.tracksAmount ? Number(amountText.replace(',', '.')) : undefined;
-    const occurredAtUtc =
-      board.tracksTime && timeOfDay !== null && (record === null || occurrenceEdited)
-        ? instantFor(logicalDate, timeOfDay, productZone, board.startOfDayMinute)
-        : undefined;
-    const result = record
-      ? await updateCheckIn(core, {
-          commandId: nextCommandId(),
-          checkInId: record.id,
-          expectedMutationStamp: record.mutationStamp,
-          logicalDate,
-          occurredAtUtc,
-          amount,
-          note,
-        })
-      : await createCheckIn(core, {
-          commandId: nextCommandId(),
-          boardId: board.id,
-          logicalDate,
-          occurredAtUtc,
-          amount,
-          note,
-          source,
-        });
-    if (result.ok) {
-      invalidate();
-      skipGuardRef.current = true;
-      router.back();
-      return;
-    }
-    if (result.error.code === 'conflict') {
-      // reload the record so the reseeded sheet carries the fresh stamp;
-      // the parent shows the notice across the remount
-      onConflict();
-      invalidate();
-    }
-    setError(result.error);
-    setSaving(false);
-  }, [amountText, board, core, productZone, invalidate, logicalDate, nextCommandId, note, occurrenceEdited, onConflict, record, router, saving, skipGuardRef, source, timeOfDay]);
+    const occurredAtUtc = board.tracksTime && timeOfDay !== null && (record === null || occurrenceEdited)
+      ? instantFor(logicalDate, timeOfDay, productZone, board.startOfDayMinute) : undefined;
+    const current: SaveAttempt = attemptRef.current ?? (record
+      ? { kind: 'update', input: { commandId: nextCommandId(), checkInId: record.id,
+        expectedMutationStamp: record.mutationStamp, logicalDate, occurredAtUtc, amount, note } }
+      : { kind: 'create', input: { commandId: nextCommandId(), boardId: board.id,
+        logicalDate, occurredAtUtc, amount, note, source } });
+    attemptRef.current = current; setAttempt(current);
+    retainEditor({ board, record });
+    await scope.run(async ({ core: accepted }) => {
+      try {
+        const result = current.kind === 'update' ? await updateCheckIn(accepted, current.input)
+          : await createCheckIn(accepted, current.input);
+        if (result.ok) {
+          attemptRef.current = null; completedRef.current = true; pendingRef.current = false;
+          if (!mounted.current) return;
+          setAttempt(null); setCompleted(true); setDirty(false); invalidate(); finish();
+        } else if (mounted.current) {
+          setError(result.error);
+          if (!result.error.retryable) {
+            attemptRef.current = null; pendingRef.current = false; setAttempt(null); retainEditor(null);
+          }
+          if (result.error.code === 'conflict') { onConflict(); invalidate(); }
+        }
+      } catch {
+        if (mounted.current) setError({ code: 'database', message: 'The saved result could not be confirmed. Retry to check it.', retryable: true });
+      } finally {
+        busyRef.current = false;
+        if (mounted.current) setSaving(false);
+      }
+    });
+  }, [amountText, board, finish, invalidate, logicalDate, navigation, nextCommandId, note, occurrenceEdited, onConflict, pendingRef, productZone, record, retainEditor, scope, setDirty, source, timeOfDay]);
 
   const confirmDelete = useCallback(() => {
     if (!record) {
@@ -434,6 +455,13 @@ function CheckInFormBody({
       },
     ]);
   }, [core, invalidate, nextCommandId, record, router, skipGuardRef]);
+
+  if (attempt || completed) return <View style={{ padding: spacing.lg, gap: spacing.md }}>
+    <AppText>{completed ? 'Your check-in was saved.' : saving ? 'Saving check-in...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
+    {error ? <InlineError message={error.message} testID="check-in-error" /> : null}
+    {completed ? <PrimaryButton title="Done" onPress={finish} />
+      : <PrimaryButton title="Retry" onPress={save} disabled={saving || !scope.active} testID="check-in-retry" />}
+  </View>;
 
   const colors = deriveBoardColors(board.accentHex, scheme);
   const timeZone = record && !occurrenceEdited ? record.timeZoneId ?? productZone : productZone;
@@ -530,6 +558,7 @@ function CheckInFormBody({
                 style={{ width: 110, height: 36 }}
                 accentColor={colors.accent}
                 onValueChange={(_event, date) => {
+                  if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
                   const selected = Platform.OS === 'android'
                     ? { hour: date.getHours(), minute: date.getMinutes(),
                       exactInstant: nativeTimeZone === productZone ? date.getTime() : null }
@@ -554,6 +583,7 @@ function CheckInFormBody({
                 keyboardType="decimal-pad"
                 value={amountText}
                 onChangeText={(text) => {
+                  if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
                   setAmountText(text);
                   setDirty(true);
                 }}
@@ -576,6 +606,7 @@ function CheckInFormBody({
           placeholderTextColor={semanticColor('secondaryLabel', scheme) as string}
           value={note}
           onChangeText={(text) => {
+            if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
             setNote(text);
             setDirty(true);
           }}
