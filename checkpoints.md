@@ -2541,3 +2541,16 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     global coverage 97.55/96.17/96.16/98.11 and all 87 core files at 100 percent. Evidence
     is retained in `.artifacts/t19/batch-preparation/`. Native sources and visible behavior
     are unchanged; the prior 9 plugin / 141 Swift gate remains applicable.
+
+31. Intrinsic variant classification is extracted from the scope planner without
+    changing formulas or fixture bytes. Award/reversal decisions use unique captured
+    source authority; correction proofs retain their declared subsets and cancellation
+    accepts only a parent handle issued by that same evidence phase. No identity winner,
+    generated row, scope budget or storage decision is made by the intrinsic factory.
+32. Independent review reproduced an exactly referenced foreign award producing an
+    operation error only when supplied directly. Both reference representations now
+    classify that candidate invalid; malformed or mismatched caller-owned targets remain
+    integrity failures. The final 149-test focused review and combined main validation
+    pass: 133 suites / 1,998 tests, global coverage 97.57/96.19/96.18/98.12, all 88 core
+    files at 100 percent. Evidence is in `.artifacts/t19/intrinsic-validation/`. Native
+    sources and shared fixtures are unchanged; the 9 plugin / 141 Swift gate still applies.
