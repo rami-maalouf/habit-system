@@ -24,8 +24,8 @@ import { reminderScheduler } from '@/platform/notifications';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { deriveBoardColors } from '../boards';
-import { getDraftState, updateDraft } from '../board-configuration/draft-store';
-import type { DraftReminder } from '../board-configuration/draft-store';
+import { draftStoreFor, useDraftState } from '../board-configuration/draft-store';
+import type { DraftReminder, DraftStore } from '../board-configuration/draft-store';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import { WEEKDAYS, formatMinuteOfDay, isWeekdaySelected, toggleWeekday } from './weekdays';
@@ -48,6 +48,12 @@ function minuteToDate(minute: number): Date {
 export function ReminderFormScreen({ boardId, reminderId, draftIndex }: ReminderFormScreenProps) {
   const router = useRouter();
   const scheme = useScheme();
+  const { core } = useProduct();
+  const draftStore = draftStoreFor(core);
+  const draftState = useDraftState(core);
+  const [origin] = useState(() => ({ store: draftStore, owner: draftState.owner }));
+  const draftMode = boardId === null;
+  const ownsDraft = useCallback(() => !draftMode || origin.store.owns(origin.owner, null), [draftMode, origin]);
   const sheetRef = useRef<BottomSheetMethods>(null);
   const dirtyRef = useRef(false);
   const skipGuardRef = useRef(false);
@@ -66,16 +72,17 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
   );
 
   const closeFromSheet = useCallback(() => {
-    if (skipGuardRef.current) {
+    if (skipGuardRef.current || !ownsDraft()) {
       return;
     }
     if (dirtyRef.current) {
       Alert.alert('Discard changes?', 'Your edits to this reminder are not saved.', [
-        { text: 'Keep editing', style: 'cancel', onPress: () => sheetRef.current?.present() },
+        { text: 'Keep editing', style: 'cancel', onPress: () => { if (ownsDraft()) sheetRef.current?.present(); } },
         {
           text: 'Discard',
           style: 'destructive',
           onPress: () => {
+            if (!ownsDraft()) return;
             skipGuardRef.current = true;
             router.back();
           },
@@ -85,15 +92,13 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
     }
     skipGuardRef.current = true;
     router.back();
-  }, [router]);
+  }, [ownsDraft, router]);
 
-  const draftState = getDraftState();
-  const draftMode = boardId === null;
   const draftReminder =
     draftMode && draftIndex !== null ? (draftState.draft.reminders[draftIndex] ?? null) : null;
 
   let content;
-  if (draftMode && (!draftState.active || draftState.draft.boardId !== null)) {
+  if (draftMode && (draftStore !== origin.store || !draftStore.owns(origin.owner, null))) {
     // a direct link to the draft editor without a live create session
     content = (
       <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.lg }}>
@@ -150,12 +155,14 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
           </View>
         ) : null}
         <ReminderFormBody
-        key={record ? record.mutationStamp : draftIndex !== null ? `draft-${draftIndex}` : 'new'}
+        key={record ? record.mutationStamp : `${origin.owner}-${draftIndex ?? 'new'}`}
         board={!draftMode && board.status === 'ready' ? board.value : null}
         record={record}
         draftReminder={draftReminder}
         draftIndex={draftIndex}
         draftTitle={draftState.draft.title}
+        draftStore={origin.store}
+        draftOwner={origin.owner}
         dirtyRef={dirtyRef}
         skipGuardRef={skipGuardRef}
           // cancel routes through the sheet-close guard so unsaved edits
@@ -186,6 +193,8 @@ function ReminderFormBody({
   draftReminder,
   draftIndex,
   draftTitle,
+  draftStore,
+  draftOwner,
   dirtyRef,
   skipGuardRef,
   onCancel,
@@ -196,6 +205,8 @@ function ReminderFormBody({
   draftReminder: DraftReminder | null;
   draftIndex: number | null;
   draftTitle: string;
+  draftStore: DraftStore;
+  draftOwner: string | null;
   dirtyRef: React.MutableRefObject<boolean>;
   skipGuardRef: React.MutableRefObject<boolean>;
   onCancel: () => void;
@@ -236,19 +247,21 @@ function ReminderFormBody({
     // an unsaved board keeps its reminders in the draft; they commit
     // together with the board only after both validate
     if (board === null) {
+      if (!draftStore.owns(draftOwner, null)) return;
       const entry: DraftReminder = {
         weekdaysMask,
         minuteOfDay,
         message: validatedMessage.value ?? '',
         enabled: draftReminder?.enabled ?? true,
       };
-      const reminders = [...getDraftState().draft.reminders];
+      const reminders = [...draftStore.getSnapshot().draft.reminders];
       if (draftIndex !== null) {
+        if (!reminders[draftIndex]) return;
         reminders[draftIndex] = entry;
       } else {
         reminders.push(entry);
       }
-      updateDraft({ reminders });
+      if (!draftStore.update(draftOwner, { reminders })) return;
       skipGuardRef.current = true;
       router.back();
       return;
@@ -293,7 +306,7 @@ function ReminderFormBody({
     }
     setError(result.error);
     setSaving(false);
-  }, [board, core, draftIndex, draftReminder, invalidate, message, minuteOfDay, nextCommandId, onConflict, record, router, saving, skipGuardRef, weekdaysMask]);
+  }, [board, core, draftIndex, draftOwner, draftReminder, draftStore, invalidate, message, minuteOfDay, nextCommandId, onConflict, record, router, saving, skipGuardRef, weekdaysMask]);
 
   const confirmDelete = useCallback(() => {
     Alert.alert('Delete Reminder', 'This removes the reminder and its notifications.', [
@@ -318,17 +331,18 @@ function ReminderFormBody({
             return;
           }
           if (draftIndex !== null) {
-            const reminders = getDraftState().draft.reminders.filter(
+            if (!draftStore.owns(draftOwner, null) || !draftStore.getSnapshot().draft.reminders[draftIndex]) return;
+            const reminders = draftStore.getSnapshot().draft.reminders.filter(
               (_, index) => index !== draftIndex,
             );
-            updateDraft({ reminders });
+            if (!draftStore.update(draftOwner, { reminders })) return;
             skipGuardRef.current = true;
             router.back();
           }
         },
       },
     ]);
-  }, [core, draftIndex, invalidate, nextCommandId, record, router, skipGuardRef]);
+  }, [core, draftIndex, draftOwner, draftStore, invalidate, nextCommandId, record, router, skipGuardRef]);
 
   return (
     <View style={{ flex: 1 }}>

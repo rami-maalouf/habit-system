@@ -3217,3 +3217,15 @@ T19/Checkpoint C external gates remain open.
    root independently reviewed and verified the exact source manifests.
    Full real-runtime suspension, route activation and native UI acceptance
    remain open in the following increments.
+4. Board drafts and their subscribers now belong to each stable product core.
+   A mount reserves its draft owner before the first read; old reads, Save
+   results, options Back, archive/delete confirmations and unsaved reminder
+   callbacks cannot replace or navigate a successor. A routed two-core test
+   preserves the covered real form's title, options and reminder and saves
+   only to its own SQLite store. Twelve new cases reproduce and prevent
+   cross-core loss and stale callbacks; the focused suite passes 93 tests
+   across eight suites, with lint and composed typecheck passing. The test
+   observer captures the actual facade by its raw IDs-port identity while
+   retaining raw SQL oracles. Root reviewed the production and test changes,
+   requested the reproduced options Back correction and verified all ten
+   final manifest hashes. Production sample routes remain unactivated.

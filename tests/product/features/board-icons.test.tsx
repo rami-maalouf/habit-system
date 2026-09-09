@@ -1,3 +1,4 @@
+import { observeProductCore } from '@/testing/observe-product-core';
 import { act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
@@ -14,6 +15,9 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light' },
 }));
 
+let renderedCore: ReturnType<typeof observeProductCore>;
+afterEach(() => renderedCore.restore());
+
 async function press(testId: string) {
   fireEvent.press(screen.getByTestId(testId));
   await settle();
@@ -28,7 +32,7 @@ async function savedBoards() {
 }
 
 describe('habit icon picker', () => {
-  beforeEach(() => resetProductCoreForTests());
+  beforeEach(() => { resetProductCoreForTests(); renderedCore = observeProductCore(); });
 
   it('searches everyday words and saves a new icon with a created habit', async () => {
     renderRouter('src/app', { initialUrl: '/' });
@@ -45,7 +49,9 @@ describe('habit icon picker', () => {
 
     expect(screen.queryByTestId('symbol-picker')).toBeNull();
     expect(screen.getByLabelText('Choose icon, Swimming')).toBeOnTheScreen();
-    expect(getDraftState().draft.symbol).toBe('figure.pool.swim');
+    const opened = await getProductCore();
+    if (!opened.ok) throw Error(opened.error.message);
+    expect(getDraftState(renderedCore.for(opened.value)).draft.symbol).toBe('figure.pool.swim');
     await press('board-form-save');
 
     expect(screen).toHavePathname('/');

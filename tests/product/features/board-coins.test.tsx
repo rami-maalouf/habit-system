@@ -1,3 +1,4 @@
+import { observeProductCore } from '@/testing/observe-product-core';
 import { act, within } from '@testing-library/react-native';
 import { Switch } from '@expo/ui';
 import { router } from 'expo-router';
@@ -12,6 +13,9 @@ import { CoinCapPicker } from '@/features/board-configuration/coin-cap-picker';
 
 import { getProductCore, newCommandId, resetProductCoreForTests } from '../../../src/testing/product-core.mock';
 import { fireEvent, renderRouter, screen, settle } from '../../../src/testing/render';
+
+let renderedCore: ReturnType<typeof observeProductCore>;
+afterEach(() => renderedCore.restore());
 
 async function core() {
   const result = await getProductCore();
@@ -53,13 +57,13 @@ async function existingBoard() {
 }
 
 describe('board earning controls', () => {
-  beforeEach(() => { jest.restoreAllMocks(); resetProductCoreForTests(); });
+  beforeEach(() => { jest.restoreAllMocks(); resetProductCoreForTests(); renderedCore = observeProductCore(); });
 
   it('starts disabled with cap one and does not change persistence while editing', async () => {
     await newForm();
     expect(screen.getByRole('switch', { name: 'Earn Coins' }).props.value).toBe(false);
     expect(screen.queryByRole('combobox', { name: 'Daily Coin Cap' })).toBeNull();
-    expect(getDraftState().draft).toMatchObject({ earnsCoins: false, coinCapPerDay: 1, dirty: false });
+    expect(getDraftState(renderedCore.for(await core())).draft).toMatchObject({ earnsCoins: false, coinCapPerDay: 1, dirty: false });
     await toggle(true);
     const picker = screen.getByRole('combobox', { name: 'Daily Coin Cap' });
     expect(picker).toHaveAccessibilityValue({ text: '1' });
@@ -97,7 +101,7 @@ describe('board earning controls', () => {
     await settle();
     await toggle(true);
     expect(screen.getByRole('combobox', { name: 'Daily Coin Cap' })).toHaveAccessibilityValue({ text: '6' });
-    expect(getDraftState().draft).toMatchObject({ kind: 'count', earnsCoins: true, coinCapPerDay: 6 });
+    expect(getDraftState(renderedCore.for(await core())).draft).toMatchObject({ kind: 'count', earnsCoins: true, coinCapPerDay: 6 });
   });
 
   it('loads saved earning values and preserves the cap when earnings are turned off', async () => {
@@ -146,7 +150,7 @@ describe('board earning controls', () => {
       screen.UNSAFE_getByType(CoinCapPicker).props.onChange(2);
       screen.UNSAFE_getAllByType(Switch).find(control => control.props.label === 'Earn Coins')!.props.onValueChange(false);
     });
-    expect(getDraftState().draft).toMatchObject({ earnsCoins: true, coinCapPerDay: 7 });
+    expect(getDraftState(renderedCore.for(await core())).draft).toMatchObject({ earnsCoins: true, coinCapPerDay: 7 });
     await act(async () => finish({ ok: false, error: { code: 'database', message: 'Temporary save failure', retryable: true } }));
     await settle();
     expect(screen.getByText('Temporary save failure')).toBeTruthy();

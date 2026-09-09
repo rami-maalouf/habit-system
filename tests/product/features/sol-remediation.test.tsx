@@ -377,17 +377,18 @@ describe('round two: session isolation and read-only surfaces', () => {
     expect(await screen.findByTestId('options-no-draft')).toBeOnTheScreen();
   });
 
-  it('scopes endDraft to the owner that started the session', () => {
-    const store = jest.requireActual<
+  it('scopes endDraft to the owner that started the session', async () => {
+    const drafts = jest.requireActual<
       typeof import('../../../src/features/board-configuration/draft-store')
     >('../../../src/features/board-configuration/draft-store');
-    store.startDraft(store.newBoardDraft(), 'owner-a');
-    store.startDraft(store.newBoardDraft(), 'owner-b');
-    store.endDraft('owner-a');
-    expect(store.getDraftState().active).toBe(true);
-    expect(store.getDraftState().owner).toBe('owner-b');
-    store.endDraft('owner-b');
-    expect(store.getDraftState().active).toBe(false);
+    const store = drafts.draftStoreFor(await core());
+    store.start(drafts.newBoardDraft(), 'owner-a');
+    store.start(drafts.newBoardDraft(), 'owner-b');
+    store.end('owner-a');
+    expect(store.getSnapshot().active).toBe(true);
+    expect(store.getSnapshot().owner).toBe('owner-b');
+    store.end('owner-b');
+    expect(store.getSnapshot().active).toBe(false);
   });
 
   it('keeps the picked occurrence through the repeated dst hour', async () => {

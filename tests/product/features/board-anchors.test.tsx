@@ -1,3 +1,4 @@
+import { observeProductCore } from '@/testing/observe-product-core';
 import { act, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
@@ -11,6 +12,9 @@ import { formatMinuteOfDay } from '@/features/reminders/weekdays';
 
 import { getProductCore, newCommandId, resetProductCoreForTests } from '../../../src/testing/product-core.mock';
 import { fireEvent, renderRouter, screen, settle } from '../../../src/testing/render';
+
+let renderedCore: ReturnType<typeof observeProductCore>;
+afterEach(() => renderedCore.restore());
 
 async function core() {
   const result = await getProductCore();
@@ -48,7 +52,7 @@ async function stored(id: BoardId) {
 }
 
 describe('board anchor configuration', () => {
-  beforeEach(() => { jest.restoreAllMocks(); resetProductCoreForTests(); });
+  beforeEach(() => { jest.restoreAllMocks(); resetProductCoreForTests(); renderedCore = observeProductCore(); });
 
   it('shows habits in home order, excludes self, includes archived, and commits only after Done and board Save', async () => {
     const first = await board('First');
@@ -64,10 +68,10 @@ describe('board anchor configuration', () => {
     expect(screen.getByTestId(`anchor-board-${archived}`)).toHaveTextContent(/Archived/);
     await press(`anchor-board-${archived}`);
     await relation('before');
-    expect(getDraftState().draft.dirty).toBe(false);
+    expect(getDraftState(renderedCore.for(await core())).draft.dirty).toBe(false);
     expect(await stored(current)).toEqual(before);
     await press('anchor-picker-cancel');
-    expect(getDraftState().draft.dirty).toBe(false);
+    expect(getDraftState(renderedCore.for(await core())).draft.dirty).toBe(false);
     await picker();
     await press(`anchor-board-${archived}`);
     await relation('before');
@@ -157,14 +161,14 @@ describe('board anchor configuration', () => {
     const current = await board('Midnight');
     await edit(current);
     await press('usual-time-row');
-    expect(getDraftState().draft.dirty).toBe(false);
+    expect(getDraftState(renderedCore.for(await core())).draft.dirty).toBe(false);
     expect((await stored(current)).usualTimeMinute).toBeNull();
     fireEvent(screen.getByTestId('usual-time-picker'), 'selectionChange', 465);
     await press('usual-time-cancel');
-    expect(getDraftState().draft.dirty).toBe(false);
+    expect(getDraftState(renderedCore.for(await core())).draft.dirty).toBe(false);
     await press('usual-time-row');
     await press('usual-time-done');
-    expect(getDraftState().draft.usualTimeMinute).toBe(0);
+    expect(getDraftState(renderedCore.for(await core())).draft.usualTimeMinute).toBe(0);
     expect((await stored(current)).usualTimeMinute).toBeNull();
     await press('board-form-save');
     expect((await stored(current)).usualTimeMinute).toBe(0);
@@ -178,7 +182,7 @@ describe('board anchor configuration', () => {
     await press('anchor-preset-lunch');
     fireEvent(screen.getByTestId('anchor-picker-sheet'), 'accessibilityEscape');
     await settle();
-    expect(getDraftState().draft.dirty).toBe(false);
+    expect(getDraftState(renderedCore.for(await core())).draft.dirty).toBe(false);
     await picker();
     await press('anchor-preset-dinner');
     await press('anchor-picker-done');

@@ -28,11 +28,9 @@ import { BoardAnchorFields } from '../anchors/board-anchor-fields';
 import type { BoardDraft } from './draft-store';
 import {
   draftFromBoard,
-  endDraft,
+  draftStoreFor,
   newBoardDraft,
   newDraftOwner,
-  startDraft,
-  updateDraft,
   useDraftState,
 } from './draft-store';
 
@@ -186,7 +184,8 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
     (c) => (boardId ? getBoard(c, boardId) : Promise.resolve({ ok: true as const, value: null })),
     [boardId],
   );
-  const draftState = useDraftState();
+  const draftStore = draftStoreFor(core);
+  const draftState = useDraftState(core);
   const draft = draftState.draft;
   const [error, setError] = useState<DomainError | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -199,6 +198,17 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   // identifies this sheet instance as the draft session owner; a fresh
   // token per mount, never reused by a successor sheet
   const [ownerId] = useState(newDraftOwner);
+  const ownsDraft = useCallback(() => draftStore.owns(ownerId, boardId), [boardId, draftStore, ownerId]);
+  const updateDraft = useCallback((patch: Partial<BoardDraft>) => {
+    if (ownsDraft()) draftStore.update(ownerId, patch);
+  }, [draftStore, ownerId, ownsDraft]);
+
+  // reserve this route's session before its asynchronous board read finishes.
+  // query refreshes may seed this owner, but never reclaim a successor's draft.
+  useEffect(() => {
+    draftStore.begin(ownerId);
+    return () => draftStore.end(ownerId);
+  }, [boardId, draftStore, ownerId]);
 
   // seed the shared draft store when the sheet opens or reloads; '?? null'
   // keeps the stamp stable across the create query's loading-to-ready flip
@@ -206,24 +216,21 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const seedStamp =
     existing.status === 'ready' ? (existing.value?.mutationStamp ?? null) : null;
   useEffect(() => {
+    if (draftStore.getSnapshot().owner !== ownerId) return;
     if (boardId === null) {
-      startDraft(newBoardDraft(), ownerId);
+      draftStore.start(newBoardDraft(), ownerId);
     } else if (existing.status === 'ready' && existing.value) {
       if (existing.value.archivedAt === null) {
-        startDraft(draftFromBoard(existing.value), ownerId);
+        draftStore.start(draftFromBoard(existing.value), ownerId);
       } else {
         // an archived board never holds a draft session: its edit surface
         // is the lockout, and a live edit that archives mid-session must
         // release the session so options cannot expose it
-        endDraft(ownerId);
+        draftStore.end(ownerId);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reseed only when the loaded record identity changes
-  }, [boardId, ownerId, seedStamp]);
-
-  // the draft session ends with the sheet, so a later direct navigation to
-  // an options route cannot observe a stale draft as live
-  useEffect(() => () => endDraft(ownerId), [ownerId]);
+  }, [boardId, draftStore, ownerId, seedStamp]);
 
   const editing = boardId !== null;
   // the draft is trusted only when this sheet instance seeded it; anything
@@ -243,6 +250,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
+          if (!ownsDraft()) return;
           skipGuardRef.current = true;
           navigation.dispatch(data.action);
         },
@@ -253,37 +261,40 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const colors = deriveBoardColors(draft.accentHex, scheme);
 
   const save = useCallback(async () => {
-    if (!draftMatches || saving) {
+    if (!ownsDraft() || saving) {
       return;
     }
     setSaving(true);
     setError(null);
     setConflict(false);
-    const fields = draftToCommandFields(draft);
+    const currentDraft = draftStore.getSnapshot().draft;
+    const fields = draftToCommandFields(currentDraft);
     // the route id is the authority for which board a save mutates
     const result = editing
       ? await updateBoard(core, {
           commandId: nextCommandId(),
           boardId: boardId as BoardId,
-          expectedMutationStamp: draft.expectedMutationStamp ?? '',
+          expectedMutationStamp: currentDraft.expectedMutationStamp ?? '',
           ...fields,
         })
       : await createBoardWithReminders(
           { ...core, scheduler: reminderScheduler },
-          { commandId: nextCommandId(), ...fields, reminders: draft.reminders },
+          { commandId: nextCommandId(), ...fields, reminders: currentDraft.reminders },
         );
     if (result.ok) {
+      invalidate();
+      if (!ownsDraft()) return;
       if ('remindersDenied' in result.value && result.value.remindersDenied) {
         Alert.alert(
           'Notifications are off',
           'The reminder is saved but disabled. Allow notifications in Settings to turn it on.',
         );
       }
-      invalidate();
       skipGuardRef.current = true;
       router.back();
       return;
     }
+    if (!ownsDraft()) return;
     setSaving(false);
     if (result.error.code === 'conflict') {
       // a stale edit reloads the latest record for review
@@ -297,10 +308,10 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
       invalidate();
     }
     setError(result.error);
-  }, [boardId, core, draft, draftMatches, editing, invalidate, nextCommandId, router, saving]);
+  }, [boardId, core, draftStore, editing, invalidate, nextCommandId, ownsDraft, router, saving]);
 
   const confirmArchive = useCallback(() => {
-    if (!editing || !boardId) {
+    if (!editing || !boardId || !ownsDraft()) {
       return;
     }
     Alert.alert('Archive Board', 'The board moves to Archived Boards. Its data stays.', [
@@ -308,25 +319,28 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
       {
         text: 'Archive',
         onPress: () => {
+          if (!ownsDraft()) return;
           void archiveBoard(core, { commandId: nextCommandId(), boardId }).then((result) => {
             if (result.ok) {
               invalidate();
+              if (!ownsDraft()) return;
               skipGuardRef.current = true;
               router.dismissTo('/');
-            } else {
+            } else if (ownsDraft()) {
               setError(result.error);
             }
           });
         },
       },
     ]);
-  }, [boardId, core, editing, invalidate, nextCommandId, router]);
+  }, [boardId, core, editing, invalidate, nextCommandId, ownsDraft, router]);
 
   const confirmDelete = useCallback(async () => {
-    if (!editing || !boardId) {
+    if (!editing || !boardId || !ownsDraft()) {
       return;
     }
     const counts = await getBoardDependentCounts(core, boardId);
+    if (!ownsDraft()) return;
     const message = counts.ok
       ? `This permanently deletes ${counts.value.checkIns} check-in${counts.value.checkIns === 1 ? '' : 's'}, ${counts.value.notes} note${counts.value.notes === 1 ? '' : 's'}, and ${counts.value.reminders} reminder${counts.value.reminders === 1 ? '' : 's'}.`
       : 'This permanently deletes the board and everything it contains.';
@@ -342,19 +356,21 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         text: 'Delete Board',
         style: 'destructive',
         onPress: () => {
+          if (!ownsDraft()) return;
           void deleteBoard(core, { commandId: nextCommandId(), boardId }).then((result) => {
             if (result.ok) {
               invalidate();
+              if (!ownsDraft()) return;
               skipGuardRef.current = true;
               router.dismissTo('/');
-            } else {
+            } else if (ownsDraft()) {
               setError(result.error);
             }
           });
         },
       },
     ]);
-  }, [boardId, core, editing, invalidate, nextCommandId, router]);
+  }, [boardId, core, editing, invalidate, nextCommandId, ownsDraft, router]);
 
   if (editing && existing.status === 'error') {
     return (
