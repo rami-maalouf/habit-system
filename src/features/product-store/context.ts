@@ -35,6 +35,8 @@ export type ProductScope = Readonly<{
 
 export type ProductContextValue = {
   core: ProductCore;
+  scope: ProductScope;
+  closeSample: (() => Promise<void>) | null;
   version: number;
   invalidate: () => void;
   nextCommandId: () => CommandId;
@@ -42,7 +44,7 @@ export type ProductContextValue = {
   syncNow: () => void;
   pauseSync: () => void;
   resumeSync: () => void;
-  missAlertScheduler: MissAlertScheduler;
+  missAlertScheduler: MissAlertScheduler | null;
   missAlertVersion: number;
 };
 

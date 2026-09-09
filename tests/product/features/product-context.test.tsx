@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { err, ok, type DomainResult } from '@/core/domain/result';
 import { ProductContext, useProductQuery, type ProductContextValue } from '@/features/product-store/context';
 import { INITIAL_SYNC } from '@/features/product-store/sync-coordinator';
+import { createOperationOwner } from '@/features/product-store/operation-scope';
 import type { ProductCore } from '@/platform/database/product-core';
 import { missAlertScheduler } from '@/testing/notifications-platform.mock';
 
@@ -15,7 +16,8 @@ describe('import-safe product context', () => {
   beforeEach(async () => {
     harness = await createTestHarness();
     context = {
-      core: harness.deps, version: 0, invalidate: jest.fn(), nextCommandId: () => harness.ids.nextCommandId(),
+      core: harness.deps, scope: createOperationOwner(harness.deps, { kind: 'sample-disabled' }).getScope(), closeSample: null,
+      version: 0, invalidate: jest.fn(), nextCommandId: () => harness.ids.nextCommandId(),
       sync: INITIAL_SYNC, syncNow: jest.fn(), pauseSync: jest.fn(), resumeSync: jest.fn(),
       missAlertScheduler, missAlertVersion: 0,
     };

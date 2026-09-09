@@ -3200,3 +3200,20 @@ T19/Checkpoint C external gates remain open.
    files, tests and evidence and verifies their exact manifest. Native and
    domain executors are unchanged in this increment. Evidence is retained
    under `.artifacts/t23/implementation/`.
+3. The public provider now defers real-runtime imports until its real branch
+   renders. An explicit sample owner mounts ordinary product queries and
+   commands without evaluating native notification, widget, sync, transfer,
+   icon or real-opener modules. Sample effect controls are unavailable and
+   the Notifications screen stops before permission, count or SQL hooks.
+   Real foreground notification presentation now has explicit registration
+   ownership. Real-provider unmount retires UI authority while accepted raw
+   commands finish; actual StrictMode replay resumes only after drainage,
+   with a new scope on the same core and no resume after final unmount.
+   The focused provider suite passes 54 tests across ten suites with
+   provider/context/authority at 100 percent on all four focused metrics;
+   27 Notifications/Settings cases and 162 inherited adapter/provider cases
+   also pass. Actual reds cover import-time effects, stale unmount authority,
+   replay and the disabled body. Owned lint and composed typecheck pass;
+   root independently reviewed and verified the exact source manifests.
+   Full real-runtime suspension, route activation and native UI acceptance
+   remain open in the following increments.

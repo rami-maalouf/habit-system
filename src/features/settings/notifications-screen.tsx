@@ -6,6 +6,7 @@ import { AppState, Linking, ScrollView, View } from 'react-native';
 import { AppText } from '@/components/foundation/app-text';
 import { getNotificationOverview } from '@/core/domain/queries';
 import { getPendingMissAlertCount } from '@/core/domain/miss-alert-reconciliation';
+import type { MissAlertScheduler } from '@/core/domain/ports';
 import { semanticColor, spacing } from '@/theme';
 
 import { InlineError, PrimaryButton, useScheme } from '../ui';
@@ -27,13 +28,24 @@ function errorLabel(code: string): string {
 // current authorization, enabled reminder count, and schedule errors, with
 // the settings path when permission was denied
 export function NotificationsScreen() {
+  const { missAlertScheduler } = useProduct();
+  if (missAlertScheduler === null) {
+    return <View style={{ flex: 1, padding: spacing.lg }}>
+      <Stack.Screen options={{ title: 'Notifications' }} />
+      <AppText>Notifications are disabled in sample mode.</AppText>
+    </View>;
+  }
+  return <NotificationsBody scheduler={missAlertScheduler} />;
+}
+
+function NotificationsBody({ scheduler }: { scheduler: MissAlertScheduler }) {
   const scheme = useScheme();
   const [authorization, setAuthorization] = useState<AuthorizationState>('loading');
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const overview = useProductQuery((c) => getNotificationOverview(c), []);
-  const { missAlertScheduler, missAlertVersion } = useProduct();
-  const missCount = useProductQuery(core => getPendingMissAlertCount({ db: core.db, scheduler: missAlertScheduler }),
-    [missAlertScheduler, missAlertVersion]);
+  const { missAlertVersion } = useProduct();
+  const missCount = useProductQuery(core => getPendingMissAlertCount({ db: core.db, scheduler }),
+    [scheduler, missAlertVersion]);
 
   // the status re-reads on every return to the foreground, so coming back
   // from the system settings app shows the fresh authorization

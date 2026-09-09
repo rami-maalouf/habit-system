@@ -8,6 +8,10 @@ import type {
 } from '@/core/domain/ports';
 import type { NotificationDestination } from '../platform/notifications/index';
 
+export function installNotificationHandler(): () => void {
+  return () => {};
+}
+
 export const notificationsPlatformMock = {
   auth: 'granted' as ReminderAuthorization,
   promptResult: 'granted' as ReminderAuthorization,

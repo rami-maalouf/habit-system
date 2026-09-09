@@ -46,16 +46,24 @@ async function schedulerOperation<Value>(
 // ios caps the pending local-notification pool at 64 requests
 const IOS_PENDING_LIMIT = PENDING_NOTIFICATION_LIMIT;
 
-// without a handler expo suppresses notifications that fire while the app
-// is foregrounded; reminders must still present as banners
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+const presentationOwners = new Set<symbol>();
+
+// importing schedulers does not own foreground presentation. each real
+// runtime explicitly registers and retires its handler ownership.
+export function installNotificationHandler(): () => void {
+  const owner = Symbol();
+  if (presentationOwners.size === 0) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false,
+      }),
+    });
+  }
+  presentationOwners.add(owner);
+  return () => {
+    if (presentationOwners.delete(owner) && presentationOwners.size === 0) Notifications.setNotificationHandler(null);
+  };
+}
 
 function toAuthorization(status: Notifications.NotificationPermissionsStatus): ReminderAuthorization {
   if (status.granted) {

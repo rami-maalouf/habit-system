@@ -1,0 +1,302 @@
+import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { AppState, View } from 'react-native';
+
+import { AppText } from '@/components/foundation/app-text';
+import { createCheckIn } from '@/core/domain/commands';
+import type { CommandId } from '@/core/domain/ids';
+import { parseBoardId } from '@/core/domain/ids';
+import { getBoard } from '@/core/domain/queries';
+import { refreshWidgetProjection } from '@/core/domain/widget-projection';
+import type { DomainError } from '@/core/domain/result';
+import type { ProductCore } from '@/platform/database/product-core';
+import { getProductCore } from '@/platform/database/product-core';
+import {
+  installNotificationHandler,
+  addNotificationDestinationListener,
+  addNotificationDeliveryListener,
+  getInitialNotificationDestination,
+  missAlertScheduler,
+  reminderScheduler,
+} from '@/platform/notifications';
+import { addWidgetQuickActionListener, refreshWidgets } from '@/platform/widgets';
+import { addSignificantTimeChangeListener } from '@/platform/time-change';
+import { spacing } from '@/theme';
+import { cloudKitAvailable, cloudKitTransport } from '@/platform/sync';
+import { pickImportFile, saveAndShareExport } from '@/platform/data-transfer';
+import { supportsAlternateIcons, setAlternateIcon } from '@/platform/alternate-icons';
+
+import { INITIAL_SYNC, SyncCoordinator } from './sync-coordinator';
+import { NotificationCoordinator } from './notification-coordinator';
+import { ProductContext, type ProductContextValue } from './context';
+
+import { createOperationOwner } from './operation-scope';
+import type { RealProductProviderProps } from './provider';
+
+const noSubscription = () => () => {};
+const noScope = () => null;
+
+type ProviderState =
+  | { status: 'loading' }
+  | { status: 'ready'; core: ProductCore }
+  | { status: 'error'; error: DomainError };
+
+export function RealProductProvider({ children, coreOverride, syncTransportOverride, missAlertSchedulerOverride }: RealProductProviderProps) {
+  const [state, setState] = useState<ProviderState>(
+    coreOverride ? { status: 'ready', core: coreOverride } : { status: 'loading' },
+  );
+  // a runtime keeps its initial feature ports; later test-port replacement
+  // only retires and replaces the notification coordinator/count observer.
+  const owner = useMemo(() => state.status === 'ready' ? createOperationOwner(state.core, {
+    kind: 'real', reminders: reminderScheduler, missAlerts: missAlertSchedulerOverride ?? missAlertScheduler,
+    cloudKitAvailable, pickImportFile, saveAndShareExport, supportsAlternateIcons, setAlternateIcon,
+  }) : null, [state]); // eslint-disable-line react-hooks/exhaustive-deps -- initial runtime composition
+  const scope = useSyncExternalStore(owner?.subscribe ?? noSubscription, owner?.getScope ?? noScope,
+    owner?.getScope ?? noScope);
+  useEffect(() => {
+    if (!owner) return;
+    let current = true;
+    // effect replay reuses the owner; resume only after its prior work drains.
+    if (!owner.getScope().active) void owner.suspend().then(() => { if (current) owner.resume(); });
+    return () => { current = false; void owner.suspend(); };
+  }, [owner]);
+  useEffect(() => installNotificationHandler(), []);
+  const [version, setVersion] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const [sync, setSync] = useState(INITIAL_SYNC);
+  const [missAlertVersion, setMissAlertVersion] = useState(0);
+  const missScheduler = missAlertSchedulerOverride ?? missAlertScheduler;
+  const notificationsRef = useRef<NotificationCoordinator | null>(null);
+  const active = useRef(AppState.currentState === 'active');
+  const projectionGeneration = useRef(0);
+  const refreshQueries = useCallback(() => {
+    projectionGeneration.current += 1;
+    setVersion((current) => current + 1);
+  }, []);
+  const coordinatorRef = useRef<SyncCoordinator | null>(null);
+
+  useEffect(() => {
+    if (state.status !== 'ready') return;
+    const coordinator = new SyncCoordinator(state.core, syncTransportOverride ?? cloudKitTransport, setSync, refreshQueries);
+    coordinatorRef.current = coordinator;
+    void coordinator.request();
+    return () => {
+      coordinator.dispose();
+      coordinatorRef.current = null;
+    };
+  }, [state, refreshQueries, syncTransportOverride]);
+
+  const syncNow = useCallback(() => { void coordinatorRef.current?.request(); }, []);
+  const pauseSync = useCallback(() => { coordinatorRef.current?.pause(); }, []);
+  const resumeSync = useCallback(() => { coordinatorRef.current?.resume(); }, []);
+
+  useEffect(() => {
+    if (coreOverride) {
+      return;
+    }
+    let cancelled = false;
+    getProductCore().then(
+      (result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.ok) {
+          setState({ status: 'ready', core: result.value });
+        } else {
+          setState({ status: 'error', error: result.error });
+        }
+      },
+      (cause: unknown) => {
+        if (!cancelled) {
+          setState({
+            status: 'error',
+            error: {
+              code: 'database',
+              message: cause instanceof Error ? cause.message : String(cause),
+              retryable: true,
+            },
+          });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [coreOverride, attempt]);
+
+  const invalidate = useCallback(() => {
+    refreshQueries();
+    syncNow();
+  }, [refreshQueries, syncNow]);
+
+  useEffect(() => {
+    if (state.status !== 'ready') return;
+    const coordinator = new NotificationCoordinator(state.core, missScheduler, reminderScheduler,
+      active.current, () => setMissAlertVersion(value => value + 1), invalidate);
+    notificationsRef.current = coordinator;
+    return () => { coordinator.dispose(); notificationsRef.current = null; };
+  }, [state, missScheduler, invalidate]);
+
+  // miss-only progress has its own observer revision and cannot trigger this effect.
+  useEffect(() => { notificationsRef.current?.request(); }, [state, version, missScheduler]);
+
+  useEffect(() => {
+    let current = true;
+    const remove = addNotificationDeliveryListener(() => {
+      if (current) setMissAlertVersion(value => value + 1);
+    });
+    return () => { current = false; remove(); };
+  }, []);
+
+  // native clock changes invalidate queries and rearm the day-boundary timer.
+  // the existing version effect performs one reconciliation for the event.
+  useEffect(() => addSignificantTimeChangeListener(invalidate), [invalidate]);
+
+  // cache refresh, publication, and foreground expiry share one snapshot.
+  // generation changes invalidate late results before their effects can commit.
+  useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+    const core = state.core;
+    const generation = projectionGeneration.current;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const isCurrent = () => !cancelled && generation === projectionGeneration.current;
+    const retry = () => {
+      // retain the stale timeline and retry at a bounded rate while foregrounded.
+      if (isCurrent()) timer = setTimeout(invalidate, 30_000);
+    };
+    void refreshWidgetProjection(core).then((result) => {
+      if (!isCurrent()) return;
+      if (!result.ok) { retry(); return; }
+      const delay = result.value.expiresAtUtc - core.clock.nowUtcMs();
+      if (delay > 0) void refreshWidgets(result.value);
+      timer = setTimeout(invalidate, Math.max(0, delay));
+    }).catch(retry);
+    return () => {
+      cancelled = true;
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+    };
+  }, [invalidate, state, version]);
+
+  // out-of-process writers (widgets, automations, sync) mutate the same
+  // database; returning to the foreground refreshes every mounted query.
+  // the in-process database-change hook lands with the widget stage.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (appState) => {
+      active.current = appState === 'active';
+      notificationsRef.current?.setActive(active.current);
+      if (appState === 'active') {
+        invalidate();
+      }
+    });
+    return () => subscription?.remove?.();
+  }, [invalidate]);
+
+  // daily events open explicit fresh-state actions; count events retain
+  // their existing quick-create behavior and form fallback.
+  useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+    const core = state.core;
+    let cancelled = false;
+    const remove = addWidgetQuickActionListener((value) => {
+      const boardId = parseBoardId(value);
+      if (!boardId) return;
+      void getBoard(core, boardId).then(async (board) => {
+        if (cancelled) return;
+        if (!board.ok || board.value.kind === 'daily') {
+          router.navigate(`/boards/${boardId}/quick-action`);
+          return;
+        }
+        const result = await createCheckIn(core, {
+          commandId: core.ids.uuid() as CommandId, boardId, source: 'widget',
+        });
+        if (cancelled) return;
+        if (result.ok) {
+          invalidate();
+        } else {
+          router.navigate(`/boards/${boardId}/check-ins/new?source=widget`);
+        }
+      });
+    });
+    return () => { cancelled = true; remove(); };
+  }, [invalidate, state]);
+
+  // a tapped reminder deep-links to its board's add check-in sheet, both
+  // while running and when the tap cold-started the app
+  useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+    const open = ({ boardId, kind }: { boardId: string; kind: 'board' | 'new-check' }) => {
+      if (!cancelled) router.push(kind === 'board' ? `/boards/${boardId}` : `/boards/${boardId}/check-ins/new`);
+    };
+    let cancelled = false;
+    void getInitialNotificationDestination().then((destination) => {
+      if (destination && !cancelled) {
+        open(destination);
+      }
+    }).catch(() => {});
+    const remove = addNotificationDestinationListener(open);
+    return () => {
+      cancelled = true;
+      remove();
+    };
+  }, [state.status]);
+
+  const value = useMemo<ProductContextValue | null>(() => {
+    if (state.status !== 'ready' || !owner || !scope) {
+      return null;
+    }
+    return {
+      core: owner.core,
+      scope,
+      closeSample: null,
+      version,
+      invalidate,
+      nextCommandId: () => state.core.ids.uuid() as CommandId,
+      sync,
+      syncNow,
+      pauseSync,
+      resumeSync,
+      missAlertScheduler: missScheduler,
+      missAlertVersion,
+    };
+  }, [state, owner, scope, version, invalidate, sync, syncNow, pauseSync, resumeSync, missScheduler, missAlertVersion]);
+
+  if (state.status === 'loading') {
+    return <View testID="product-loading" />;
+  }
+
+  if (state.status === 'error') {
+    // a failed migration or open never creates a replacement database
+    return (
+      <View
+        style={{ flex: 1, justifyContent: 'center', padding: spacing.lg, gap: spacing.md }}
+        testID="product-recovery"
+      >
+        <AppText variant="title2" accessibilityRole="header">
+          Your data could not be opened
+        </AppText>
+        <AppText>{state.error.message}</AppText>
+        <AppText
+          accessibilityRole="button"
+          onPress={() => {
+            setState({ status: 'loading' });
+            setAttempt((current) => current + 1);
+          }}
+          style={{ minHeight: 44 }}
+        >
+          Try again
+        </AppText>
+      </View>
+    );
+  }
+
+  return <ProductContext.Provider value={value}>{children}</ProductContext.Provider>;
+}
