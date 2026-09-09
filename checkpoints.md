@@ -3254,3 +3254,13 @@ T19/Checkpoint C external gates remain open.
    pending external cleanup. Owned lint and composed typecheck pass. This
    is React cleanup acknowledgement, not native animation completion or
    final route/chrome acceptance. Evidence is retained with the task.
+7. Product navigation now scopes absolute destinations, dynamic parameters,
+   query parameters and recovery redirects to the current sample navigator.
+   Back at its root delegates Close; a cold nested route without inner
+   history recovers to sample Home. Every navigation callback checks its
+   original operation scope and route focus, preventing a reproduced old
+   covered-screen Back from popping a newer screen. Ten actual nested-router
+   tests and an independent removed/covered/resumed callback probe pass;
+   both source hashes are independently verified, with lint and composed
+   typecheck passing. Real destinations remain unchanged. This helper still
+   awaits adoption by the production route graph and feature callers.
