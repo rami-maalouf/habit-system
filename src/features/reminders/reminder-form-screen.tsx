@@ -4,8 +4,9 @@ import {
   type BottomSheetMethods,
 } from '@expo/ui/community/bottom-sheet';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useNavigation } from 'expo-router';
+import { usePreventRemove } from 'expo-router/react-navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -20,7 +21,6 @@ import {
   updateReminder,
 } from '@/core/domain/reminder-commands';
 import { minimumTouchTarget } from '@/foundation/accessibility';
-import { reminderScheduler } from '@/platform/notifications';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { deriveBoardColors } from '../boards';
@@ -28,6 +28,9 @@ import { draftStoreFor, useDraftState } from '../board-configuration/draft-store
 import type { DraftReminder, DraftStore } from '../board-configuration/draft-store';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
+import { SampleDisabledScreen } from '../sample/disabled-screen';
+import { useProductRouter } from '../sample/navigation';
+import { useProductActivity } from '../product-store/use-product-activity';
 import { WEEKDAYS, formatMinuteOfDay, isWeekdaySelected, toggleWeekday } from './weekdays';
 
 type ReminderFormScreenProps = {
@@ -45,10 +48,20 @@ function minuteToDate(minute: number): Date {
   return new Date(2000, 0, 1, Math.floor(minute / 60), minute % 60, 0, 0);
 }
 
-export function ReminderFormScreen({ boardId, reminderId, draftIndex }: ReminderFormScreenProps) {
-  const router = useRouter();
+export function ReminderFormScreen(props: ReminderFormScreenProps) {
+  const { scope } = useProduct();
+  if (scope.kind === 'sample') return <SampleDisabledScreen title="Reminders" message="Reminders are unavailable in Sample mode." />;
+  return <RealReminderFormScreen {...props} />;
+}
+
+type RetainedEditor = { board: Board; record: Reminder | null };
+
+function RealReminderFormScreen({ boardId, reminderId, draftIndex }: ReminderFormScreenProps) {
+  const router = useProductRouter();
+  const navigation = useNavigation();
   const scheme = useScheme();
-  const { core } = useProduct();
+  const { core, scope } = useProduct();
+  const activity = useProductActivity(scope);
   const draftStore = draftStoreFor(core);
   const draftState = useDraftState(core);
   const [origin] = useState(() => ({ store: draftStore, owner: draftState.owner }));
@@ -56,33 +69,42 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
   const ownsDraft = useCallback(() => !draftMode || origin.store.owns(origin.owner, null), [draftMode, origin]);
   const sheetRef = useRef<BottomSheetMethods>(null);
   const dirtyRef = useRef(false);
+  const pendingRef = useRef(false);
   const skipGuardRef = useRef(false);
   // a conflict remounts the body with the reloaded record; the notice
   // lives here where the remount cannot wipe it
   const [conflict, setConflict] = useState(false);
+  const [retained, setRetained] = useState<RetainedEditor | null>(null);
 
-  const board = useProductQuery(
+  const boardQuery = useProductQuery(
     (c) => (boardId ? getBoard(c, boardId) : Promise.resolve({ ok: true as const, value: null })),
     [boardId],
   );
-  const existing = useProductQuery(
+  const existingQuery = useProductQuery(
     (c) =>
       reminderId ? getReminder(c, reminderId) : Promise.resolve({ ok: true as const, value: null }),
     [reminderId],
   );
+  // an unresolved receipt or completed response owns this editor snapshot,
+  // including a deleted row that disappears from the resumed query.
+  const board = retained ? { status: 'ready' as const, value: retained.board } : boardQuery;
+  const existing = retained ? { status: 'ready' as const, value: retained.record } : existingQuery;
 
   const closeFromSheet = useCallback(() => {
-    if (skipGuardRef.current || !ownsDraft()) {
+    if (!activity.active || !navigation.isFocused() || skipGuardRef.current || !ownsDraft()) {
       return;
     }
+    if (pendingRef.current) { sheetRef.current?.present(); return; }
     if (dirtyRef.current) {
       Alert.alert('Discard changes?', 'Your edits to this reminder are not saved.', [
-        { text: 'Keep editing', style: 'cancel', onPress: () => { if (ownsDraft()) sheetRef.current?.present(); } },
+        { text: 'Keep editing', style: 'cancel', onPress: () => {
+          if (activity.active && navigation.isFocused() && ownsDraft()) sheetRef.current?.present();
+        } },
         {
           text: 'Discard',
           style: 'destructive',
           onPress: () => {
-            if (!ownsDraft()) return;
+            if (!activity.active || !navigation.isFocused() || !ownsDraft() || pendingRef.current) return;
             skipGuardRef.current = true;
             router.back();
           },
@@ -92,7 +114,7 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
     }
     skipGuardRef.current = true;
     router.back();
-  }, [ownsDraft, router]);
+  }, [activity, navigation, ownsDraft, router]);
 
   const draftReminder =
     draftMode && draftIndex !== null ? (draftState.draft.reminders[draftIndex] ?? null) : null;
@@ -164,6 +186,8 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
         draftStore={origin.store}
         draftOwner={origin.owner}
         dirtyRef={dirtyRef}
+        pendingRef={pendingRef}
+        retainEditor={setRetained}
         skipGuardRef={skipGuardRef}
           // cancel routes through the sheet-close guard so unsaved edits
           // always get the same discard confirmation
@@ -187,6 +211,11 @@ export function ReminderFormScreen({ boardId, reminderId, draftIndex }: Reminder
   );
 }
 
+type ReminderAttempt =
+  | { kind: 'create'; input: Parameters<typeof createReminder>[1] }
+  | { kind: 'update'; input: Parameters<typeof updateReminder>[1] }
+  | { kind: 'delete'; input: Parameters<typeof deleteReminder>[1] };
+
 function ReminderFormBody({
   board,
   record,
@@ -196,6 +225,8 @@ function ReminderFormBody({
   draftStore,
   draftOwner,
   dirtyRef,
+  pendingRef,
+  retainEditor,
   skipGuardRef,
   onCancel,
   onConflict,
@@ -208,32 +239,100 @@ function ReminderFormBody({
   draftStore: DraftStore;
   draftOwner: string | null;
   dirtyRef: React.MutableRefObject<boolean>;
+  pendingRef: React.MutableRefObject<boolean>;
+  retainEditor: (editor: RetainedEditor | null) => void;
   skipGuardRef: React.MutableRefObject<boolean>;
   onCancel: () => void;
   onConflict: () => void;
 }) {
-  const router = useRouter();
+  const router = useProductRouter();
+  const navigation = useNavigation();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { scope, invalidate, nextCommandId } = useProduct();
+  const activity = useProductActivity(scope);
   const seed = record ?? draftReminder;
   const [weekdaysMask, setWeekdaysMask] = useState(seed?.weekdaysMask ?? 0b1111111);
   const [minuteOfDay, setMinuteOfDay] = useState(seed?.minuteOfDay ?? DEFAULT_MINUTE);
   const [message, setMessage] = useState(seed?.message ?? '');
   const [error, setError] = useState<DomainError | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attempt, setAttempt] = useState<ReminderAttempt | null>(null);
+  const [completed, setCompleted] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const attemptRef = useRef<ReminderAttempt | null>(null);
+  const busyRef = useRef(false), completedRef = useRef(false), mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const current = useCallback(() => mounted.current && activity.active && navigation.isFocused()
+    && (board !== null || draftStore.owns(draftOwner, null)), [activity, board, draftOwner, draftStore, navigation]);
+  const canEdit = useCallback(() => current() && !busyRef.current && !attemptRef.current && !completedRef.current, [current]);
 
   const markDirty = useCallback(() => {
+    setDirty(true);
     dirtyRef.current = true;
   }, [dirtyRef]);
+
+  usePreventRemove(scope.active && (dirty || attempt !== null), ({ data }) => {
+    if (!current() || busyRef.current || attemptRef.current) return;
+    if (skipGuardRef.current) { navigation.dispatch(data.action); return; }
+    Alert.alert('Discard changes?', 'Your edits to this reminder are not saved.', [
+      { text: 'Keep editing', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: () => {
+        if (!canEdit()) return;
+        skipGuardRef.current = true; navigation.dispatch(data.action);
+      } },
+    ]);
+  });
 
   const boardTitle = board?.title ?? draftTitle;
   const colors = deriveBoardColors(board?.accentHex ?? '#78D98B', scheme);
   const editing = record !== null || draftIndex !== null;
 
+  const finish = useCallback(() => {
+    if (!current()) return;
+    skipGuardRef.current = true; router.back();
+  }, [current, router, skipGuardRef]);
+
+  const complete = useCallback(() => {
+    completedRef.current = true; pendingRef.current = false; dirtyRef.current = false;
+    if (mounted.current) { setCompleted(true); setDirty(false); }
+  }, [dirtyRef, pendingRef]);
+
+  const runAttempt = useCallback(async (next: ReminderAttempt) => {
+    if (!current() || busyRef.current || completedRef.current || board === null) return;
+    busyRef.current = true; pendingRef.current = true; attemptRef.current = next;
+    setSaving(true); setAttempt(next); setError(null); retainEditor({ board, record });
+    await scope.run(async ({ core: accepted, effects }) => {
+      try {
+        if (effects.kind !== 'real') return;
+        const deps = { ...accepted, scheduler: effects.reminders };
+        const result = next.kind === 'delete' ? await deleteReminder(deps, next.input)
+          : next.kind === 'update' ? await updateReminder(deps, next.input) : await createReminder(deps, next.input);
+        if (result.ok) {
+          attemptRef.current = null; complete();
+          if (!mounted.current) return;
+          setAttempt(null); invalidate();
+          if (current() && result.value && result.value.scheduleState === 'denied') {
+            Alert.alert('Notifications are off', 'The reminder is saved but disabled. Allow notifications in Settings to turn it on.');
+          }
+          finish();
+        } else if (mounted.current) {
+          setError(result.error);
+          if (!result.error.retryable) {
+            attemptRef.current = null; pendingRef.current = false; setAttempt(null); retainEditor(null);
+          }
+          if (result.error.code === 'conflict') { onConflict(); invalidate(); }
+        }
+      } catch {
+        if (mounted.current) setError({ code: 'database', message: 'The saved result could not be confirmed. Retry to check it.', retryable: true });
+      } finally {
+        busyRef.current = false;
+        if (mounted.current) setSaving(false);
+      }
+    });
+  }, [board, complete, current, finish, invalidate, onConflict, pendingRef, record, retainEditor, scope]);
+
   const save = useCallback(async () => {
-    if (saving) {
-      return;
-    }
+    if (!canEdit()) return;
     if (weekdaysMask === 0) {
       setError({ code: 'validation', message: 'Pick at least one weekday.', retryable: false });
       return;
@@ -262,72 +361,39 @@ function ReminderFormBody({
         reminders.push(entry);
       }
       if (!draftStore.update(draftOwner, { reminders })) return;
-      skipGuardRef.current = true;
-      router.back();
+      complete(); finish();
       return;
     }
-    setSaving(true);
-    const deps = { ...core, scheduler: reminderScheduler };
-    const result = record
-      ? await updateReminder(deps, {
+    await runAttempt(record
+      ? { kind: 'update', input: {
           commandId: nextCommandId(),
           reminderId: record.id,
           expectedMutationStamp: record.mutationStamp,
           weekdaysMask,
           minuteOfDay,
           message: message.trim().length > 0 ? message : null,
-        })
-      : await createReminder(deps, {
+        } }
+      : { kind: 'create', input: {
           commandId: nextCommandId(),
           boardId: board.id,
           weekdaysMask,
           minuteOfDay,
           message: message.trim().length > 0 ? message : null,
           enabled: true,
-        });
-    if (result.ok) {
-      invalidate();
-      if (result.value.scheduleState === 'denied') {
-        // saved but silent: explain the settings path once, no re-prompt
-        Alert.alert(
-          'Notifications are off',
-          'The reminder is saved but disabled. Allow notifications in Settings to turn it on.',
-        );
-      }
-      skipGuardRef.current = true;
-      router.back();
-      return;
-    }
-    if (result.error.code === 'conflict') {
-      // reload the record so the reseeded sheet carries the fresh stamp;
-      // the parent shows the notice across the remount
-      onConflict();
-      invalidate();
-    }
-    setError(result.error);
-    setSaving(false);
-  }, [board, core, draftIndex, draftOwner, draftReminder, draftStore, invalidate, message, minuteOfDay, nextCommandId, onConflict, record, router, saving, skipGuardRef, weekdaysMask]);
+        } });
+  }, [board, canEdit, complete, draftIndex, draftOwner, draftReminder, draftStore, finish, message, minuteOfDay, nextCommandId, record, runAttempt, weekdaysMask]);
 
   const confirmDelete = useCallback(() => {
+    if (!canEdit()) return;
     Alert.alert('Delete Reminder', 'This removes the reminder and its notifications.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete Reminder',
         style: 'destructive',
         onPress: () => {
+          if (!canEdit()) return;
           if (record) {
-            void deleteReminder(
-              { ...core, scheduler: reminderScheduler },
-              { commandId: nextCommandId(), reminderId: record.id },
-            ).then((result) => {
-              if (result.ok) {
-                invalidate();
-                skipGuardRef.current = true;
-                router.back();
-              } else {
-                setError(result.error);
-              }
-            });
+            void runAttempt({ kind: 'delete', input: { commandId: nextCommandId(), reminderId: record.id } });
             return;
           }
           if (draftIndex !== null) {
@@ -336,13 +402,19 @@ function ReminderFormBody({
               (_, index) => index !== draftIndex,
             );
             if (!draftStore.update(draftOwner, { reminders })) return;
-            skipGuardRef.current = true;
-            router.back();
+            complete(); finish();
           }
         },
       },
     ]);
-  }, [core, draftIndex, draftOwner, draftStore, invalidate, nextCommandId, record, router, skipGuardRef]);
+  }, [canEdit, complete, draftIndex, draftOwner, draftStore, finish, nextCommandId, record, runAttempt]);
+
+  if (attempt || completed) return <View style={{ padding: spacing.lg, gap: spacing.md }}>
+    <AppText>{completed ? 'Your reminder change was saved.' : saving ? 'Saving reminder...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
+    {error ? <InlineError message={error.message} testID="reminder-error" /> : null}
+    {completed ? <PrimaryButton title="Done" onPress={finish} />
+      : <PrimaryButton title="Retry" onPress={() => { if (attemptRef.current) void runAttempt(attemptRef.current); }} disabled={saving || !scope.active} />}
+  </View>;
 
   return (
     <View style={{ flex: 1 }}>
@@ -388,6 +460,7 @@ function ReminderFormBody({
                 <ProductPressable
                   key={weekday.iso}
                   onPress={() => {
+                    if (!canEdit()) return;
                     setWeekdaysMask((mask) => toggleWeekday(mask, weekday.iso));
                     markDirty();
                   }}
@@ -424,6 +497,7 @@ function ReminderFormBody({
               style={{ width: 110, height: 36 }}
               accentColor={colors.accent}
               onValueChange={(_event, date) => {
+                if (!canEdit()) return;
                 setMinuteOfDay(date.getHours() * 60 + date.getMinutes());
                 markDirty();
               }}
@@ -438,6 +512,7 @@ function ReminderFormBody({
           placeholderTextColor={semanticColor('secondaryLabel', scheme) as string}
           value={message}
           onChangeText={(text) => {
+            if (!canEdit()) return;
             setMessage(text);
             markDirty();
           }}

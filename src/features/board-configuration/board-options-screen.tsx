@@ -1,5 +1,5 @@
 import { Slider } from '@expo/ui/community/slider';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useNavigation } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Switch, View, ScrollView } from 'react-native';
 
@@ -10,6 +10,8 @@ import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct } from '../product-store';
+import { useProductRouter } from '../sample/navigation';
+import { useProductActivity } from '../product-store/use-product-activity';
 import { draftStoreFor, useDraftState, type BoardDraft } from './draft-store';
 
 function formatShift(minute: number): string {
@@ -24,15 +26,17 @@ function formatShift(minute: number): string {
 // expectedBoardId is the route's authority: null for the create flow's
 // draft segment, the parsed id for an edit flow
 export function BoardOptionsScreen({ expectedBoardId }: { expectedBoardId: BoardId | null }) {
-  const router = useRouter();
+  const router = useProductRouter();
+  const navigation = useNavigation();
   const scheme = useScheme();
-  const { core } = useProduct();
+  const { core, scope } = useProduct();
+  const activity = useProductActivity(scope);
   const store = draftStoreFor(core);
   const { draft, owner } = useDraftState(core);
   const [origin] = useState(() => ({ store, owner }));
   const updateDraft = useCallback((patch: Partial<BoardDraft>) => {
-    if (origin.store.owns(origin.owner, expectedBoardId)) origin.store.update(origin.owner, patch);
-  }, [expectedBoardId, origin]);
+    if (activity.active && navigation.isFocused() && origin.store.owns(origin.owner, expectedBoardId)) origin.store.update(origin.owner, patch);
+  }, [activity, expectedBoardId, navigation, origin]);
   const step = boardLimits.startOfDayMinuteStep;
   const max = boardLimits.startOfDayMinuteMax;
 
@@ -60,7 +64,7 @@ export function BoardOptionsScreen({ expectedBoardId }: { expectedBoardId: Board
           headerLeft: () => (
             <ProductPressable
               onPress={() => {
-                if (origin.store.owns(origin.owner, expectedBoardId)) router.back();
+                if (activity.active && origin.store.owns(origin.owner, expectedBoardId)) router.back();
               }}
               label="Back to board"
               testID="options-back"

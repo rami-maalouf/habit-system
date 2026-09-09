@@ -3371,3 +3371,14 @@ T19/Checkpoint C external gates remain open.
     reviewed both complete files, reran the original allocation-failure
     probe successfully and verified both final hashes. No core or native
     contract changes were required.
+18. Reminder create/update/delete now use captured effects and join accepted
+    native permission and command work. Sample reminder routes stop before
+    queries or native inspection. Exact uncertain receipts and completed
+    results remain accessible through resumed row changes; unanswered human
+    decisions are outside the operation join. Reminder and options callbacks
+    also retain their per-focus and draft owners. Independent review first
+    reproduced stale confirmations and options changes after same-scope
+    return, then verified both original probes pass with the correction.
+    Forty-six tests across four suites pass independently; owned lint and
+    composed typecheck pass. All four final hashes match. Native sheets and
+    the complete route graph remain subsequent integration gates.
