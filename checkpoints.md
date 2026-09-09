@@ -2445,3 +2445,23 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     recurrence of the known animation warning, repeated across native/JS categories.
     It remains an explicit T24 diagnostic investigation; this UI proof does not claim
     a warning-free native process or completed remote admission.
+16. Guarded hashing and scoped accepted-evidence reads are complete. The hashing
+    adapter captures port methods/receiver, checks digest type/length, owns returned
+    bytes and preserves provider causes outside semantic candidate classification.
+    The reader returns bounded binary-ordered pages and explicit typed absences,
+    including known wrong-role rows and historical evidence without live parents.
+    It discovers exact-date root, former-member and proof relationships without
+    hydrating unrelated payloads or performing accepted writes. Selected malformed
+    storage fails as operation integrity, never candidate quarantine.
+17. Independent review reproduced repeated JSON work across requested roots, members
+    and retained proofs. Real SQLite regressions now prove unique-date/member-driven
+    lookup: 100 same-date roots or reverse scopes require 500 policy/array reads
+    instead of 50,000; 100 proofs open their arrays 100 rather than 300 times in the
+    directed case. Binary paging, two-date pair isolation, a 1,201-selector indexed
+    query, async input mutation and one caller-owned WAL snapshot are also covered.
+18. This four-file increment passes 127 suites / 1,905 tests on main, global coverage
+    97.43/95.98/96.01/98.03, with all 84 core files at 100 percent and independent
+    approval. Native sources and visible behavior are unchanged from the preceding
+    passing gates and signed UI proof. Red/green logs and review are retained under
+    `.artifacts/t19/evidence-reads/`. These uncalled prerequisites do not yet perform
+    economic admission; exact-scope planning and transactional composition are next.
