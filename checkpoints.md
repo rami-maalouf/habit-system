@@ -3277,3 +3277,16 @@ T19/Checkpoint C external gates remain open.
    reviewed both full files, installed native contracts and corrected bounds,
    and verified their final hashes. Core/calendar/schema and dependencies
    are unchanged; actual native picker interaction remains the final QA.
+9. Real runtime suspension now joins startup, accepted UI work, native
+   inspections, sync, widget publication and listener cleanup before sample
+   creation. Existing real scenes and their stable core remain mounted;
+   queries retain their values while paused and refresh under a new scope
+   on resume. A cold sample entry stops before real-runtime module evaluation.
+   Failed native cleanup keeps the host retired until remount, including on
+   repeated entry attempts. The focused runtime candidate passes 103 tests
+   across nineteen suites with lint/typecheck clean. Independent review
+   reproduces and fixes a notification request lost at runner finalization;
+   the corrected pass and disposal control bring its focused rerun to 23
+   tests across three suites. Root reviewed all twelve manifest files and
+   verified their hashes. Routes and native acceptance remain subsequent
+   increments; the real database is never closed by this host.

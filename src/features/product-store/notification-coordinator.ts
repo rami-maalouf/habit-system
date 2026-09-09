@@ -9,7 +9,7 @@ import type { ProductCore } from '@/platform/database/product-core';
 export class NotificationCoordinator {
   private disposed = false;
   private revision = 0;
-  private running = false;
+  private running: Promise<void> | null = null;
   private requested = false;
   private remindersRequested = false;
   private countDirty = false;
@@ -27,7 +27,11 @@ export class NotificationCoordinator {
     this.requested = true;
     this.remindersRequested ||= reminders;
     this.clearDeadline();
-    if (!this.running) void this.run();
+    if (!this.running) this.running = this.run().finally(() => {
+      this.running = null;
+      // a publication can queue a request after the loop's final check.
+      if (this.requested) this.request(false);
+    });
   }
 
   setActive(active: boolean) {
@@ -38,11 +42,12 @@ export class NotificationCoordinator {
     this.watchClock();
   }
 
-  dispose() {
+  dispose(): Promise<void> {
     this.disposed = true;
     this.revision += 1;
     this.clearDeadline();
     if (this.clockTimer !== null) clearInterval(this.clockTimer);
+    return this.running ?? Promise.resolve();
   }
 
   private clearDeadline() {
@@ -68,34 +73,31 @@ export class NotificationCoordinator {
   }
 
   private async run() {
-    this.running = true;
-    try {
-      while (this.requested && this.active && !this.disposed) {
-        this.requested = false;
-        const revision = this.revision;
-        const isCurrent = () => !this.disposed && this.active && this.revision === revision;
-        const reminders = this.remindersRequested;
-        this.remindersRequested = false;
-        if (reminders) {
-          const result = await reconcileReminderSchedules({ ...this.core, scheduler: this.reminders },
-            { commandId: this.core.ids.uuid() as CommandId }).catch(() => null);
-          if (isCurrent() && result?.ok && result.value.updated > 0) this.remindersChanged();
-        }
-        if (!isCurrent()) continue;
-        const result = await reconcileMissAlerts({ db: this.core.db, clock: this.core.clock, scheduler: this.miss },
-          { isCurrent, isForeground: () => this.active && !this.disposed });
-        this.countDirty ||= result.localChanged || result.refreshPendingCount;
-        if (!isCurrent()) continue;
-        if (this.countDirty) { this.countDirty = false; this.refreshCount(); }
-        if (result.nextRunAtUtcMs !== null) {
-          const delay = result.nextRunAtUtcMs - this.core.clock.nowUtcMs();
-          if (delay > 0) this.timer = setTimeout(() => {
-            // native expiry changes the count even when no delivery callback arrives.
-            this.countDirty = true;
-            this.request(false);
-          }, delay);
-        }
+    while (this.requested && this.active && !this.disposed) {
+      this.requested = false;
+      const revision = this.revision;
+      const isCurrent = () => !this.disposed && this.active && this.revision === revision;
+      const reminders = this.remindersRequested;
+      this.remindersRequested = false;
+      if (reminders) {
+        const result = await reconcileReminderSchedules({ ...this.core, scheduler: this.reminders },
+          { commandId: this.core.ids.uuid() as CommandId }).catch(() => null);
+        if (isCurrent() && result?.ok && result.value.updated > 0) this.remindersChanged();
       }
-    } finally { this.running = false; }
+      if (!isCurrent()) continue;
+      const result = await reconcileMissAlerts({ db: this.core.db, clock: this.core.clock, scheduler: this.miss },
+        { isCurrent, isForeground: () => this.active && !this.disposed });
+      this.countDirty ||= result.localChanged || result.refreshPendingCount;
+      if (!isCurrent()) continue;
+      if (this.countDirty) { this.countDirty = false; this.refreshCount(); }
+      if (result.nextRunAtUtcMs !== null) {
+        const delay = result.nextRunAtUtcMs - this.core.clock.nowUtcMs();
+        if (delay > 0) this.timer = setTimeout(() => {
+          // native expiry changes the count even when no delivery callback arrives.
+          this.countDirty = true;
+          this.request(false);
+        }, delay);
+      }
+    }
   }
 }

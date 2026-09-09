@@ -49,9 +49,10 @@ export class SyncCoordinator {
     void this.request();
   }
 
-  dispose(): void {
+  dispose(): Promise<void> {
     this.disposed = true;
     this.pause();
+    return this.active ?? Promise.resolve();
   }
 
   private clearRetry(): void {

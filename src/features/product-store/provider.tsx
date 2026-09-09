@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { View } from 'react-native';
 
 import type { CommandId } from '@/core/domain/ids';
 import type { MissAlertScheduler } from '@/core/domain/ports';
@@ -7,6 +8,7 @@ import type { ProductCore } from '@/platform/database/product-core';
 
 import { ProductContext, type ProductContextValue } from './context';
 import type { OperationOwner } from './operation-scope';
+import { useSampleSnapshot } from '../sample/session-context';
 
 export { useProduct, useProductQuery } from './context';
 export type { QueryState } from './context';
@@ -28,6 +30,15 @@ export type SampleProductProviderProps = {
 
 export function ProductProvider(props: RealProductProviderProps | SampleProductProviderProps) {
   if ('owner' in props) return <SampleProductProvider {...props} />;
+  return <RealProviderBoundary {...props} />;
+}
+
+function RealProviderBoundary(props: RealProductProviderProps) {
+  const snapshot = useSampleSnapshot();
+  const [mounted, setMounted] = useState(snapshot.status === 'idle');
+  // covered real scenes retain their provider; cold sample entry opens none.
+  if (!mounted && snapshot.status === 'idle') setMounted(true);
+  if (!mounted) return <View testID="product-suspended" />;
   // evaluate native constructors only when a real runtime is requested.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { RealProductProvider } = require('./real-runtime') as typeof import('./real-runtime');

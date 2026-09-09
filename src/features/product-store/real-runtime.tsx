@@ -28,9 +28,11 @@ import { supportsAlternateIcons, setAlternateIcon } from '@/platform/alternate-i
 
 import { INITIAL_SYNC, SyncCoordinator } from './sync-coordinator';
 import { NotificationCoordinator } from './notification-coordinator';
-import { ProductContext, type ProductContextValue } from './context';
+import { ProductContext, type FeatureEffects, type ProductContextValue } from './context';
 
-import { createOperationOwner } from './operation-scope';
+import { createOperationOwner, type OperationOwner } from './operation-scope';
+import { RealRuntimeHost } from './real-runtime-host';
+import { useOptionalSampleSession } from '../sample/session-context';
 import type { RealProductProviderProps } from './provider';
 
 const noSubscription = () => () => {};
@@ -38,29 +40,44 @@ const noScope = () => null;
 
 type ProviderState =
   | { status: 'loading' }
-  | { status: 'ready'; core: ProductCore }
+  | { status: 'ready'; core: ProductCore; owner: OperationOwner }
   | { status: 'error'; error: DomainError };
 
 export function RealProductProvider({ children, coreOverride, syncTransportOverride, missAlertSchedulerOverride }: RealProductProviderProps) {
-  const [state, setState] = useState<ProviderState>(
-    coreOverride ? { status: 'ready', core: coreOverride } : { status: 'loading' },
-  );
-  // a runtime keeps its initial feature ports; later test-port replacement
-  // only retires and replaces the notification coordinator/count observer.
-  const owner = useMemo(() => state.status === 'ready' ? createOperationOwner(state.core, {
+  const session = useOptionalSampleSession();
+  const [host] = useState(() => new RealRuntimeHost());
+  const revision = useSyncExternalStore(host.subscribe, host.getSnapshot, host.getSnapshot);
+  // feature ports are fixed for this runtime; a replaced test scheduler only
+  // changes the notification coordinator and count observer.
+  const [effects] = useState<FeatureEffects>(() => ({
     kind: 'real', reminders: reminderScheduler, missAlerts: missAlertSchedulerOverride ?? missAlertScheduler,
     cloudKitAvailable, pickImportFile, saveAndShareExport, supportsAlternateIcons, setAlternateIcon,
-  }) : null, [state]); // eslint-disable-line react-hooks/exhaustive-deps -- initial runtime composition
+  }));
+  const ready = useCallback((core: ProductCore): Extract<ProviderState, { status: 'ready' }> => {
+    const owner = createOperationOwner(core, effects);
+    return { status: 'ready', core, owner };
+  }, [effects]);
+  const [state, setState] = useState<ProviderState>(() => coreOverride ? ready(coreOverride) : { status: 'loading' });
+  const owner = state.status === 'ready' ? state.owner : null;
   const scope = useSyncExternalStore(owner?.subscribe ?? noSubscription, owner?.getScope ?? noScope,
     owner?.getScope ?? noScope);
+  useEffect(() => { if (owner) host.attach(owner); }, [host, owner]);
+
   useEffect(() => {
-    if (!owner) return;
     let current = true;
-    // effect replay reuses the owner; resume only after its prior work drains.
-    if (!owner.getScope().active) void owner.suspend().then(() => { if (current) owner.resume(); });
-    return () => { current = false; void owner.suspend(); };
-  }, [owner]);
-  useEffect(() => installNotificationHandler(), []);
+    const unregister = session?.registerRealHost(host);
+    // strict-mode replay reuses the host and resumes only after its old work joins.
+    if (!host.isCurrent(host.getSnapshot()) && (!session || session.getSnapshot().status === 'idle')) {
+      void host.suspend().then(() => {
+        if (current && (!session || session.getSnapshot().status === 'idle')) host.resume();
+      }).catch(() => {});
+    }
+    return () => { current = false; unregister?.(); void host.suspend().catch(() => {}); };
+  }, [host, session]);
+  useEffect(() => {
+    if (!host.isCurrent(revision)) return;
+    return host.retain(installNotificationHandler());
+  }, [host, revision]);
   const [version, setVersion] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [sync, setSync] = useState(INITIAL_SYNC);
@@ -76,139 +93,131 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
   const coordinatorRef = useRef<SyncCoordinator | null>(null);
 
   useEffect(() => {
-    if (state.status !== 'ready') return;
+    if (state.status !== 'ready' || !host.isCurrent(revision)) return;
     const coordinator = new SyncCoordinator(state.core, syncTransportOverride ?? cloudKitTransport, setSync, refreshQueries);
     coordinatorRef.current = coordinator;
     void coordinator.request();
-    return () => {
-      coordinator.dispose();
+    return host.retain(() => {
       coordinatorRef.current = null;
-    };
-  }, [state, refreshQueries, syncTransportOverride]);
+      return coordinator.dispose();
+    });
+  }, [state, host, revision, refreshQueries, syncTransportOverride]);
 
-  const syncNow = useCallback(() => { void coordinatorRef.current?.request(); }, []);
-  const pauseSync = useCallback(() => { coordinatorRef.current?.pause(); }, []);
-  const resumeSync = useCallback(() => { coordinatorRef.current?.resume(); }, []);
+  const syncNow = useCallback(() => { if (scope?.isCurrent()) void coordinatorRef.current?.request(); }, [scope]);
+  const pauseSync = useCallback(() => { if (scope?.isCurrent()) coordinatorRef.current?.pause(); }, [scope]);
+  const resumeSync = useCallback(() => { if (scope?.isCurrent()) coordinatorRef.current?.resume(); }, [scope]);
 
+  const opening = useRef<{ attempt: number; promise: Promise<ProviderState> } | null>(null);
   useEffect(() => {
-    if (coreOverride) {
-      return;
-    }
+    if (coreOverride) return;
     let cancelled = false;
-    getProductCore().then(
-      (result) => {
-        if (cancelled) {
-          return;
+    if (opening.current?.attempt !== attempt) {
+      if (!host.isCurrent(revision)) return;
+      opening.current = { attempt, promise: host.track(async () => {
+        try {
+          const result = await getProductCore();
+          if (!result.ok) return { status: 'error', error: result.error };
+          const opened = ready(result.value);
+          host.attach(opened.owner);
+          return opened;
+        } catch (cause) {
+          return { status: 'error', error: { code: 'database', retryable: true,
+            message: cause instanceof Error ? cause.message : String(cause) } };
         }
-        if (result.ok) {
-          setState({ status: 'ready', core: result.value });
-        } else {
-          setState({ status: 'error', error: result.error });
-        }
-      },
-      (cause: unknown) => {
-        if (!cancelled) {
-          setState({
-            status: 'error',
-            error: {
-              code: 'database',
-              message: cause instanceof Error ? cause.message : String(cause),
-              retryable: true,
-            },
-          });
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [coreOverride, attempt]);
+      }) };
+    }
+    void opening.current.promise.then(result => { if (!cancelled) setState(result); });
+    return () => { cancelled = true; };
+  }, [coreOverride, attempt, host, ready, revision]);
 
   const invalidate = useCallback(() => {
+    if (!scope?.isCurrent()) return;
     refreshQueries();
     syncNow();
-  }, [refreshQueries, syncNow]);
+  }, [scope, refreshQueries, syncNow]);
 
   useEffect(() => {
-    if (state.status !== 'ready') return;
+    if (state.status !== 'ready' || !host.isCurrent(revision)) return;
+    active.current = AppState.currentState === 'active';
     const coordinator = new NotificationCoordinator(state.core, missScheduler, reminderScheduler,
       active.current, () => setMissAlertVersion(value => value + 1), invalidate);
     notificationsRef.current = coordinator;
-    return () => { coordinator.dispose(); notificationsRef.current = null; };
-  }, [state, missScheduler, invalidate]);
+    return host.retain(() => { notificationsRef.current = null; return coordinator.dispose(); });
+  }, [state, host, revision, missScheduler, invalidate]);
 
   // miss-only progress has its own observer revision and cannot trigger this effect.
-  useEffect(() => { notificationsRef.current?.request(); }, [state, version, missScheduler]);
+  useEffect(() => { notificationsRef.current?.request(); }, [state, version, missScheduler, revision]);
 
   useEffect(() => {
-    let current = true;
+    if (!host.isCurrent(revision)) return;
     const remove = addNotificationDeliveryListener(() => {
-      if (current) setMissAlertVersion(value => value + 1);
+      if (host.isCurrent(revision)) setMissAlertVersion(value => value + 1);
     });
-    return () => { current = false; remove(); };
-  }, []);
+    return host.retain(remove);
+  }, [host, revision]);
 
-  // native clock changes invalidate queries and rearm the day-boundary timer.
-  // the existing version effect performs one reconciliation for the event.
-  useEffect(() => addSignificantTimeChangeListener(invalidate), [invalidate]);
+  useEffect(() => {
+    if (!host.isCurrent(revision)) return;
+    return host.retain(addSignificantTimeChangeListener(invalidate));
+  }, [host, revision, invalidate]);
 
   // cache refresh, publication, and foreground expiry share one snapshot.
   // generation changes invalidate late results before their effects can commit.
   useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
+    if (state.status !== 'ready' || !host.isCurrent(revision)) return;
     const core = state.core;
     const generation = projectionGeneration.current;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const isCurrent = () => !cancelled && generation === projectionGeneration.current;
+    const isCurrent = () => !cancelled && host.isCurrent(revision) && generation === projectionGeneration.current;
     const retry = () => {
       // retain the stale timeline and retry at a bounded rate while foregrounded.
       if (isCurrent()) timer = setTimeout(invalidate, 30_000);
     };
-    void refreshWidgetProjection(core).then((result) => {
+    void host.track(async () => {
+      const result = await refreshWidgetProjection(core);
       if (!isCurrent()) return;
       if (!result.ok) { retry(); return; }
       const delay = result.value.expiresAtUtc - core.clock.nowUtcMs();
-      if (delay > 0) void refreshWidgets(result.value);
-      timer = setTimeout(invalidate, Math.max(0, delay));
+      if (delay > 0) await refreshWidgets(result.value);
+      if (isCurrent()) timer = setTimeout(invalidate, Math.max(0, delay));
     }).catch(retry);
-    return () => {
+    return host.retain(() => {
       cancelled = true;
       if (timer !== null) {
         clearTimeout(timer);
       }
-    };
-  }, [invalidate, state, version]);
+    });
+  }, [host, revision, invalidate, state, version]);
 
   // out-of-process writers (widgets, automations, sync) mutate the same
   // database; returning to the foreground refreshes every mounted query.
   // the in-process database-change hook lands with the widget stage.
   useEffect(() => {
+    if (!host.isCurrent(revision)) return;
     const subscription = AppState.addEventListener('change', (appState) => {
+      if (!host.isCurrent(revision)) return;
       active.current = appState === 'active';
       notificationsRef.current?.setActive(active.current);
       if (appState === 'active') {
         invalidate();
       }
     });
-    return () => subscription?.remove?.();
-  }, [invalidate]);
+    return host.retain(() => subscription?.remove?.());
+  }, [host, revision, invalidate]);
 
   // daily events open explicit fresh-state actions; count events retain
   // their existing quick-create behavior and form fallback.
   useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
+    if (state.status !== 'ready' || !host.isCurrent(revision)) return;
     const core = state.core;
     let cancelled = false;
     const remove = addWidgetQuickActionListener((value) => {
       const boardId = parseBoardId(value);
-      if (!boardId) return;
-      void getBoard(core, boardId).then(async (board) => {
-        if (cancelled) return;
+      if (!boardId || !host.isCurrent(revision)) return;
+      void host.track(async () => {
+        const board = await getBoard(core, boardId);
+        if (cancelled || !host.isCurrent(revision)) return;
         if (!board.ok || board.value.kind === 'daily') {
           router.navigate(`/boards/${boardId}/quick-action`);
           return;
@@ -216,38 +225,36 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
         const result = await createCheckIn(core, {
           commandId: core.ids.uuid() as CommandId, boardId, source: 'widget',
         });
-        if (cancelled) return;
+        if (cancelled || !host.isCurrent(revision)) return;
         if (result.ok) {
           invalidate();
         } else {
           router.navigate(`/boards/${boardId}/check-ins/new?source=widget`);
         }
-      });
+      }).catch(() => {});
     });
-    return () => { cancelled = true; remove(); };
-  }, [invalidate, state]);
+    return host.retain(() => { cancelled = true; remove(); });
+  }, [host, revision, invalidate, state]);
 
+  const initialResponseRead = useRef(false);
   // a tapped reminder deep-links to its board's add check-in sheet, both
   // while running and when the tap cold-started the app
   useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
+    if (state.status !== 'ready' || !host.isCurrent(revision)) return;
     const open = ({ boardId, kind }: { boardId: string; kind: 'board' | 'new-check' }) => {
-      if (!cancelled) router.push(kind === 'board' ? `/boards/${boardId}` : `/boards/${boardId}/check-ins/new`);
+      if (!cancelled && host.isCurrent(revision)) router.push(kind === 'board' ? `/boards/${boardId}` : `/boards/${boardId}/check-ins/new`);
     };
     let cancelled = false;
-    void getInitialNotificationDestination().then((destination) => {
-      if (destination && !cancelled) {
-        open(destination);
-      }
-    }).catch(() => {});
+    if (!initialResponseRead.current) {
+      initialResponseRead.current = true;
+      void host.track(async () => {
+        const destination = await getInitialNotificationDestination();
+        if (destination) open(destination);
+      }).catch(() => {});
+    }
     const remove = addNotificationDestinationListener(open);
-    return () => {
-      cancelled = true;
-      remove();
-    };
-  }, [state.status]);
+    return host.retain(() => { cancelled = true; remove(); });
+  }, [state.status, host, revision]);
 
   const value = useMemo<ProductContextValue | null>(() => {
     if (state.status !== 'ready' || !owner || !scope) {
@@ -259,7 +266,10 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
       closeSample: null,
       version,
       invalidate,
-      nextCommandId: () => state.core.ids.uuid() as CommandId,
+      nextCommandId: () => {
+        if (!scope.isCurrent()) throw new Error('The product scope is inactive.');
+        return state.core.ids.uuid() as CommandId;
+      },
       sync,
       syncNow,
       pauseSync,
@@ -287,6 +297,7 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
         <AppText
           accessibilityRole="button"
           onPress={() => {
+            if (!host.isCurrent(revision)) return;
             setState({ status: 'loading' });
             setAttempt((current) => current + 1);
           }}

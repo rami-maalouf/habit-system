@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 import type { CommandId } from '@/core/domain/ids';
 import type { MissAlertScheduler, ReminderScheduler } from '@/core/domain/ports';
@@ -68,20 +68,22 @@ export function useProductQuery<Value>(
   run: (core: ProductCore) => Promise<DomainResult<Value>>,
   dependencies: readonly unknown[],
 ): QueryState<Value> & { refresh: () => void } {
-  const { core, version, invalidate } = useProduct();
+  const { core, scope, version, invalidate } = useProduct();
   const [state, setState] = useState<QueryState<Value>>({ status: 'loading' });
 
   useEffect(() => {
+    if (!scope.isCurrent()) return;
     let cancelled = false;
-    run(core).then(
-      (result) => {
-        if (cancelled) {
+    scope.run(({ core: accepted }) => run(accepted)).then(
+      (dispatch) => {
+        if (cancelled || !scope.isCurrent() || !dispatch.started) {
           return;
         }
+        const result = dispatch.value;
         setState(result.ok ? { status: 'ready', value: result.value } : { status: 'error', error: result.error });
       },
       (cause: unknown) => {
-        if (!cancelled) {
+        if (!cancelled && scope.isCurrent()) {
           setState({
             status: 'error',
             error: {
@@ -97,7 +99,8 @@ export function useProductQuery<Value>(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run is inline; identity tracked via dependencies
-  }, [core, version, ...dependencies]);
+  }, [core, scope, version, ...dependencies]);
 
-  return { ...state, refresh: invalidate };
+  const refresh = useCallback(() => { if (scope.isCurrent()) invalidate(); }, [scope, invalidate]);
+  return { ...state, refresh };
 }
