@@ -3175,3 +3175,28 @@ remain open.
     verifier: 306 checks pass. The measured startup cost is retained as a
     performance follow-up; no faster result or sample-screen acceptance
     is inferred from the host replay.
+
+### T23 - isolated sample navigation and effects (in progress)
+
+Status: implementation is proceeding in reviewed increments. No complete
+sample UI, native navigation or real-provider suspension acceptance is claimed.
+T19/Checkpoint C external gates remain open.
+
+1. The first increment separates import-safe context/hooks and introduces
+   a stable operation owner. A captured scope never becomes current again
+   after suspension/resumption. Whole accepted operations retain their raw
+   execution core through completion, while new work is refused. Suspension
+   joins every accepted promise, including failures, before resumption.
+   The stable UI core preserves per-core stores and cannot close its runtime
+   database. Existing provider behavior and both query-hook bodies are
+   unchanged; full public-index import isolation remains the next increment.
+2. Tests first fail on absent modules. The focused suite passes 43 tests across
+   seven suites with context/authority at 100 percent on all four metrics.
+   Actual SQLite tests cover stale callbacks, rollback, acquired transactions
+   and a public reminder operation held across its system permission prompt.
+   The accepted reminder completes its native request, rows and receipt before
+   the join resolves. Import traps reject real-effect module evaluation.
+   Owned lint and composed typecheck pass. Root independently reviews all six
+   files, tests and evidence and verifies their exact manifest. Native and
+   domain executors are unchanged in this increment. Evidence is retained
+   under `.artifacts/t23/implementation/`.

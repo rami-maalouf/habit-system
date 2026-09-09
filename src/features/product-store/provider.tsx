@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AppState, View } from 'react-native';
 
@@ -10,7 +10,7 @@ import { parseBoardId } from '@/core/domain/ids';
 import { getBoard } from '@/core/domain/queries';
 import { refreshWidgetProjection } from '@/core/domain/widget-projection';
 import type { MissAlertScheduler } from '@/core/domain/ports';
-import type { DomainError, DomainResult } from '@/core/domain/result';
+import type { DomainError } from '@/core/domain/result';
 import type { ProductCore } from '@/platform/database/product-core';
 import { getProductCore } from '@/platform/database/product-core';
 import {
@@ -26,23 +26,12 @@ import { spacing } from '@/theme';
 import { cloudKitTransport } from '@/platform/sync';
 import type { SyncTransport, WireSyncRecord } from '@/core/sync/transport';
 
-import { INITIAL_SYNC, SyncCoordinator, type SyncSnapshot } from './sync-coordinator';
+import { INITIAL_SYNC, SyncCoordinator } from './sync-coordinator';
 import { NotificationCoordinator } from './notification-coordinator';
+import { ProductContext, type ProductContextValue } from './context';
 
-type ProductContextValue = {
-  core: ProductCore;
-  version: number;
-  invalidate: () => void;
-  nextCommandId: () => CommandId;
-  sync: SyncSnapshot;
-  syncNow: () => void;
-  pauseSync: () => void;
-  resumeSync: () => void;
-  missAlertScheduler: MissAlertScheduler;
-  missAlertVersion: number;
-};
-
-const ProductContext = createContext<ProductContextValue | null>(null);
+export { useProduct, useProductQuery } from './context';
+export type { QueryState } from './context';
 
 type ProviderState =
   | { status: 'loading' }
@@ -298,56 +287,4 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride,
   }
 
   return <ProductContext.Provider value={value}>{children}</ProductContext.Provider>;
-}
-
-export function useProduct(): ProductContextValue {
-  const context = useContext(ProductContext);
-  if (!context) {
-    throw new Error('useProduct requires a ProductProvider');
-  }
-  return context;
-}
-
-export type QueryState<Value> =
-  | { status: 'loading' }
-  | { status: 'error'; error: DomainError }
-  | { status: 'ready'; value: Value };
-
-// re-runs the query whenever a command invalidates the store
-export function useProductQuery<Value>(
-  run: (core: ProductCore) => Promise<DomainResult<Value>>,
-  dependencies: readonly unknown[],
-): QueryState<Value> & { refresh: () => void } {
-  const { core, version, invalidate } = useProduct();
-  const [state, setState] = useState<QueryState<Value>>({ status: 'loading' });
-
-  useEffect(() => {
-    let cancelled = false;
-    run(core).then(
-      (result) => {
-        if (cancelled) {
-          return;
-        }
-        setState(result.ok ? { status: 'ready', value: result.value } : { status: 'error', error: result.error });
-      },
-      (cause: unknown) => {
-        if (!cancelled) {
-          setState({
-            status: 'error',
-            error: {
-              code: 'database',
-              message: cause instanceof Error ? cause.message : String(cause),
-              retryable: true,
-            },
-          });
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run is inline; identity tracked via dependencies
-  }, [core, version, ...dependencies]);
-
-  return { ...state, refresh: invalidate };
 }
