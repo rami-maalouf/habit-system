@@ -1,6 +1,6 @@
 # Tasks: Habit System
 
-Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T18, T20 and Checkpoint B are done. T19 local implementation is complete with actual two-target service acceptance and Checkpoint C still open. T21 is complete: storage/runtime integration, automated gates, the repaired native build and actual iOS simulator acceptance pass with independent review. Revised planning documents were pushed; implementation remains authorized through T24.
+Spec: `SPEC-habit-system.md`. Plan: `tasks/plan.md`. Status: approved by Rami on 2026-09-08, including the pre-T2 amendments, same-day-only correction and archive-date exclusion. T1 through T18, T20 and Checkpoint B are done. T19 local implementation is complete with actual two-target service acceptance and Checkpoint C still open. T21 is complete: storage/runtime integration, automated gates, the repaired native build and actual iOS simulator acceptance pass with independent review. T22 is complete: the deterministic sample and memory factory pass automated gates, independent review and actual iOS correctness/isolation/disposal checks. Measured native startup is about 50 seconds and remains a performance follow-up. Revised planning documents were pushed; implementation remains authorized through T24.
 
 Definition of done: tests first, `bun run validate` exit 0, every core file at 100 percent, native checks green, simulator evidence for visible changes, independent review by a non-author, one `checkpoints.md` entry per task, and lowercase conventional commits without co-author lines. Bounded substeps may have separate commits, but shared contracts must pass both executors in every commit. Intermediate builds remain development-only until T19/T20 compatibility gates pass.
 
@@ -197,7 +197,8 @@ Definition of done: tests first, `bun run validate` exit 0, every core file at 1
   - Ownership scope: schema/Swift gate, miss-alert repository/domain, notification adapter/provider/settings, tests and simulator evidence.
   - Depends on: T20.
 
-- [ ] **T22: Deterministic sample and in-memory factory**
+- [x] **T22: Deterministic sample and in-memory factory**
+  - Status: done. The public-command recipe and single-connection memory factory pass independent review, 2,766 aggregate tests with all 105 core files at 100 percent, and 10 plugin/195 Swift checks. Actual iOS factories match all 19 table hashes, isolate edits and close once; the relocated evidence verifier passes 306 checks. Startup takes 51.361/50.221 seconds; performance remains a measured follow-up.
   - Acceptance: fixed-seed generator supplies the spec's habits, a four-habit same-day stack with preset root, Count history, three years of rhythms/gaps, immutable action evidence, append-only earnings/reversals/restorations, four rewards and claims. The in-memory factory applies all migrations through schema 12. Data is seeded only into the sample database.
   - Verify: determinism, counts, calendar ranges, valid graph/ledger relationships, final schema, and no real database opens.
   - Ownership scope: sample generator, platform in-memory factory, domain/platform tests.

@@ -3079,3 +3079,99 @@ Checkpoint C remain open.
     event occurred. The invalid initial QA observer trace is separately excluded.
     Framework/build diagnostics remain bounded T24 follow-up; this is not a
     warning-free claim.
+
+
+### T22 - deterministic sample and in-memory factory (2026-09-09)
+
+Status: complete. Independent source review, full automated/native gates and
+actual iOS correctness, memory isolation and disposal acceptance pass.
+T23 sample navigation/effect isolation and the external T19/Checkpoint C gates
+remain open.
+
+1. One fresh sample runtime supplies a continuing deterministic ID stream and
+   a private clock fixed at Toronto noon on September 9, 2026. Seed 22092026
+   drives omissions across September 10, 2023 through September 9, 2026.
+   Eight active habits include seven Daily and one Count; four required earning
+   members form one same-date After-wake chain. Weekday rhythms and three longer
+   breaks span all seasons and leap day. Count history records 25/45-minute
+   sessions, including four checks against a cap of three.
+2. The generator uses existing public board/check/remove/reward/claim commands
+   in chronological order, with no raw seed, baseline fabrication, outer nested
+   transaction or scheduler. All board policies and four rewards precede checks.
+   Date labels resolve independently in Toronto; all recipe events occur after
+   overnight DST transitions. Future-of-present checks are omitted and the clock
+   returns to fixed noon on success or failure. A failed command stops population.
+3. Actual leap-day completion, removal and recheck retain five check awards,
+   two bonus awards and two reversals, net five. Twelve funded claims total 540.
+   The final sample has 6,040 check payloads, 6,045 actions, 6,570 ledger rows,
+   6,065 receipts and 18,676 outbox rows. Public totals are earned 6,556, spent
+   542 and balance 6,014; spent includes the two reversal debits.
+4. Root independently groups effective checks by stored date and cap, counts
+   dates with all four required members, and subtracts actual funded claims.
+   Its 6,038 net check coins plus 516 complete days minus 540 claims agrees with
+   the ledger and public balance. Every check's intended Toronto date/minute
+   passes an independent Intl check across all seasons; foreign keys hold and
+   alerts/inbox/deferred state stay empty. Two host replays retain identical
+   board/check/ledger digests, taking 5.326 and 5.510 seconds to populate. These
+   are host timings, not Expo bridge or sample-screen readiness measurements.
+5. The memory adapter opens exact `:memory:` with `useNewConnection: true` and
+   no directory. One native handle and one queue own all SQL and both transaction
+   methods; callback executors use that same handle directly. Failed BEGIN never
+   rolls back; successful rollback permits later work. Failed rollback poisons
+   both already queued and new SQL. Close stops new admission immediately,
+   drains accepted work and retains one native attempt/promise even after error.
+6. The factory allocates a new runtime/handle every call, applies all unchanged
+   migrations through schema 12, populates once and returns the same clock/IDs
+   for later commands. ProductCore is a type-only import. No real opener, file
+   fallback, successful-core cache or effect provider is imported. Failure
+   attempts disposal once and preserves the original result/cause; a rejected
+   native close is not represented as successful disposal.
+7. Tests first fail on absent modules, then on incomplete board/ledger/range/
+   claim behavior. Actual SQL failures verify atomic command rollback and seed
+   stop; unexpected port failure restores the fixed clock. Platform tests use
+   the actual adapter over an intentionally unqueued native SQLite fake and
+   forbid Expo's separate-connection transaction helpers. Two simultaneous full
+   factories and a fresh reopen match the literal 19-table canonical fixture;
+   only inherited migration `applied_at` is excluded. A public edit changes only
+   its own store, all twelve checksums match, and each native handle closes once.
+8. Independent root reviews approve the adapter, factory, generator and exact
+   fixture. Final validation passes 170 suites / 2,766 tests, with all 105 core
+   files at 100 percent on all four metrics; global coverage is
+   98.06/96.80/96.82/98.53. Lint/typecheck pass. Native checks pass 10 plugin /
+   195 Swift tests with no compiler diagnostics. A final one-byte comment-case
+   correction changes no executable source and passes focused lint. Exact six-
+   file freeze, reviews, first failures, gates and independent oracle are retained
+   under `.artifacts/t22/implementation/`. Actual iOS acceptance follows below.
+9. Actual Expo SQLite/Hermes acceptance uses the coherent signed T21 app on
+   owned simulator 529C7A7D-AF6C-48D7-B719-2E293EED7CB1. The production factory
+   loads through a verified module-only bundle without mounting sample UI.
+   Both full factories match all 19 literal table hashes. A public board edit
+   remains in A while fresh B retains the original recipe. Closing A twice
+   closes one native handle and leaves B usable; both reject later work.
+   The small rollback/queued-work probe and empty-memory control also pass.
+   Four distinct memory handles open and close once each, with zero Expo
+   transaction helpers and no real-store access during factory/edit intervals.
+10. Native development-runtime startup takes 51.361 seconds for A and 50.221
+    seconds for B with A retained. Startup performance remains a measured
+    usability limitation for follow-up. Each database has 15,564,800 bytes of
+    logical SQLite pages. Whole-app sampled RSS peaks are 691.31 and 747.81 MiB;
+    after closing/releasing references, RSS remains 767,776 KiB at 5/15 seconds.
+    These include the dev client, real Home, loaded modules and verification
+    allocations; no isolated heap, physical footprint or leak claim is made.
+11. All 22 QA wrappers restore by identity. Cold Home has the original boards,
+    zero coins and no sample data. The final stopped backup is SHA256
+    c148aa2da7e84d09859f4ccb1b1a2a66c3403590ddc4e76565eb348766085007.
+    Every prior row remains exact; normal and cold startup add only two
+    successful updated:0 reminder receipts. All 557 source paths, six frozen
+    files, 85 native inputs and eight installed images match; signing and
+    protected simulator/database/8081 checks pass. Owned resources stop and
+    the source freeze releases. Source-versus-copy SHM hashes are separately
+    recorded because making a logical backup updates the copied SHM index.
+    No Error/Fault occurs inside either factory interval; retained framework
+    and QA-observer diagnostics are disclosed in `.artifacts/t22/qa/REPORT.md`.
+    T23 navigation and real-provider suspension are not claimed by this test.
+12. Root independently reviews the actual native report and raw restoration,
+    disposal and cold-housekeeping evidence, then reruns the relocated
+    verifier: 306 checks pass. The measured startup cost is retained as a
+    performance follow-up; no faster result or sample-screen acceptance
+    is inferred from the host replay.

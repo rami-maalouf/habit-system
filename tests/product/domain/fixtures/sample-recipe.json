@@ -1,0 +1,349 @@
+{
+  "seed": 22092026,
+  "timeZoneId": "America/Toronto",
+  "presentUtcMs": 1788969600000,
+  "firstDate": "2023-09-10",
+  "lastDate": "2026-09-09",
+  "tableCounts": {
+    "boards": 8,
+    "check_ins": 6040,
+    "board_activity_periods": 8,
+    "habit_actions": 6045,
+    "coin_ledger": 6570,
+    "rewards": 4,
+    "app_settings": 1,
+    "mutation_outbox": 18676,
+    "command_receipts": 6065,
+    "widget_board_rows": 8,
+    "reminders": 0,
+    "reminder_schedule": 0,
+    "miss_alerts": 0,
+    "remote_fact_inbox": 0,
+    "sync_deferred": 0,
+    "sync_state": 1,
+    "sync_account_bindings": 0,
+    "schema_migrations": 12
+  },
+  "ledgerKinds": [
+    {
+      "kind": "check",
+      "delta": 1,
+      "count": 6039
+    },
+    {
+      "kind": "claim",
+      "delta": -120,
+      "count": 3
+    },
+    {
+      "kind": "claim",
+      "delta": -40,
+      "count": 3
+    },
+    {
+      "kind": "claim",
+      "delta": -15,
+      "count": 3
+    },
+    {
+      "kind": "claim",
+      "delta": -5,
+      "count": 3
+    },
+    {
+      "kind": "reversal",
+      "delta": -1,
+      "count": 2
+    },
+    {
+      "kind": "run_bonus",
+      "delta": 1,
+      "count": 517
+    }
+  ],
+  "boardIdentities": [
+    {
+      "id": "015118fa-0000-4000-8000-000000000003",
+      "title": "Stretch for a minute",
+      "kind": "daily",
+      "anchorKind": "preset",
+      "anchorBoardId": null,
+      "anchorPreset": "wake",
+      "requiredInStack": 1,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000006",
+      "title": "Drink a glass of water",
+      "kind": "daily",
+      "anchorKind": "board",
+      "anchorBoardId": "015118fa-0000-4000-8000-000000000003",
+      "anchorPreset": null,
+      "requiredInStack": 1,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000009",
+      "title": "Read a page",
+      "kind": "daily",
+      "anchorKind": "board",
+      "anchorBoardId": "015118fa-0000-4000-8000-000000000006",
+      "anchorPreset": null,
+      "requiredInStack": 1,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-00000000000c",
+      "title": "Plan the day",
+      "kind": "daily",
+      "anchorKind": "board",
+      "anchorBoardId": "015118fa-0000-4000-8000-000000000009",
+      "anchorPreset": null,
+      "requiredInStack": 1,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-00000000000f",
+      "title": "Take a walk",
+      "kind": "daily",
+      "anchorKind": null,
+      "anchorBoardId": null,
+      "anchorPreset": null,
+      "requiredInStack": 0,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000011",
+      "title": "Make something",
+      "kind": "daily",
+      "anchorKind": null,
+      "anchorBoardId": null,
+      "anchorPreset": null,
+      "requiredInStack": 0,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000013",
+      "title": "Wind down",
+      "kind": "daily",
+      "anchorKind": null,
+      "anchorBoardId": null,
+      "anchorPreset": null,
+      "requiredInStack": 0,
+      "coinCapPerDay": 1
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000015",
+      "title": "Focus sessions",
+      "kind": "count",
+      "anchorKind": null,
+      "anchorBoardId": null,
+      "anchorPreset": null,
+      "requiredInStack": 0,
+      "coinCapPerDay": 3
+    }
+  ],
+  "rewardRows": [
+    {
+      "id": "015118fa-0000-4000-8000-000000000017",
+      "title": "A favourite drink",
+      "cost_coins": 5
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000019",
+      "title": "An afternoon at a cafe",
+      "cost_coins": 15
+    },
+    {
+      "id": "015118fa-0000-4000-8000-00000000001b",
+      "title": "A cinema visit",
+      "cost_coins": 40
+    },
+    {
+      "id": "015118fa-0000-4000-8000-00000000001d",
+      "title": "A day trip",
+      "cost_coins": 120
+    }
+  ],
+  "claims": [
+    {
+      "id": "015118fa-0000-4000-8000-00000000061c",
+      "logicalDate": "2023-12-09",
+      "delta": -5,
+      "rewardId": "015118fa-0000-4000-8000-000000000017",
+      "rewardTitleSnapshot": "A favourite drink",
+      "createdAt": 1702166400000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000000c59",
+      "logicalDate": "2024-03-08",
+      "delta": -15,
+      "rewardId": "015118fa-0000-4000-8000-000000000019",
+      "rewardTitleSnapshot": "An afternoon at a cafe",
+      "createdAt": 1709942400000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000001228",
+      "logicalDate": "2024-06-06",
+      "delta": -40,
+      "rewardId": "015118fa-0000-4000-8000-00000000001b",
+      "rewardTitleSnapshot": "A cinema visit",
+      "createdAt": 1717714800000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000001764",
+      "logicalDate": "2024-09-04",
+      "delta": -120,
+      "rewardId": "015118fa-0000-4000-8000-00000000001d",
+      "rewardTitleSnapshot": "A day trip",
+      "createdAt": 1725490800000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000001d57",
+      "logicalDate": "2024-12-03",
+      "delta": -5,
+      "rewardId": "015118fa-0000-4000-8000-000000000017",
+      "rewardTitleSnapshot": "A favourite drink",
+      "createdAt": 1733270400000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-00000000235f",
+      "logicalDate": "2025-03-03",
+      "delta": -15,
+      "rewardId": "015118fa-0000-4000-8000-000000000019",
+      "rewardTitleSnapshot": "An afternoon at a cafe",
+      "createdAt": 1741046400000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-0000000028bf",
+      "logicalDate": "2025-06-01",
+      "delta": -40,
+      "rewardId": "015118fa-0000-4000-8000-00000000001b",
+      "rewardTitleSnapshot": "A cinema visit",
+      "createdAt": 1748818800000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000002ea9",
+      "logicalDate": "2025-08-30",
+      "delta": -120,
+      "rewardId": "015118fa-0000-4000-8000-00000000001d",
+      "rewardTitleSnapshot": "A day trip",
+      "createdAt": 1756594800000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-00000000349c",
+      "logicalDate": "2025-11-28",
+      "delta": -5,
+      "rewardId": "015118fa-0000-4000-8000-000000000017",
+      "rewardTitleSnapshot": "A favourite drink",
+      "createdAt": 1764374400000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-0000000039db",
+      "logicalDate": "2026-02-26",
+      "delta": -15,
+      "rewardId": "015118fa-0000-4000-8000-000000000019",
+      "rewardTitleSnapshot": "An afternoon at a cafe",
+      "createdAt": 1772150400000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-000000003fc2",
+      "logicalDate": "2026-05-27",
+      "delta": -40,
+      "rewardId": "015118fa-0000-4000-8000-00000000001b",
+      "rewardTitleSnapshot": "A cinema visit",
+      "createdAt": 1779922800000
+    },
+    {
+      "id": "015118fa-0000-4000-8000-0000000045f1",
+      "logicalDate": "2026-08-25",
+      "delta": -120,
+      "rewardId": "015118fa-0000-4000-8000-00000000001d",
+      "rewardTitleSnapshot": "A day trip",
+      "createdAt": 1787698800000
+    }
+  ],
+  "totals": {
+    "earned": 6556,
+    "spent": 542,
+    "balance": 6014
+  },
+  "canonicalTables": {
+    "app_settings": {
+      "count": 1,
+      "sha256": "c81acfd7d38683ae6eb07a564b2e7301933ed01da95ea14cabfde7e495fb155e"
+    },
+    "board_activity_periods": {
+      "count": 8,
+      "sha256": "6402e4cb6e2cd5064989cfb5c71fd8e1b27d527e9986574e34ca494096dfc554"
+    },
+    "boards": {
+      "count": 8,
+      "sha256": "adf1c972581f401c0314b3d765f072cf7fb6a7d8222fa4355a94e94d0e1e3d6e"
+    },
+    "check_ins": {
+      "count": 6040,
+      "sha256": "4a5ea1f6fd71c716e395daa000eedbebb4af35ccea35a4287d1201cefc19391d"
+    },
+    "coin_ledger": {
+      "count": 6570,
+      "sha256": "a108fd02b75d4904e92057c284dd05efea5628a6a502c70793c0b7b8d47399fe"
+    },
+    "command_receipts": {
+      "count": 6065,
+      "sha256": "60606793cc067ea43e9981bddbd4b3d7f12db71b55880cc56ca70eec18baa9cc"
+    },
+    "habit_actions": {
+      "count": 6045,
+      "sha256": "f4cd4732af59e1a34fa4ccaf7149bd0ac7723a039e3b0931936d342418d7b200"
+    },
+    "miss_alerts": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "mutation_outbox": {
+      "count": 18676,
+      "sha256": "a12f13b6621b0eb22aefc92d3ae32ff9e7a407ac60068ece8e3d9c174b763cd1"
+    },
+    "reminder_schedule": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "reminders": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "remote_fact_inbox": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "rewards": {
+      "count": 4,
+      "sha256": "11bfdf28f515600f1a4113868f87f80b55a928d5a691d45e10ea2fc8ed75e634"
+    },
+    "schema_migrations": {
+      "count": 12,
+      "sha256": "4e8962995af8b8569efb63ea5a22f0aea823f0366d8791bd9a641aa02ec1e6e9"
+    },
+    "sqlite_sequence": {
+      "count": 2,
+      "sha256": "1277fd8aefeaddbd25983387c821fc02f6e427b5b9a0251311079330123d79be"
+    },
+    "sync_account_bindings": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sync_deferred": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sync_state": {
+      "count": 1,
+      "sha256": "ebef5c71fd53972fbe1be565689b428745db86cb68d110d707949d0a196e243f"
+    },
+    "widget_board_rows": {
+      "count": 8,
+      "sha256": "58a142cbf75cfa12466fe017d679cfe90b0664d028b00a4ffc35b48d034ee600"
+    }
+  }
+}
