@@ -2554,3 +2554,17 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     pass: 133 suites / 1,998 tests, global coverage 97.57/96.19/96.18/98.12, all 88 core
     files at 100 percent. Evidence is in `.artifacts/t19/intrinsic-validation/`. Native
     sources and shared fixtures are unchanged; the 9 plugin / 141 Swift gate still applies.
+
+33. The operation-lived fact loader completes exact identity groups, accepted absence
+    and targeted quarantined siblings within one unchanged transaction snapshot. It
+    returns only newly completed groups/selectors, pages complete scopes beyond 4,096
+    facts, and captures raw bound hash methods before its first read. Repeated evidence
+    compares exact bytes/metadata without rehashing; overlapping extensions serialize.
+    Any extension failure is sticky until a new transaction and loader are acquired.
+34. Independent review uses real SQLite to verify typed/BINARY identities, concurrent
+    extension ordering and exact first-error identity. The author covers restart, WAL
+    snapshot freshness and 4,097-fact paging in 31 tests. Combined main validation passes
+    134 suites / 2,029 tests, global coverage 97.61/96.23/96.26/98.15 and all 89 core files
+    at 100 percent. Evidence is in `.artifacts/t19/fact-loader/`. Native sources remain
+    unchanged with the prior 9 plugin / 141 Swift gate applicable. The loader neither
+    chooses winners nor expands economic dependencies or writes accepted facts.
