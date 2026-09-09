@@ -102,6 +102,7 @@ export function ICloudScreen() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: spacing.md,
             backgroundColor: semanticColor('secondaryGroupedBackground', scheme),
             borderRadius: radius.lg,
             borderCurve: radiusCurve,
@@ -109,7 +110,7 @@ export function ICloudScreen() {
             paddingVertical: spacing.md,
           }}
         >
-          <AppText>iCloud Sync</AppText>
+          <AppText style={{ flex: 1 }}>iCloud Sync</AppText>
           <Switch
             accessibilityLabel="iCloud Sync"
             value={enabled}
@@ -177,7 +178,7 @@ export function ICloudScreen() {
 
         {error || syncState.error ? <InlineError message={error ?? syncState.error!} testID="icloud-error" /> : null}
 
-        {available === false || status === 'needs_attention' ? (
+        {available === false ? (
           <AppText variant="footnote" testID="icloud-unavailable">
             iCloud is unavailable on this device right now. Your changes stay queued, and Export
             Data always gives you a portable copy.

@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { minimumTouchTarget } from '@/foundation/accessibility';
@@ -53,11 +53,13 @@ export function SettingsRow({
   disabled?: boolean;
   testID?: string;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const stacked = !onPress && fontScale > 1.3;
   const content = (
     <View
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: stacked ? 'column' : 'row',
+        alignItems: stacked ? 'stretch' : 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.md,
@@ -69,7 +71,7 @@ export function SettingsRow({
       </AppText>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
         {detail ? (
-          <AppText accessible={false} variant="footnote" selectable={false}>
+          <AppText accessible={false} variant="footnote" selectable={false} style={stacked ? { flex: 1 } : undefined}>
             {detail}
           </AppText>
         ) : null}

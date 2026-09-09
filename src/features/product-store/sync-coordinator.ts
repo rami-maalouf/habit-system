@@ -1,6 +1,6 @@
 import { getSyncSummary } from '@/core/domain/queries';
 import { runSync, type SyncStatus } from '@/core/sync/engine';
-import { SyncTransportError, type SyncTransport } from '@/core/sync/transport';
+import { SyncTransportError, type SyncTransport, type WireSyncRecord } from '@/core/sync/transport';
 import type { ProductCore } from '@/platform/database/product-core';
 
 export type SyncSnapshot = { status: SyncStatus; busy: boolean; error: string | null };
@@ -18,7 +18,7 @@ export class SyncCoordinator {
 
   constructor(
     private readonly core: ProductCore,
-    private readonly transport: SyncTransport,
+    private readonly transport: SyncTransport<WireSyncRecord>,
     private readonly publish: (state: SyncSnapshot) => void,
     private readonly refreshQueries: () => void,
   ) {}
@@ -61,7 +61,7 @@ export class SyncCoordinator {
     }
   }
 
-  private guardedTransport(generation: number): SyncTransport {
+  private guardedTransport(generation: number): SyncTransport<WireSyncRecord> {
     const guard = () => {
       if (this.disposed || generation !== this.generation) {
         throw new SyncTransportError('unavailable', 'Sync was paused.');

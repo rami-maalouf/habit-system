@@ -99,16 +99,16 @@ describe('paired schema-2 transport boundary', () => {
   const page = (records: unknown[], nextToken: string | null = 'next', more = false) => JSON.stringify({ records, nextToken, more });
   beforeEach(() => jest.clearAllMocks());
 
-  it('roundtrips all eight v2 types while keeping the active v1 adapter closed to v2', async () => {
+  it('roundtrips all eight v2 types through the active default adapter and preserves v1 inputs', async () => {
     const module = native(); module.cloudKitFetchChanges.mockResolvedValue(page(schema2Fixtures));
     const adapter = loadAdapter(module);
     await expect(adapter.schema2CloudKitTransport.fetchChanges(null)).resolves.toEqual({ records: schema2Fixtures, nextToken: 'next', more: false });
     await adapter.schema2CloudKitTransport.upload(schema2Fixtures as never);
     expect(JSON.parse(module.cloudKitUpload.mock.calls[0][0])).toEqual(schema2Fixtures);
-    await expect(adapter.cloudKitTransport.fetchChanges(null)).rejects.toMatchObject({ code: 'failure' });
+    await expect(adapter.cloudKitTransport.fetchChanges(null)).resolves.toEqual({ records: schema2Fixtures, nextToken: 'next', more: false });
     module.cloudKitUpload.mockClear();
-    await expect(adapter.cloudKitTransport.upload(schema2Fixtures as never)).rejects.toMatchObject({ code: 'failure' });
-    expect(module.cloudKitUpload).not.toHaveBeenCalled();
+    await adapter.cloudKitTransport.upload(schema2Fixtures as never);
+    expect(JSON.parse(module.cloudKitUpload.mock.calls[0][0])).toEqual(schema2Fixtures);
     module.cloudKitFetchChanges.mockResolvedValue(page(records));
     await expect(adapter.schema2CloudKitTransport.fetchChanges(null)).resolves.toMatchObject({ records });
   });

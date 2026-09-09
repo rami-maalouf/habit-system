@@ -2746,3 +2746,69 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     Existing self-link/cycle validation, atomicity and supported sync/import
     verification remain required; no declined guarantees or external acceptance
     are claimed. This decision supersedes the pending-approval status in item 56.
+58. The active engine/default iOS adapter now use schema 2. All eight upload
+    types read current rows and stamps; acknowledgments remove only selected
+    outbox ids. Each received page captures owned input and commits mutable
+    admission, immutable settlement, effective visibility, accepted HLC updates,
+    projections and its token atomically. Earlier committed pages remain durable
+    after a later failure. The explicit version-1 codec stays available for
+    compatibility, with the original fixture unchanged.
+59. A small shared repository guard rejects ambiguous board/start-date aliases
+    before choosing a local period id, counting live and tombstoned rows. The
+    affected upload batch or received page preserves its pending changes and
+    token. Initial zone setup and earlier committed batches/pages may precede a
+    later failure. Public travel tests reproduce two retained same-start periods;
+    ordinary repeated same-zone/same-day archive/restore reopens one interval.
+    The guard protects retained data without introducing new period identities
+    or resolving the inherited sync ambiguity.
+60. Strict graph admission uses the existing deferred-record machinery. Cyclic
+    links, deleted/missing targets and a target deletion with a live referrer
+    retain their exact candidate while the accepted acyclic graph remains usable.
+    An actual greater link clear permits retry; no link is invented or cleared
+    without its mutation. A candidate blocked by a newer deferred version gains
+    no HLC authority. Independent public SQLite probes verify whole-page rollback
+    on period/SQL failures. Two conflicting offline graphs need not converge
+    automatically under this retained contract; the declined policy is absent.
+61. The combined source candidate passes 153 suites / 2,397 tests, all 99 core
+    files at 100 percent, global coverage 97.88/96.63/96.58/98.33, and 9 plugin /
+    169 Swift checks. Independent period and graph reviews pass, including 29
+    focused graph/period cases and two additional public rollback probes. The
+    actual public graph reproduction changed from 21 failed / 20 passed checks
+    to 41 passed checks. Evidence is retained under `.artifacts/t19/` in
+    `engine-integration/`, `period-alias-guard/` and `strict-graph-guard/`.
+62. The fresh signed simulator proves valid v2 ingestion, exact coin evidence,
+    Needs Attention with a usable last-good graph, an unrelated earning check,
+    explicit anchor-clear recovery, and an unresolved period alias without
+    affected upload/fetch calls. All five runtime substitutions were restored
+    while sync was Off before cold Home/Coins/history/Stacks checks. The final
+    balance is 3. All 792 checkout, 34 native-source and 20 installed executable
+    hashes stayed exact. Owned simulator/Metro resources were stopped; original
+    migration data stayed unchanged. This uses a deterministic local transport,
+    not actual CloudKit account/container access or service convergence. Root
+    reran the captured-data verifier after preserving the package under
+    `engine-integration/qa/`: all 102 checks pass. The package separately records
+    two Settings presentation findings for correction, without treating them as
+    functional sync failures or concealing retained framework diagnostics.
+63. A later read-only inventory supersedes item 52: the iPhone is paired and
+    reachable but locked; the scoped fork-build metadata query failed with the
+    device-locked error. Its installed fork version remains unknown. The iPad is
+    unavailable, and two approved same-account targets remain unverified. No
+    app/account/data operation followed that check. Evidence is retained in
+    `declined-scope/`. T19 and Checkpoint C remain incomplete.
+64. Actual simulator inspection exposed two presentation defects: large-type
+    details squeezed Status/Last sync labels, and semantic Needs Attention showed
+    incorrect iCloud-unavailable advice. Informational Settings rows now stack
+    label/value above the existing font-scale threshold; navigation/default-size
+    behavior and accessibility associations remain intact. Availability advice
+    now follows the availability result. Maximum-text inspection additionally
+    exposed the separate toggle overflowing its card; its label now wraps beside
+    the unchanged switch. Extra-large/maximum dark and default light checks pass,
+    including the complete Last sync value and actual On/Off controls. Independent
+    source review passes, and final main validation passes 153 suites / 2,399
+    tests with all 99 core files at 100 percent. Core/native sources remain exact
+    relative to the reviewed engine candidate. UI evidence is preserved separately
+    under `engine-integration/ui-correction/` and `toggle-correction/`, retaining
+    the original failures. Final cold state preserves all product/HLC/outbox rows,
+    three coins and seven queued changes; only enumerated toggle/reminder receipts
+    and retry metadata differ. All runtime substitutions were restored while Off,
+    owned resources were stopped, and original data remains unchanged.

@@ -1,37 +1,25 @@
-import { isValidLogicalDate } from '../calendar/logical-date';
 import { establishLegacyCheckEvidence } from '../domain/legacy-check-evidence';
-import { settleAffectedCoinScopes } from '../domain/coin-settlement';
-import type { BoardId, CheckInId, LogicalDate } from '../domain/ids';
-import { refreshCheckVisibility } from '../persistence/repositories/check-visibility';
 import type { Clock, Hashing } from '../domain/ports';
+import { guardRemoteFactHashing, RemoteFactHashingError } from '../domain/remote-fact-hashing';
 import type { DomainResult } from '../domain/result';
 import { err, ok } from '../domain/result';
 import type { SqlDatabase, SqlExecutor } from '../persistence/database';
+import { admitRemoteFacts } from '../persistence/remote-fact-admission';
 import { rebuildWidgetRows } from '../persistence/projections/widget-rows';
-import {
-  deleteDeferredRecord,
-  deleteOutboxRows,
-  getDeferredMutationStamp,
-  getSettings,
-  getSyncState,
-  listDeferredRecords,
-  listOutbox,
-  readRawRow,
-  saveDeferredRecord,
-  saveHlc,
-  saveSyncState,
-} from '../persistence/repositories/support';
+import { refreshCheckVisibility } from '../persistence/repositories/check-visibility';
+import { readRemoteFactInboxCounts } from '../persistence/repositories/remote-fact-inbox';
+import { readUniquePeriodAlias } from '../persistence/repositories/sync-periods';
+import { deleteOutboxRows, getSettings, getSyncState, listDeferredRecords, listOutbox,
+  readRawRow, saveHlc, saveSyncState } from '../persistence/repositories/support';
 import { observe } from './hybrid-clock';
+import { immutableSyncCandidate } from './immutable-records';
+import type { Schema2MutableRecord } from './inbound-validation';
 import { recoverLocalFacts } from './local-fact-recovery';
-import { validateInboundRecord } from './inbound-validation';
-import {
-  SETTINGS_ENTITY_ID,
-  parsePeriodEntityId,
-  periodEntityId,
-  specFor,
-  toSyncRecord,
-} from './records';
-import type { FetchPage, SyncRecord, SyncTransport } from './transport';
+import { applyMutableSyncPage } from './mutable-sync-page';
+import { SETTINGS_ENTITY_ID, periodEntityId } from './records';
+import { schema2SpecFor, toSchema2SyncRecord } from './schema-2-records';
+import { captureSyncPage } from './sync-page';
+import type { SyncTransport, WireSyncRecord } from './transport';
 import { SyncTransportError } from './transport';
 
 export type SyncStatus =
@@ -55,7 +43,7 @@ export type SyncDeps = {
   db: SqlDatabase;
   clock: Clock;
   hashing: Hashing;
-  transport: SyncTransport;
+  transport: SyncTransport<WireSyncRecord>;
   // deterministic in tests; Math.random in the app
   random: () => number;
   // a coordinator generation guard; false cancels without retry metadata
@@ -112,13 +100,14 @@ function statusForFailure(cause: unknown): SyncStatus {
 
 async function collectUpload(
   tx: SqlExecutor,
-): Promise<{ records: SyncRecord[]; outboxIds: number[] }> {
+): Promise<{ records: WireSyncRecord[]; outboxIds: number[] }> {
   const rows = await listOutbox(tx, UPLOAD_BATCH);
-  const records: SyncRecord[] = [];
+  const records: WireSyncRecord[] = [];
   const outboxIds: number[] = [];
+  const checkedPeriodAliases = new Set<string>();
   for (const row of rows) {
     outboxIds.push(row.id);
-    const spec = specFor(row.entityType);
+    const spec = schema2SpecFor(row.entityType);
     // the settings singleton lives at primary key 1; sync addresses it by
     // its stable entity id instead
     const lookupId = row.entityType === 'settings' ? '1' : row.entityId;
@@ -126,6 +115,7 @@ async function collectUpload(
     if (!raw) {
       // the row vanished (a hard-deleted period id); nothing to upload but
       // the outbox entry is still consumed
+      if (row.entityType === 'habit_action' || row.entityType === 'ledger_entry') throw new Error('Missing accepted sync evidence.');
       continue;
     }
     const entityId =
@@ -134,261 +124,15 @@ async function collectUpload(
         : row.entityType === 'settings'
           ? SETTINGS_ENTITY_ID
           : row.entityId;
-    records.push(toSyncRecord(row.entityType, entityId, row.mutationStamp, raw));
+    if (row.entityType === 'activity_period' && !checkedPeriodAliases.has(entityId)) {
+      await readUniquePeriodAlias(tx, String(raw.board_id), String(raw.start_date));
+      checkedPeriodAliases.add(entityId);
+    }
+    const stamp = row.entityType === 'settings' ? raw.settings_mutation_stamp : raw.mutation_stamp;
+    if (typeof stamp !== 'string') throw new Error('Missing sync mutation stamp.');
+    records.push(toSchema2SyncRecord(row.entityType, entityId, stamp, raw));
   }
   return { records, outboxIds };
-}
-
-// --- apply --------------------------------------------------------------------
-
-type CheckScope = { boardId: BoardId; logicalDate: LogicalDate };
-type AppliedChecks = { scopes: Map<string, CheckScope>; legacy: Map<string, CheckScope & { id: CheckInId }> };
-function appliedChecks(): AppliedChecks { return { scopes: new Map(), legacy: new Map() }; }
-function retainScope(changes: AppliedChecks, boardId: string, logicalDate: string) {
-  if (isValidLogicalDate(logicalDate)) changes.scopes.set(`${boardId}:${logicalDate}`, { boardId: boardId as BoardId, logicalDate: logicalDate as LogicalDate });
-}
-async function finishAppliedChecks(tx: SqlExecutor, now: number, hashing: Hashing, changes: AppliedChecks) {
-  await establishLegacyCheckEvidence({ tx, now, hashing }, [...changes.legacy.values()]);
-  const checkScopes = [...changes.scopes.values()];
-  await settleAffectedCoinScopes({ hashing }, { tx, now }, { checkScopes });
-  await refreshCheckVisibility(tx, checkScopes);
-}
-
-async function localStampFor(
-  tx: SqlExecutor,
-  record: SyncRecord,
-): Promise<{ exists: boolean; stamp: string | null; localId: string | null; checkScope?: CheckScope }> {
-  if (record.entityType === 'settings') {
-    const row = await tx.getFirstAsync<{ mutation_stamp: string | null }>(
-      'SELECT settings_mutation_stamp AS mutation_stamp FROM app_settings WHERE id = 1',
-    );
-    return { exists: row !== null, stamp: row?.mutation_stamp ?? null, localId: '1' };
-  }
-  if (record.entityType === 'activity_period') {
-    const parsed = parsePeriodEntityId(record.entityId) as {
-      boardId: string;
-      startDate: string;
-    };
-    const row = await tx.getFirstAsync<{ id: number; mutation_stamp: string }>(
-      'SELECT id, mutation_stamp FROM board_activity_periods WHERE board_id = ? AND start_date = ?',
-      [parsed.boardId, parsed.startDate],
-    );
-    return {
-      exists: row !== null && row !== undefined,
-      stamp: row?.mutation_stamp ?? null,
-      localId: row ? String(row.id) : null,
-    };
-  }
-  const spec = specFor(record.entityType);
-  const row = await tx.getFirstAsync<{ mutation_stamp: string; board_id: BoardId; logical_date: LogicalDate }>(
-    `SELECT mutation_stamp${record.entityType === 'check_in' ? ', board_id, logical_date' : ''} FROM ${spec.table} WHERE ${spec.idColumn} = ?`,
-    [record.entityId],
-  );
-  return {
-    exists: row !== null && row !== undefined,
-    stamp: row?.mutation_stamp ?? null,
-    localId: row ? record.entityId : null,
-    checkScope: row && record.entityType === 'check_in' ? { boardId: row.board_id, logicalDate: row.logical_date } : undefined,
-  };
-}
-
-async function applyRecord(
-  tx: SqlExecutor,
-  record: SyncRecord,
-  now: number,
-  changes: AppliedChecks,
-): Promise<boolean> {
-  const local = await localStampFor(tx, record);
-  // whole-record last-writer-wins on the lexicographic stamp; equal stamps
-  // are the same mutation and need no write
-  if (local.exists && local.stamp !== null && local.stamp >= record.mutationStamp) {
-    return false;
-  }
-
-  if (record.entityType === 'settings') {
-    await tx.runAsync(
-      'UPDATE app_settings SET metrics_education_dismissed = ?, settings_mutation_stamp = ? WHERE id = 1',
-      [
-        record.fields.metrics_education_dismissed as string,
-        record.mutationStamp,
-      ],
-    );
-    return true;
-  }
-
-  const spec = specFor(record.entityType);
-  const columns = spec.columns.filter((column) => column !== spec.idColumn);
-  // `deleted` is authoritative: a stripped tombstone whose deleted_at field
-  // was lost in transit must never come back to life, and a live record
-  // must never inherit a stale deleted_at
-  const deletedAt = record.deleted
-    ? (typeof record.fields.deleted_at === 'number' ? record.fields.deleted_at : now)
-    : null;
-  const values = columns.map((column) =>
-    column === 'deleted_at' ? deletedAt : (record.fields[column] ?? null),
-  );
-
-  if (record.entityType === 'activity_period') {
-    const parsed = parsePeriodEntityId(record.entityId) as {
-      boardId: string;
-      startDate: string;
-    };
-    if (local.exists) {
-      await tx.runAsync(
-        `UPDATE board_activity_periods SET end_date = ?, deleted_at = ?, mutation_stamp = ?
-         WHERE id = ?`,
-        [record.fields.end_date ?? null, deletedAt, record.mutationStamp, local.localId],
-      );
-      return true;
-    }
-    await tx.runAsync(
-      `INSERT INTO board_activity_periods (board_id, start_date, end_date, mutation_stamp, deleted_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        parsed.boardId,
-        parsed.startDate,
-        record.fields.end_date ?? null,
-        record.mutationStamp,
-        deletedAt,
-      ],
-    );
-    return true;
-  }
-
-  if (record.entityType === 'check_in') {
-    if (local.checkScope) retainScope(changes, local.checkScope.boardId, local.checkScope.logicalDate);
-    const boardId = record.fields.board_id as BoardId;
-    const logicalDate = record.fields.logical_date as LogicalDate;
-    retainScope(changes, boardId, logicalDate);
-    if (!record.deleted && record.schemaVersion === 1) {
-      changes.legacy.set(`${boardId}:${logicalDate}:${record.entityId}`, { id: record.entityId as CheckInId, boardId, logicalDate });
-    }
-  }
-  if (local.exists) {
-    const assignments = columns.map((column) => `${column} = ?`).join(', ');
-    await tx.runAsync(
-      `UPDATE ${spec.table} SET ${assignments}, mutation_stamp = ?${record.entityType === 'check_in' ? ', state_suppressed = 1' : ''} WHERE ${spec.idColumn} = ?`,
-      [...values, record.mutationStamp, record.entityId],
-    );
-    return true;
-  }
-
-  const insertColumns = [spec.idColumn, ...columns, 'mutation_stamp'];
-  const insertValues: (string | number | null)[] = [
-    record.entityId,
-    ...values,
-    record.mutationStamp,
-  ];
-  if (record.entityType === 'reminder') {
-    insertColumns.push('schedule_state', 'last_schedule_error');
-    insertValues.push('idle', null);
-  }
-  const placeholders = insertColumns.map(() => '?').join(', ');
-  await tx.runAsync(
-    `INSERT INTO ${spec.table} (${insertColumns.join(', ')}) VALUES (${placeholders})`,
-    insertValues,
-  );
-  return true;
-}
-
-// a remote record can only be applied once its board exists locally, so
-// dependents wait for their parent within the same commit
-function applyOrder(records: SyncRecord[]): SyncRecord[] {
-  const weight: Record<SyncRecord['entityType'], number> = {
-    board: 0,
-    activity_period: 1,
-    check_in: 2,
-    reminder: 3,
-    settings: 4,
-  };
-  return [...records].sort((a, b) => weight[a.entityType] - weight[b.entityType]);
-}
-
-// a fetched record can arrive before its parent board. applying it would
-// violate the foreign key and roll back the whole page, and because the
-// change token never advances that page would fail forever. the record
-// waits in sync_deferred instead and is retried on every later pass.
-async function applyWithDeferral(
-  tx: SqlExecutor,
-  record: SyncRecord,
-  now: number,
-  changes: AppliedChecks,
-): Promise<boolean> {
-  const deferredStamp = await getDeferredMutationStamp(tx, record.entityType, record.entityId);
-  if (deferredStamp !== null && deferredStamp > record.mutationStamp) {
-    return false;
-  }
-  const applied = await applyRecord(tx, record, now, changes);
-  await deleteDeferredRecord(tx, record.entityType, record.entityId);
-  return applied;
-}
-
-async function deferRecord(tx: SqlExecutor, record: SyncRecord, now: number): Promise<void> {
-  const local = await localStampFor(tx, record);
-  const deferredStamp = await getDeferredMutationStamp(tx, record.entityType, record.entityId);
-  if (local.stamp !== null && local.stamp >= record.mutationStamp) {
-    if (deferredStamp === null || local.stamp >= deferredStamp) {
-      await deleteDeferredRecord(tx, record.entityType, record.entityId);
-    }
-    return;
-  }
-  if (deferredStamp !== null && deferredStamp >= record.mutationStamp) {
-    return;
-  }
-  await saveDeferredRecord(tx, {
-    entityType: record.entityType,
-    entityId: record.entityId,
-    mutationStamp: record.mutationStamp,
-    payload: JSON.stringify(record),
-    firstSeenAt: now,
-  });
-}
-
-async function validateAndApply(
-  tx: SqlExecutor,
-  value: unknown,
-  now: number,
-  changes: AppliedChecks,
-): Promise<{ applied: boolean; observedStamp: string | null }> {
-  const validation = await validateInboundRecord(tx, value);
-  if (validation.kind === 'unidentifiable') {
-    throw new Error('invalid sync envelope');
-  }
-  if (validation.kind === 'invalid' || validation.kind === 'deferred') {
-    await deferRecord(tx, validation.record, now);
-    return { applied: false, observedStamp: null };
-  }
-  return {
-    applied: await applyWithDeferral(tx, validation.record, now, changes),
-    observedStamp: validation.record.mutationStamp,
-  };
-}
-
-// deferred records are retried after each page, so a parent that arrived
-// either earlier or in that same page unblocks its dependents
-async function drainDeferred(
-  tx: SqlExecutor,
-  now: number,
-  hlc: { wallTime: number; counter: number },
-  changes: AppliedChecks,
-): Promise<{ applied: number; hlc: { wallTime: number; counter: number } }> {
-  let applied = 0;
-  for (const row of await listDeferredRecords(tx)) {
-    let record: unknown;
-    try {
-      record = JSON.parse(row.payload);
-    } catch {
-      continue;
-    }
-    const result = await validateAndApply(tx, record, now, changes);
-    if (result.observedStamp !== null) {
-      hlc = observe(hlc, result.observedStamp);
-    }
-    if (result.applied) {
-      applied += 1;
-    }
-  }
-  return { applied, hlc };
 }
 
 // --- run ----------------------------------------------------------------------
@@ -465,74 +209,51 @@ export function runSync(deps: SyncDeps): Promise<DomainResult<SyncOutcome>> {
       let token = preflight.state.changeToken;
       for (;;) {
         checkpoint(deps);
-        const page: FetchPage = await deps.transport.fetchChanges(token);
+        const page = captureSyncPage(await deps.transport.fetchChanges(token), token);
         checkpoint(deps);
-        if (page.records.length > 0) {
-          const committed = await deps.db.withExclusiveTransactionAsync(async (tx) => {
-            checkpoint(deps);
-            const now = deps.clock.nowUtcMs();
-            const timeZoneId = deps.clock.timeZoneId();
-            const changes = appliedChecks();
-            // the preflight proved the settings row exists
-            const settings = (await getSettings(tx)) as NonNullable<
-              Awaited<ReturnType<typeof getSettings>>
-            >;
-            let hlc = { wallTime: settings.hlcWallTime, counter: settings.hlcCounter };
-            let count = 0;
-            for (const record of applyOrder(page.records)) {
-              const result = await validateAndApply(tx, record, now, changes);
-              if (result.observedStamp !== null) {
-                hlc = observe(hlc, result.observedStamp);
-              }
-              if (result.applied) {
-                count += 1;
-              }
-            }
-            // draining after the page lets a parent that arrived in this
-            // very page unblock the dependents waiting on it
-            const drained = await drainDeferred(tx, now, hlc, changes);
-            count += drained.applied;
-            hlc = drained.hlc;
-            await finishAppliedChecks(tx, now, deps.hashing, changes);
+        const committed = await deps.db.withExclusiveTransactionAsync(async tx => {
+          checkpoint(deps);
+          const now = deps.clock.nowUtcMs();
+          const timeZoneId = deps.clock.timeZoneId();
+          const rawHashing = { sha1: deps.hashing.sha1.bind(deps.hashing), sha256: deps.hashing.sha256.bind(deps.hashing) };
+          const settings = await getSettings(tx);
+          checkpoint(deps);
+          if (!settings) throw new Error('The database is not initialized.');
+          const candidates = page.records.filter(record => record.entityType === 'habit_action' || record.entityType === 'ledger_entry')
+            .map(immutableSyncCandidate);
+          const mutable = page.records.filter(record => record.entityType !== 'habit_action' && record.entityType !== 'ledger_entry') as Schema2MutableRecord[];
+          const changes = await applyMutableSyncPage(tx, mutable, now, () => checkpoint(deps));
+          checkpoint(deps);
+          const legacy = await establishLegacyCheckEvidence({ tx, now, hashing: guardRemoteFactHashing(rawHashing) }, changes.legacyChecks);
+          checkpoint(deps);
+          const admission = await admitRemoteFacts(tx, { candidates, acquiredNow: now,
+            checkScopes: changes.checkScopes, checkpoint: () => checkpoint(deps) }, rawHashing);
+          checkpoint(deps);
+          const accepted = [...admission.admitted, ...admission.generated];
+          await refreshCheckVisibility(tx, admission.affected.checkScopes);
+          checkpoint(deps);
+          let hlc = { wallTime: settings.hlcWallTime, counter: settings.hlcCounter };
+          for (const stamp of changes.observedStamps) hlc = observe(hlc, stamp);
+          for (const fact of accepted) hlc = observe(hlc, fact.mutationStamp);
+          if (hlc.wallTime !== settings.hlcWallTime || hlc.counter !== settings.hlcCounter) {
             await saveHlc(tx, hlc);
+            checkpoint(deps);
+          }
+          const changed = changes.localChanged || legacy.actions.length > 0 || admission.localChanged;
+          if (changes.applied > 0 || accepted.length > 0) {
             await rebuildWidgetRows(tx, now, timeZoneId);
-            // the token lands in the same commit as its records
-            await saveSyncState(tx, {
-              ...(await getSyncState(tx)),
-              changeToken: page.nextToken,
-            });
             checkpoint(deps);
-            return count;
-          });
-          applied += committed;
-        } else {
-          // an empty page still gives deferred records a chance, and its
-          // token still advances
-          const drained = await deps.db.withExclusiveTransactionAsync(async (tx) => {
-            checkpoint(deps);
-            const now = deps.clock.nowUtcMs();
-            const timeZoneId = deps.clock.timeZoneId();
-            const changes = appliedChecks();
-            const settings = (await getSettings(tx)) as NonNullable<
-              Awaited<ReturnType<typeof getSettings>>
-            >;
-            const result = await drainDeferred(
-              tx,
-              now,
-              { wallTime: settings.hlcWallTime, counter: settings.hlcCounter },
-              changes,
-            );
-            await finishAppliedChecks(tx, now, deps.hashing, changes);
-            if (result.applied > 0) {
-              await rebuildWidgetRows(tx, now, timeZoneId);
-            }
-            await saveHlc(tx, result.hlc);
-            await saveSyncState(tx, { ...(await getSyncState(tx)), changeToken: page.nextToken });
-            checkpoint(deps);
-            return result.applied;
-          });
-          applied += drained;
-        }
+          }
+          await saveSyncState(tx, { ...(await getSyncState(tx)), changeToken: page.nextToken });
+          checkpoint(deps);
+          return { applied: changes.applied + admission.admitted.length, localChanged: changed };
+        }).catch(cause => {
+          // owned provider failures leave the page transaction before losing their wrapper.
+          if (cause instanceof RemoteFactHashingError) throw cause.cause;
+          throw cause;
+        });
+        applied += committed.applied;
+        localChanged ||= committed.localChanged;
         token = page.nextToken;
         if (!page.more) {
           break;
@@ -542,7 +263,8 @@ export function runSync(deps: SyncDeps): Promise<DomainResult<SyncOutcome>> {
       let unresolved = false;
       await deps.db.withExclusiveTransactionAsync(async (tx) => {
         checkpoint(deps);
-        unresolved = (await listDeferredRecords(tx)).length > 0;
+        const inbox = await readRemoteFactInboxCounts(tx);
+        unresolved = (await listDeferredRecords(tx)).length > 0 || inbox.variants > 0;
         await saveSyncState(tx, {
           ...(await getSyncState(tx)),
           retryState: null,

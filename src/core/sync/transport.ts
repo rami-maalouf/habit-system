@@ -18,8 +18,12 @@ export type SyncRecord = {
   fields: Record<string, string | number | null>;
 };
 
-export type FetchPage = {
-  records: SyncRecord[];
+// version 1 remains a separate semantic contract when the transport supports version 2.
+export type WireSyncEntityType = SyncEntityType | 'reward' | 'habit_action' | 'ledger_entry';
+export type WireSyncRecord = Omit<SyncRecord, 'entityType'> & { entityType: WireSyncEntityType };
+
+export type FetchPage<R extends WireSyncRecord = SyncRecord> = {
+  records: R[];
   nextToken: string | null;
   more: boolean;
 };
@@ -35,10 +39,10 @@ export class SyncTransportError extends Error {
   }
 }
 
-export interface SyncTransport {
+export interface SyncTransport<R extends WireSyncRecord = SyncRecord> {
   // creates the custom private zone when missing; idempotent
   ensureZone(): Promise<void>;
   // idempotent by (entityId, mutationStamp); re-uploading is safe
-  upload(records: SyncRecord[]): Promise<void>;
-  fetchChanges(token: string | null): Promise<FetchPage>;
+  upload(records: R[]): Promise<void>;
+  fetchChanges(token: string | null): Promise<FetchPage<R>>;
 }

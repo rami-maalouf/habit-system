@@ -291,13 +291,12 @@ export async function saveSyncState(tx: SqlExecutor, state: SyncStateRow): Promi
 
 export type OutboxRow = {
   id: number;
-  entityType: OutboxEntityType;
+  entityType: Parameters<typeof appendOutbox>[1];
   entityId: string;
   mutationStamp: string;
 };
 
-// staged v2 facts remain queued until the coordinated transport upgrade.
-// filter before limiting so they cannot starve supported v1 uploads.
+// the coordinated version-2 engine can upload every supported outbox entity.
 export async function listOutbox(tx: SqlExecutor, limit: number): Promise<OutboxRow[]> {
   const rows = await tx.getAllAsync<{
     id: number;
@@ -306,13 +305,13 @@ export async function listOutbox(tx: SqlExecutor, limit: number): Promise<Outbox
     mutation_stamp: string;
   }>(
     `SELECT id, entity_type, entity_id, mutation_stamp FROM mutation_outbox
-     WHERE entity_type IN ('board', 'check_in', 'reminder', 'activity_period', 'settings')
+     WHERE entity_type IN ('board', 'check_in', 'reminder', 'activity_period', 'settings', 'reward', 'habit_action', 'ledger_entry')
      ORDER BY id LIMIT ?`,
     [limit],
   );
   return rows.map((row) => ({
     id: row.id,
-    entityType: row.entity_type as OutboxEntityType,
+    entityType: row.entity_type as OutboxRow['entityType'],
     entityId: row.entity_id,
     mutationStamp: row.mutation_stamp,
   }));

@@ -39,9 +39,8 @@ describe('app lifetime sync coordinator', () => {
     expect(states.at(-1)).toEqual({ status: 'up_to_date', busy: false, error: null });
     expect(committed).toHaveBeenCalled();
     const summary = await getSyncSummary(deps);
-    // action evidence stays queued until the v2 serialization task.
-    expect(summary.ok && summary.value.pendingChanges).toBe(1);
-    expect(await deps.db.getAllAsync('SELECT entity_type FROM mutation_outbox')).toEqual([{ entity_type: 'habit_action' }]);
+    expect(summary.ok && summary.value.pendingChanges).toBe(0);
+    expect(await deps.db.getAllAsync('SELECT entity_type FROM mutation_outbox')).toEqual([]);
     coordinator.dispose();
   });
 

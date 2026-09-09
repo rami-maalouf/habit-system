@@ -22,7 +22,7 @@ import { addWidgetQuickActionListener, refreshWidgets } from '@/platform/widgets
 import { addSignificantTimeChangeListener } from '@/platform/time-change';
 import { spacing } from '@/theme';
 import { cloudKitTransport } from '@/platform/sync';
-import type { SyncTransport } from '@/core/sync/transport';
+import type { SyncTransport, WireSyncRecord } from '@/core/sync/transport';
 
 import { INITIAL_SYNC, SyncCoordinator, type SyncSnapshot } from './sync-coordinator';
 
@@ -49,7 +49,7 @@ type ProductProviderProps = {
   // tests inject a core over the in-memory engine; the app resolves the
   // shared sqlite core
   coreOverride?: ProductCore;
-  syncTransportOverride?: SyncTransport;
+  syncTransportOverride?: SyncTransport<WireSyncRecord>;
 };
 
 export function ProductProvider({ children, coreOverride, syncTransportOverride }: ProductProviderProps) {

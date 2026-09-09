@@ -9,7 +9,7 @@ import { runCheckInIntent, runRemoveLatestIntent } from '@/core/automations/cont
 import type { BoardId } from '@/core/domain/ids';
 import type { SqlDatabase, SqlExecutor } from '@/core/persistence/database';
 import { getBoardById } from '@/core/persistence/repositories/boards';
-import { appendOutbox, listOutbox } from '@/core/persistence/repositories/support';
+import { appendOutbox, deleteOutboxRows, listOutbox } from '@/core/persistence/repositories/support';
 
 import { createTestHarness, type TestHarness } from '../helpers/test-db';
 
@@ -101,7 +101,7 @@ describe('daily transaction atomicity', () => {
       .toEqual([{ check_in_id: null }]);
   });
 
-  it.each(['habit_action', 'ledger_entry', 'reward'] as const)('keeps staged %s rows pending without starving supported uploads behind them', async (entityType) => {
+  it.each(['habit_action', 'ledger_entry', 'reward'] as const)('selects activated %s rows in bounded FIFO batches before later boards', async (entityType) => {
     const boardId = await create(h, 'daily');
     const board = await getBoardById(h.db, boardId);
     if (!board) throw new Error('missing board');
@@ -110,11 +110,16 @@ describe('daily transaction atomicity', () => {
       await appendOutbox(h.db, entityType, h.ids.uuid(), board.mutationStamp, h.clock.utcMs);
     }
     await appendOutbox(h.db, 'board', boardId, board.mutationStamp, h.clock.utcMs);
-    expect(await listOutbox(h.db, 1)).toEqual([{
-      id: expect.any(Number), entityType: 'board', entityId: boardId, mutationStamp: board.mutationStamp,
-    }]);
+    const first = await listOutbox(h.db, 200);
+    expect(first).toHaveLength(200);
+    expect(first.every(row => row.entityType === entityType && row.mutationStamp === board.mutationStamp)).toBe(true);
+    expect(first.map(row => row.id)).toEqual([...first.map(row => row.id)].sort((a, b) => a - b));
     expect(await h.db.getFirstAsync('SELECT COUNT(*) AS count FROM mutation_outbox WHERE entity_type = ?', [entityType]))
       .toEqual({ count: 205 });
+    await deleteOutboxRows(h.db, first.map(row => row.id));
+    const remaining = await listOutbox(h.db, 200);
+    expect(remaining.map(row => row.entityType)).toEqual([...Array(5).fill(entityType), 'board']);
+    expect(remaining[5]).toEqual({ id: expect.any(Number), entityType: 'board', entityId: boardId, mutationStamp: board.mutationStamp });
   });
 
   it.each(['check', 'remove'] as const)(

@@ -144,10 +144,9 @@ function decodePage(json: unknown, previousToken: string | null): Schema2Page {
   return { records, nextToken, more };
 }
 
-function uploadRecords(records: unknown, legacy: boolean): Promise<void> {
+function uploadRecords(records: unknown): Promise<void> {
   return callNative(() => {
     const captured = captureRecords(records, true);
-    if (legacy && captured.some(record => record.schemaVersion !== 1)) throw transportError('failure');
     const json = JSON.stringify(captured);
     // bounded encoded rows plus array separators fit upload_bytes without another copy.
     return requireTransport().cloudKitUpload(json);
@@ -159,7 +158,7 @@ export const schema2CloudKitTransport: Schema2Transport = {
     await callNative(() => requireTransport().cloudKitEnsureZone());
   },
   async upload(records): Promise<void> {
-    await uploadRecords(records, false);
+    await uploadRecords(records);
   },
   async fetchChanges(token): Promise<Schema2Page> {
     return callNative(async () => {
@@ -169,18 +168,8 @@ export const schema2CloudKitTransport: Schema2Transport = {
   },
 };
 
-// the existing engine must opt in explicitly before it can receive schema-2 facts.
-export const cloudKitTransport: SyncTransport = {
-  ensureZone: schema2CloudKitTransport.ensureZone,
-  async upload(records): Promise<void> {
-    await uploadRecords(records, true);
-  },
-  async fetchChanges(token): Promise<FetchPage> {
-    const page = await schema2CloudKitTransport.fetchChanges(token);
-    if (page.records.some(record => record.schemaVersion !== 1)) throw transportError('failure');
-    return page as FetchPage;
-  },
-};
+// the coordinated engine consumes all supported versions through this default port.
+export const cloudKitTransport: SyncTransport<Schema2SyncRecord> = schema2CloudKitTransport;
 
 // ios-only feature; android sync is out of scope for this release
 export const syncSupportedPlatform = true;

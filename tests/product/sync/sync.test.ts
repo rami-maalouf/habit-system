@@ -466,7 +466,7 @@ describe('sync engine', () => {
     expect(settings?.fields.metrics_education_dismissed).toContain(boardId);
     // selected icon, sync-enabled state, and device id never travel
     const keys = Object.keys(settings?.fields ?? {});
-    expect(keys).toEqual(['metrics_education_dismissed']);
+    expect(keys).toEqual(['metrics_education_dismissed', 'wake_minute', 'lunch_minute', 'dinner_minute', 'sleep_minute']);
     await harness.db.closeAsync();
   });
 
