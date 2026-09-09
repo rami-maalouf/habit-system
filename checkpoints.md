@@ -2511,3 +2511,23 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     output and forced digest collisions. Evidence is retained in
     `.artifacts/t19/identity-groups/`. This pure step performs no admission, SQL,
     hashing, HLC or upload work; native sources and visible behavior remain unchanged.
+26. The pure exact-scope planner captures complete unique action/row knowledge,
+    rebuilds actual ordinary generation from final actions, and classifies supplied
+    awards, reversals, corrections and cancellations. Legitimate generated awards
+    unlock supplied reversals; abandoned speculative awards cannot satisfy proofs.
+    Correction proofs use their own complete subsets. The captured bonus validator
+    shares source recovery only within one action context, avoiding repeated hashing.
+    Actual 4,093-base actions plus two Daily checks and the final award fit 4,096;
+    retaining a real additional partial award produces 4,097 and blocks the scope.
+27. Independent review reproduced missing-first proof/reversal references hiding
+    later known invalid roles, dates or hashes. Complete direct screening now marks
+    known defects invalid before missing siblings can defer them. Incomplete proof
+    subsets still never run economic validation. Final review passes 134 focused
+    tests and 199 plans across 68 existing vectors with exact canonical ledger unions.
+28. The five-file scope increment passes combined main validation: 131 suites /
+    1,979 tests, global coverage 97.55/96.17/96.16/98.11 and all 87 core files at
+    100 percent. Nine plugin and 141 Swift checks pass; shared fixture bytes and
+    native formulas are unchanged. Main source hashes match the approved isolated
+    candidate. Evidence is in `.artifacts/t19/scope-planning/`. The caller must still
+    establish unique admissible identities, complete scope evidence and all mandatory
+    cross-scope components before committing; a valid scope plan alone is not admission.
