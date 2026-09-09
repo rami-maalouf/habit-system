@@ -98,7 +98,7 @@ final class IntentExecutor {
         Double(try IntentCalendar.calendar(zone: zone).timeZone.secondsFromGMT(for: Date(timeIntervalSince1970: date / 1000))) / 60
       }
       let policy = try self.captureCoinPolicy(boardId: board.id, date: date, zone: zone)
-      let stamp = clock.advance(now: Int64(instant))
+      let stamp = try clock.advance(now: Int64(instant))
       let id = self.uuid()
       try self.database.run("""
         INSERT INTO check_ins (id, board_id, logical_date, occurred_at_utc, time_zone_id,
@@ -165,7 +165,7 @@ final class IntentExecutor {
         return .failure(IntentFailure(code: "conflict", message: "The check-ins changed. Run the shortcut again to review them."))
       }
       let policy = try self.captureCoinPolicy(boardId: board.id, date: date, zone: zone)
-      let stamp = clock.advance(now: Int64(instant))
+      let stamp = try clock.advance(now: Int64(instant))
       for id in ids {
         try self.database.run("UPDATE check_ins SET deleted_at = ?, updated_at = ?, mutation_stamp = ? WHERE id = ?",
                             [.integer(Int64(instant)), .integer(Int64(instant)), .text(stamp), .text(id)])

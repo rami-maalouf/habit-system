@@ -2584,3 +2584,28 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     unchanged and the prior 9 plugin / 141 Swift gate remains applicable. This stage
     consumes an already validated complete plan; the full resolver/composer is still
     in progress and this increment does not enable schema-2 transport.
+
+
+37. A real sync/public-command reproduction found the maximum valid HLC counter
+    producing a six-digit successor that sorted before the received stamp. TS and
+    Swift now carry to the next wall millisecond; exhausted wall capacity throws
+    before clock mutation and rolls back the command without a failed receipt.
+    Independent review covers a 54-vector BigInt oracle and real SQLite commands.
+38. Combined validation passes 136 suites / 2,052 tests, all 90 core files at
+    100 percent and global coverage 97.62/96.24/96.28/98.16. Nine plugin and 146
+    Swift checks pass. A freshly built development-signed simulator copy verifies
+    all 20 native executables, Home carry, actual Shortcuts Check In / confirmed
+    Remove / Today, receipt replay and whole-transaction exhaustion rollback.
+39. Simulator evidence under `.artifacts/t19/clock-rollover/qa/` retains two
+    harness mistakes explicitly: a stale system-picker selection on the first
+    clone and a rolled-back seed followed by one legitimate additional Home check
+    on the final clone. Neither is erased or counted as exhaustion proof. Corrected
+    separately verified seeds prove rollback; every preexisting row remains exact.
+    Supplemental `copy-qa/` proves the final readable Home error text with no
+    product-row changes and two enumerated reminder no-op receipts. The artificial
+    HLC is restored to the last legitimate value, balance is 9, the final stopped
+    database SHA-256 is `8d26bf50445a9e883973393c6e3d8e1f2140a65a24a546c8188273969739d384`,
+    and both relocatable verifiers pass. The original device and port 8081 remain
+    untouched; owned services stop and all three devices are shut down. Existing
+    ExpoDevLauncher build diagnostics and four nil-selection picker warnings are
+    recorded for T24; this evidence does not establish CloudKit convergence.

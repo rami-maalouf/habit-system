@@ -21,10 +21,16 @@ export function decodeStamp(stamp: string): { wallTime: number; counter: number;
 }
 
 export function advance(state: HlcState, nowUtcMs: number): HlcState {
+  let next: HlcState;
   if (nowUtcMs > state.wallTime) {
-    return { wallTime: nowUtcMs, counter: 0 };
+    next = { wallTime: nowUtcMs, counter: 0 };
+  } else if (state.counter < 36 ** 5 - 1) {
+    next = { wallTime: state.wallTime, counter: state.counter + 1 };
+  } else {
+    next = { wallTime: state.wallTime + 1, counter: 0 };
   }
-  return { wallTime: state.wallTime, counter: state.counter + 1 };
+  if (next.wallTime > 99999999999999) throw new Error('This change could not be saved.');
+  return next;
 }
 
 // the local clock observes every remote stamp so later local mutations sort

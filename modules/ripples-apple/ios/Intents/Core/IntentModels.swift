@@ -155,8 +155,19 @@ struct IntentHybridClock {
   var counter: Int64
   let deviceId: String
 
-  mutating func advance(now: Int64) -> String {
-    if now > wallTime { wallTime = now; counter = 0 } else { counter += 1 }
+  mutating func advance(now: Int64) throws -> String {
+    let nextWall: Int64
+    let nextCounter: Int64
+    if now > wallTime {
+      nextWall = now; nextCounter = 0
+    } else if counter < 60_466_175 {
+      nextWall = wallTime; nextCounter = counter + 1
+    } else {
+      guard wallTime < 99_999_999_999_999 else { throw IntentFailure.database }
+      nextWall = wallTime + 1; nextCounter = 0
+    }
+    guard nextWall <= 99_999_999_999_999 else { throw IntentFailure.database }
+    wallTime = nextWall; counter = nextCounter
     return Self.pad(String(wallTime), to: 14) + "-" + Self.pad(String(counter, radix: 36), to: 5) + "-" + deviceId
   }
 

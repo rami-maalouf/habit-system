@@ -981,6 +981,111 @@ final class IntentExecutorTests: XCTestCase {
     XCTAssertEqual(try harness.database.rows("SELECT * FROM mutation_outbox WHERE entity_type = 'habit_action'").count, 2)
   }
 
+  func testClockRolloverCheckInCarriesAcceptedCounterBeforePersistingItsStamp() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    try harness.database.run("UPDATE app_settings SET hlc_wall_time = 1788105700000, hlc_counter = 60466175")
+    let command = harness.id()
+    let created = try harness.executor.checkIn(IntentCheckInInput(commandId: command, boardId: board)).get()
+    let expected = "01788105700001-00000-00000000-0000-4000-8000-00000000d001"
+    XCTAssertGreaterThan(expected, "01788105700000-zzzzz-remote")
+    XCTAssertEqual(try harness.database.rows("SELECT mutation_stamp FROM check_ins WHERE id = ?", [.text(created.checkInId)]),
+      [["mutation_stamp": .text(expected)]])
+    XCTAssertEqual(try harness.database.rows("SELECT mutation_stamp FROM habit_actions WHERE command_id = ?", [.text(command)]),
+      [["mutation_stamp": .text(expected)]])
+    XCTAssertEqual(try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings"),
+      [["hlc_wall_time": .integer(1788105700001), "hlc_counter": .integer(0)]])
+    XCTAssertEqual(try harness.database.rows("SELECT COUNT(*) AS count FROM mutation_outbox WHERE mutation_stamp = ?", [.text(expected)]),
+      [["count": .integer(2)]])
+    XCTAssertEqual(try harness.executor.replay(commandId: command, as: IntentCreatedCheckIn.self)?.get(), created)
+  }
+
+  func testClockRolloverRemoveLatestCarriesAcceptedCounterBeforeDeleting() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let created = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).get()
+    try harness.database.run("UPDATE app_settings SET hlc_wall_time = 1788105700000, hlc_counter = 60466175")
+    let command = harness.id()
+    let removed = try harness.executor.removeLatest(commandId: command, boardId: board).get()
+    XCTAssertEqual(removed.removedCheckInId, created.checkInId)
+    let expected = "01788105700001-00000-00000000-0000-4000-8000-00000000d001"
+    XCTAssertEqual(try harness.database.rows("SELECT mutation_stamp, deleted_at FROM check_ins WHERE id = ?", [.text(created.checkInId)]),
+      [["mutation_stamp": .text(expected), "deleted_at": .integer(Int64(harness.instant))]])
+    XCTAssertEqual(try harness.database.rows("SELECT mutation_stamp FROM habit_actions WHERE command_id = ?", [.text(command)]),
+      [["mutation_stamp": .text(expected)]])
+    XCTAssertEqual(try harness.database.rows("SELECT hlc_wall_time, hlc_counter FROM app_settings"),
+      [["hlc_wall_time": .integer(1788105700001), "hlc_counter": .integer(0)]])
+    XCTAssertEqual(try harness.executor.replay(commandId: command, as: IntentRemovedCheckIn.self)?.get(), removed)
+  }
+
+  func testClockRolloverExhaustionRollsBackBothMutationsAndReplaysExistingReceipts() throws {
+    let harness = try harness()
+    let board = "00000000-0000-4000-8000-00000000a001"
+    let firstCommand = harness.id()
+    let created = try harness.executor.checkIn(IntentCheckInInput(commandId: firstCommand, boardId: board)).get()
+    let removeCommand = harness.id()
+    let removed = try harness.executor.removeLatest(commandId: removeCommand, boardId: board).get()
+    _ = try harness.executor.checkIn(IntentCheckInInput(commandId: harness.id(), boardId: board)).get()
+    try harness.database.run("UPDATE app_settings SET hlc_wall_time = 99999999999999, hlc_counter = 60466175")
+    let tables = ["boards", "board_activity_periods", "check_ins", "habit_actions", "coin_ledger",
+                  "app_settings", "mutation_outbox", "command_receipts", "widget_board_rows"]
+    let before = try tables.map { try harness.database.rows("SELECT * FROM \($0) ORDER BY rowid") }
+    let exhaustedCheck = harness.id()
+    XCTAssertEqual(harness.executor.checkIn(IntentCheckInInput(commandId: exhaustedCheck, boardId: board)).error, .database)
+    let exhaustedRemoval = harness.id()
+    XCTAssertEqual(harness.executor.removeLatest(commandId: exhaustedRemoval, boardId: board).error, .database)
+    for (table, expected) in zip(tables, before) {
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid"), expected, table)
+    }
+    XCTAssertEqual(try harness.database.rows("SELECT * FROM command_receipts WHERE command_id IN (?, ?)",
+      [.text(exhaustedCheck), .text(exhaustedRemoval)]), [])
+    harness.instant = .nan
+    harness.timeZone = "invalid-zone"
+    XCTAssertEqual(try harness.executor.checkIn(IntentCheckInInput(commandId: firstCommand, boardId: board)).get(), created)
+    XCTAssertEqual(try harness.executor.removeLatest(commandId: removeCommand, boardId: board).get(), removed)
+    for (table, expected) in zip(tables, before) {
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid"), expected, table)
+    }
+  }
+
+  func testClockRolloverRejectsLaterWallOutsideStampFormatWithoutSavingReceipt() throws {
+    let harness = try harness()
+    harness.instant = 100_000_000_000_000
+    let tables = ["check_ins", "habit_actions", "coin_ledger", "app_settings",
+                  "mutation_outbox", "command_receipts", "widget_board_rows"]
+    let before = try tables.map { try harness.database.rows("SELECT * FROM \($0) ORDER BY rowid") }
+    let command = harness.id()
+    XCTAssertEqual(harness.executor.checkIn(IntentCheckInInput(commandId: command,
+      boardId: "00000000-0000-4000-8000-00000000a001")).error, .database)
+    for (table, expected) in zip(tables, before) {
+      XCTAssertEqual(try harness.database.rows("SELECT * FROM \(table) ORDER BY rowid"), expected, table)
+    }
+  }
+
+  func testClockRolloverInternalSuccessorsAndFailureLeaveNoPartialState() throws {
+    let cases: [(Int64, Int64, Int64, Int64, Int64, String)] = [
+      (1000, 60466175, 999, 1001, 0, "00000000001001-00000-device"),
+      (1000, 60466175, 1000, 1001, 0, "00000000001001-00000-device"),
+      (1000, 60466175, 2000, 2000, 0, "00000000002000-00000-device"),
+      (99999999999999, 60466174, 1000, 99999999999999, 60466175, "99999999999999-zzzzz-device"),
+    ]
+    for (wall, counter, now, expectedWall, expectedCounter, expectedStamp) in cases {
+      var clock = IntentHybridClock(wallTime: wall, counter: counter, deviceId: "device")
+      XCTAssertEqual(try clock.advance(now: now), expectedStamp)
+      XCTAssertEqual(clock.wallTime, expectedWall)
+      XCTAssertEqual(clock.counter, expectedCounter)
+    }
+    for (wall, counter, now): (Int64, Int64, Int64) in [
+      (99999999999999, 60466175, 1000),
+      (1000, 2, 100000000000000),
+    ] {
+      var clock = IntentHybridClock(wallTime: wall, counter: counter, deviceId: "device")
+      XCTAssertThrowsError(try clock.advance(now: now)) { error in XCTAssertEqual(error as? IntentFailure, .database) }
+      XCTAssertEqual(clock.wallTime, wall)
+      XCTAssertEqual(clock.counter, counter)
+    }
+  }
+
   func testMutationTransactionUpdatesReceiptClockOutboxAndProjection() throws {
     let harness = try harness()
     let board = "00000000-0000-4000-8000-00000000a001"
