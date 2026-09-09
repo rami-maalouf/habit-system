@@ -2568,3 +2568,19 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     at 100 percent. Evidence is in `.artifacts/t19/fact-loader/`. Native sources remain
     unchanged with the prior 9 plugin / 141 Swift gate applicable. The loader neither
     chooses winners nor expands economic dependencies or writes accepted facts.
+
+35. Final immutable writes now execute a complete resolved plan within the caller
+    transaction. Planned-new append equality aborts as an integrity contradiction.
+    Exact typed ID/stamp queue tuples are deduplicated with one noncorrelated JSON
+    membership query; existing queue duplicates stay intact and explicit restore can
+    requeue after an earlier upload. Inbox finalization and synchronous cancellation
+    checkpoints retain original failures and report only actual durable changes.
+36. Nineteen real SQLite tests cover whole-plan snapshots, 1,201 desired tuples, late
+    failures at five write stages, receipt/HLC rollback and retry. Independent review
+    additionally proves a real late stored-payload collision rolls back earlier facts,
+    outbox and HLC, then corrected retry survives reopen. Combined validation passes
+    135 suites / 2,048 tests, global coverage 97.62/96.24/96.28/98.16 and all 90 core files
+    at 100 percent. Evidence is in `.artifacts/t19/admission-writes/`. Native sources are
+    unchanged and the prior 9 plugin / 141 Swift gate remains applicable. This stage
+    consumes an already validated complete plan; the full resolver/composer is still
+    in progress and this increment does not enable schema-2 transport.
