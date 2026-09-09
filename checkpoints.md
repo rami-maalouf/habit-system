@@ -2498,3 +2498,16 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     CloudKit convergence remains the later T19 gate. Evidence is retained under
     `.artifacts/t19/period-sync/`. This implements the already approved endpoint
     semantics and does not implement the proposed permanent interval identities.
+24. Pure identity collation combines supplied facts, recovered inbox rows and accepted
+    bytes while retaining every variant. Digest hits compare payload/encoding/byte
+    length/selectors before duplicate cleanup. Restore intent combines only across
+    exact matching variants. Accepted rows remain authoritative, diagnostics stay
+    invalid, and prior quarantine stays terminal unless an accepted exact duplicate
+    permits cleanup. Canonical alternatives without an accepted winner remain for
+    intrinsic classification; shape-valid alternatives are not prematurely conflicted.
+25. The two-file collation increment passes 129 suites / 1,929 tests, global coverage
+    97.47/96.05/96.04/98.06 and all 85 core files at 100 percent. Independent review
+    repeats ten focused tests and probes Unicode claim bytes, frozen inputs, owned
+    output and forced digest collisions. Evidence is retained in
+    `.artifacts/t19/identity-groups/`. This pure step performs no admission, SQL,
+    hashing, HLC or upload work; native sources and visible behavior remain unchanged.
