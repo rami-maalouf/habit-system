@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -20,6 +20,7 @@ import {
 } from '@/core/domain/queries';
 import { radius, radiusCurve, semanticColor, semanticFallbacks, spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { deriveBoardColors } from '../boards/board-colors';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
@@ -130,7 +131,7 @@ function InsufficientCard({ message, testID }: { message: string; testID: string
 }
 
 export function AnalyticsScreen({ boardId }: { boardId: BoardId }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const board = useProductQuery((c) => getBoard(c, boardId), [boardId]);
   const earliest = useProductQuery((c) => getEarliestCheckInDate(c, boardId), [boardId]);
 
@@ -192,7 +193,7 @@ function AnalyticsBody({
   earliestDate: string | null;
 }) {
   const scheme = useScheme();
-  const { core, invalidate } = useProduct();
+  const { core, scope, invalidate } = useProduct();
   // the board's shifted start of day decides which year "today" is in
   const logicalToday = currentLogicalDate(
     core.clock.nowUtcMs(),
@@ -289,7 +290,7 @@ function AnalyticsBody({
               year={timelineYear}
               minYear={minYear}
               maxYear={currentYear}
-              onChange={setTimelineYear}
+              onChange={year => { if (scope.isCurrent()) setTimelineYear(year); }}
               testID="timeline-year"
             />
           }
@@ -390,7 +391,7 @@ function AnalyticsBody({
               year={comparisonYear}
               minYear={minYear}
               maxYear={currentYear}
-              onChange={setComparisonYear}
+              onChange={year => { if (scope.isCurrent()) setComparisonYear(year); }}
               testID="comparison-year"
             />
           }

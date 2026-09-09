@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, View } from 'react-native';
 
@@ -6,12 +6,13 @@ import { AppText } from '@/components/foundation/app-text';
 import { getStackListSnapshot } from '@/core/domain/stack-queries';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { stackLabel, StackOverview } from './stack-overview';
 import { useStackSnapshot } from './use-stack-snapshot';
 
 export function StackListScreen() {
-  const router = useRouter();
+  const router = useProductRouter();
   const scheme = useScheme();
   const snapshot = useStackSnapshot(getStackListSnapshot, 'list');
   const [scrollReady, setScrollReady] = useState(false);

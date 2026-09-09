@@ -3301,3 +3301,11 @@ T19/Checkpoint C external gates remain open.
     reran the preceding forty cases and confirmed composed typecheck passes.
     Core commands and the per-core claim store remain unchanged. Native
     presentation and the final route graph are still subsequent gates.
+11. Analytics, Journal, Coins, Stacks and product recovery now use scoped
+    navigation. Actual command-created notes, coin history and derived
+    stacks keep their destinations under sample routes, while retired
+    callbacks cannot navigate or change retained analytics year selections.
+    Nine regressions reproduce first; sixty tests across eight suites pass
+    with lint/typecheck clean. Root reviewed the seven production diffs and
+    complete routed test, verified all eight final hashes and approved this
+    caller increment. Production routes and native acceptance remain open.

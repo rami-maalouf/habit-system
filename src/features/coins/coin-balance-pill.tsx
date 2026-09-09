@@ -1,16 +1,16 @@
-import { useRouter } from 'expo-router';
 import { useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { getCoinTotals } from '@/core/domain/coin-queries';
 import { brand, radius, semanticColor, spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { useProductQuery } from '../product-store';
 import { ProductPressable, useScheme } from '../ui';
 import { coinAmountLabel } from './history-presentation';
 
 export function CoinBalancePill() {
-  const router = useRouter();
+  const router = useProductRouter();
   const scheme = useScheme();
   const { width } = useWindowDimensions();
   const totals = useProductQuery(getCoinTotals, []);

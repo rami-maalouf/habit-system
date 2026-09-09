@@ -1,14 +1,14 @@
-import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { PrimaryButton } from './primitives';
 
 // shared recovery surface for invalid or missing route parameters
 export function RecoveryScreen({ message }: { message: string }) {
-  const router = useRouter();
+  const router = useProductRouter();
   return (
     <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.lg }}>
       <AppText variant="title2" accessibilityRole="header">

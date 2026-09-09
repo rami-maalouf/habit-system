@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -7,13 +7,14 @@ import type { BoardId } from '@/core/domain/ids';
 import { getStackDetailSnapshot } from '@/core/domain/stack-queries';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { InlineError, PrimaryButton, useScheme } from '../ui';
 import { StackHeatmap } from './stack-heatmap';
 import { StackOverview } from './stack-overview';
 import { useStackSnapshot } from './use-stack-snapshot';
 
 export function StackDetailScreen({ rootId }: { rootId: BoardId }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const scheme = useScheme();
   const snapshot = useStackSnapshot((core) => getStackDetailSnapshot(core, rootId), rootId);
   const [scrollReady, setScrollReady] = useState(false);

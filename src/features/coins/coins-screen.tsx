@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
@@ -7,13 +7,14 @@ import { Icon } from '@/components/foundation/icon';
 import { getCoinTotals } from '@/core/domain/coin-queries';
 import { radius, radiusCurve, semanticColor, semanticFallbacks, spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { useProductQuery } from '../product-store';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { coinAmountLabel } from './history-presentation';
 import { RewardsList } from '../rewards/rewards-list';
 
 export function CoinsScreen() {
-  const router = useRouter();
+  const router = useProductRouter();
   const scheme = useScheme();
   const { fontScale } = useWindowDimensions();
   const totals = useProductQuery(getCoinTotals, []);

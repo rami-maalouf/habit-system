@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { FlatList, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -6,6 +6,7 @@ import type { BoardId } from '@/core/domain/ids';
 import { getBoard, getJournalTimeline } from '@/core/domain/queries';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
+import { useProductRouter } from '../sample/navigation';
 import { BoardSymbol, deriveBoardColors } from '../boards';
 import { formatAmount, formatCheckInTime } from '../check-in-history/history-screen';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
@@ -23,7 +24,7 @@ function journalDate(date: string): string {
 
 // board-scoped reverse-chronological timeline of check-ins with notes
 export function JournalScreen({ boardId }: { boardId: BoardId }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const scheme = useScheme();
   const board = useProductQuery((c) => getBoard(c, boardId), [boardId]);
   const journal = useProductQuery((c) => getJournalTimeline(c, boardId), [boardId]);
