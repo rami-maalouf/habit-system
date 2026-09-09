@@ -15,6 +15,7 @@ import type { CommandContext, CommandDeps } from './commands';
 import { replayCommand, runCommand } from './commands';
 import type { Board, Reminder, ReminderScheduleState } from './entities';
 import type { BoardId, CommandId, ReminderId } from './ids';
+import { isMissAlertIdentifierFamily } from './miss-alerts';
 import type { ReminderAuthorization, ReminderScheduler, ReminderScheduleRequest } from './ports';
 import type { DomainResult } from './result';
 import { err, ok } from './result';
@@ -502,7 +503,7 @@ export async function reconcileReminderSchedules(
     // pending requests no schedule row claims are crash leftovers or
     // partially cancelled replacements; sweep them
     const pending = await deps.scheduler.pendingIdentifiers();
-    const unknown = pending.filter((identifier) => !knownIdentifiers.has(identifier));
+    const unknown = pending.filter((identifier) => !knownIdentifiers.has(identifier) && !isMissAlertIdentifierFamily(identifier));
     if (unknown.length > 0) {
       await deps.scheduler.cancel(unknown);
       updated += 1;

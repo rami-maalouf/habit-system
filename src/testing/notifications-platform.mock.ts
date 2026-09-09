@@ -4,7 +4,9 @@ import type {
   ReminderAuthorization,
   ReminderScheduler,
   ReminderScheduleRequest,
+  MissAlertScheduler,
 } from '@/core/domain/ports';
+import type { NotificationDestination } from '../platform/notifications/index';
 
 export const notificationsPlatformMock = {
   auth: 'granted' as ReminderAuthorization,
@@ -17,6 +19,9 @@ export const notificationsPlatformMock = {
   cancelled: [] as string[],
   initialBoardId: null as string | null,
   tapHandlers: new Set<(boardId: string) => void>(),
+  destinationHandlers: new Set<(destination: NotificationDestination) => void>(),
+  deliveryHandlers: new Set<() => void>(),
+  initialDestination: null as NotificationDestination | null,
   reset() {
     this.auth = 'granted';
     this.promptResult = 'granted';
@@ -28,12 +33,16 @@ export const notificationsPlatformMock = {
     this.cancelled = [];
     this.initialBoardId = null;
     this.tapHandlers = new Set();
+    this.destinationHandlers = new Set(); this.deliveryHandlers = new Set(); this.initialDestination = null;
   },
   emitTap(boardId: string) {
     for (const handler of this.tapHandlers) {
       handler(boardId);
     }
+    for (const handler of this.destinationHandlers) handler({ kind: 'new-check', boardId });
   },
+  emitDestination(destination: NotificationDestination) { for (const handler of this.destinationHandlers) handler(destination); },
+  emitDelivery() { for (const handler of this.deliveryHandlers) handler(); },
 };
 
 export const reminderScheduler: ReminderScheduler = {
@@ -83,4 +92,22 @@ export async function getInitialNotificationBoardId(): Promise<string | null> {
 
 export function boardIdFromNotificationResponse(): string | null {
   return null;
+}
+
+export const missAlertScheduler: MissAlertScheduler = {
+  authorization: async () => 'undetermined', pendingRequests: async () => [], presentedIdentifiers: async () => [],
+  schedule: async () => ({ kind: 'retired' }), refreshPending: async () => ({ kind: 'unchanged' }), cancel: async () => ({ kind: 'retired' }),
+};
+
+export function addNotificationDestinationListener(handler: (destination: NotificationDestination) => void) {
+  notificationsPlatformMock.destinationHandlers.add(handler);
+  return () => { notificationsPlatformMock.destinationHandlers.delete(handler); };
+}
+export async function getInitialNotificationDestination(): Promise<NotificationDestination | null> {
+  return notificationsPlatformMock.initialDestination ?? (notificationsPlatformMock.initialBoardId
+    ? { kind: 'new-check', boardId: notificationsPlatformMock.initialBoardId } : null);
+}
+export function addNotificationDeliveryListener(handler: () => void) {
+  notificationsPlatformMock.deliveryHandlers.add(handler);
+  return () => { notificationsPlatformMock.deliveryHandlers.delete(handler); };
 }

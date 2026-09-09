@@ -263,6 +263,13 @@ final class IntentExecutor {
     return try JSONDecoder().decode(IntentOutcome<Value>.self, from: Data(receipt.utf8))
   }
 
+  func missAlertTransaction<T>(exclusive: Bool, _ work: (IntentDatabase) throws -> T) throws -> T {
+    try database.transaction(exclusive: exclusive) {
+      try validateSchema()
+      return try work(database)
+    }
+  }
+
   private func validateSchema() throws {
     guard try database.rows("PRAGMA user_version").first?["user_version"]?.number == Double(Self.schemaVersion) else { throw IntentFailure.migration }
     let applied = try database.rows("SELECT version, checksum FROM schema_migrations ORDER BY version")

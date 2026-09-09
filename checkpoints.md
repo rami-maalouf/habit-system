@@ -2914,9 +2914,12 @@ actual two-target service acceptance and Checkpoint C remain open.
 
 ### T21 - local miss alerts (2026-09-09)
 
-Status: in progress. Storage, native schema gate and pure date/repository
-foundations are complete. Runtime reconciliation, notification adapters,
-provider/Settings integration and actual delivery remain subsequent work.
+Status: complete. Storage/runtime, adapters, provider/Settings, private native
+hooks and actual simulator evidence pass independent review. Aggregate
+validation and native gates pass. A repaired signed build passes recursive library validation and actual cold
+launch. Permission handling, registration, background native mutations, delivery,
+warm/cold taps, exclusion and scoped cleanup pass. T19's live service gate and
+Checkpoint C remain open.
 
 1. Migration 12, `local_miss_alerts`, adds only board id, second missed date,
    nullable native identifier and the four approved statuses. The board/date
@@ -2958,5 +2961,121 @@ provider/Settings integration and actual delivery remain subsequent work.
    inventory from confirmed acceptance, and avoids awaiting SQL under the shared
    notification scheduling lane. Existing dated App Intents can invalidate or
    create missed pairs while JavaScript is suspended; their private post-commit
-   integration remains an explicit runtime requirement. T21, T19's live service
-   gate, Checkpoint C and final closure remain open.
+   integration is implemented in the runtime increment below.
+8. Runtime reconciliation reserves local pairs before dispatch and retains consumed
+   identity through cancellation and unknown results. Denied pairs remain terminal;
+   proven fresh failures can retry. Future pending observations permit a bounded
+   same-identifier refresh. The pending count joins distinct actual native IDs to
+   retained local rows and reports unavailable inventory without inventing zero.
+   Ordinary reminders and misses share a native effect lane with fresh capacity
+   inspection; no SQL is awaited inside that lane.
+9. The active provider coalesces mutation, foreground and significant-time work,
+   retires stale generations and uses core deadlines. Count-only changes have a
+   separate revision. Unknown initial AppState cannot authorize foreground alerts.
+   Miss taps open the board; reminder taps retain Add Check-in. The exact two-key
+   payload rejects inherited identities and malformed owned notifications without
+   falling through to ordinary reminder routing.
+10. Four existing native Check In/Remove Latest success and receipt-replay branches
+    invoke best-effort affected-board reconciliation after the product transaction.
+    Alert failures cannot replace a successful command result. Native and actual
+    TypeScript writers share the same local CAS rules; a two-direction test uses
+    both runtimes on the same WAL file. The shared literal fixture covers date
+    policy, exact payload bytes and retained-row outcomes. Native checks pass
+    9 plugin and 195 Swift tests with no compiler diagnostics.
+11. Independent reviews approve core, concrete Expo adapter, provider lifecycle,
+    native runner/store and actual UserNotifications adapter. Final validation
+    passes 168 suites / 2,737 tests with all 104 core files at 100 percent; global
+    coverage is 98.04/96.77/96.80/98.52. Lint and typecheck pass. All 31 frozen
+    source/test/config paths match after the gate. Generated Pods exposed vendor
+    tests/snapshots to Jest discovery; a reviewed exclusion retains all 168
+    product suites and removes only generated native projects. A routed Settings
+    timeout led to measured cold-load diagnosis and eager actual route imports
+    during suite setup, preserving every interaction assertion and deadline.
+12. A fresh generic simulator build passes after disk exhaustion was resolved by
+    removing verified disposable caches from earlier owned builds. The current
+    incremental output and all acceptance evidence were preserved. Development
+    signing passes deep/strict for the actual 18 code targets; generated static
+    React Native linkage accounts for the difference from earlier 20-target
+    builds. The first real launch then aborts before JavaScript: precompiled
+    ExpoModulesWorklets requires a dynamic React framework absent from that
+    source-built composition. The crash is preserved; coherent native dependency
+    rebuilding and actual simulator acceptance remain open. Compile/signing
+    success is not treated as runtime acceptance. Build/dependency diagnostics
+    remain recorded for final disposition. T19's live service gate, Checkpoint C
+    and final closure remain open.
+13. The existing local config plugin now records both supported source-build
+    properties together, retaining pinned dependency versions. Ordinary CNG with
+    all three related environment flags unset produces those properties; the
+    generated app and widget Pod graphs select source React and source Expo Core
+    and Worklets. The actual plugin regression failed before the mod existed,
+    then passed with independent literal-oracle and property-preservation review.
+    Full validation passes 2,737 tests with all 104 core files at 100 percent.
+    The final native-only test refinement passes 10 plugin / 195 Swift tests and
+    focused lint. The replacement generic build and development signing pass:
+    eight actual code targets, 16 architecture pairs, unchanged executable code
+    sections and zero unresolved required or weak libraries in both recursive
+    audits. All 33 final functional source/test/config hashes match. The retained
+    verifier passes 154 checks; actual launch/notification acceptance remains
+    separate. The replacement cold launch reaches Home after correcting owned
+    Metro's IPv6-only binding to serve the client's IPv4 URL. A fresh schema-12
+    store and undetermined notification permission are observed; notification
+    acceptance is still pending. The config repair is pushed as `50f8e3a`.
+    SDK 57 prebuild defaults to clean unless `--no-clean`
+    is explicit; only generated ios/Pods were regenerated, with prior apps,
+    crashes, logs and DerivedData preserved. Full native compilation retains
+    third-party diagnostics with no owned native source diagnostic or compiler
+    error. Evidence is in `.artifacts/t21/runtime/coherent-build/`.
+14. On the owned fresh simulator, an undetermined foreground pass retains the
+    eligible pair as pending/null without prompting. The actual Add Reminder form
+    produces the OS permission prompt; choosing Don't Allow stores the reminder
+    disabled/denied and the missed pair denied/null, with no native request.
+    Granting permission in iOS Settings leaves that denied pair terminal and
+    creates no backlog. These observed cases precede the remaining delivery and
+    tap acceptance; they do not claim completion of the entire runtime matrix.
+15. With the disclosed product clock at September 10, 08:58, iOS stores two
+    nonrepeating miss requests for September 10 at 09:00 alongside an ordinary
+    Wednesday reminder. Settings reports Allowed, one enabled reminder and two
+    pending miss alerts. Repeated foregrounding preserves all three identifiers
+    and does not repeat either initial miss scheduling call. Actual OS time is
+    unchanged; this proves calendar registration, not natural 09:00 delivery.
+16. An actual dated Remove Latest Shortcut removes September 8 from a separate
+    board while September 9 remains checked. The native runner creates that
+    board's September 8 missed pair and a next-day 09:00 request; the controlled
+    JavaScript clock would not qualify its different pair. An actual dated Check
+    In then cancels the native request. Inventories are observed with the app in
+    the background and no JavaScript schedule/cancel call in either interval.
+    Runtime evidence remains under `.artifacts/t21/runtime/qa/`.
+17. Notification Center displays the complete miss message and an actual ordinary
+    reminder. Opening the miss reaches its board details; opening the reminder
+    reaches that board's Add Check-in sheet, cancelled without saving. The
+    Notifications labels and count remain readable at large type in dark mode.
+    Actual OS time has not been advanced or a natural 09:00 firing claimed.
+18. A distinct September 11 missed pair delivers immediately under the disclosed
+    product clock. All 13 observed methods and both clock functions are restored
+    by identity before terminating the app. The actual Notification Center Open
+    action cold-launches the correct board on the real September 9 clock. Actual
+    export output and all eight mapped schema-2 collections exclude local alert
+    rows and native notification identifiers. Those collections yield 24 records
+    across six populated types; reward and ledger collections are empty.
+    Returning to Home after the cold tap does not repeat navigation. Final native pending/presented inventories
+    are empty; iCloud remains Off and this non-earning fixture's ledger stays empty.
+19. The owned simulator, app and scoped services are stopped. All 33 reviewed
+    functional source/test/config hashes and eight installed executable hashes
+    match. The original Migration QA database hash/mtime and shutdown state are
+    unchanged; the protected simulator and Ripples Metro on 8081 are preserved.
+    A stopped fixture backup is retained with SHA-256
+    `376704d3de661d64ce15f735349247f5743e8612281feaf60d7339494b59e170`.
+    Root reruns the relocatable offline verifier: 645 checks pass, comprising
+    203 semantic/provenance checks and 442 retained artifact hashes. Independent
+    simulator reviews pass 97 checks across permission/native and delivery/tap
+    evidence. The final report and verifier are retained in
+    `.artifacts/t21/runtime/qa/coherent-final/`. Cold delivery preceded termination;
+    the actual Open action then launched the terminated app. The run does not
+    claim delivery while terminated or natural next-day 09:00 firing.
+20. The lossless native log retains 92 setup Error/Fault events and 21 after the
+    first verified Home: eight focus-cache, eight loopback devtools, two nil
+    Picker-selection, one UIScene, one sandbox-extension and one NSBundle
+    nil-path message. No new coherent-build crash or `onAnimatedValueUpdate`
+    event occurred. The invalid initial QA observer trace is separately excluded.
+    Framework/build diagnostics remain bounded T24 follow-up; this is not a
+    warning-free claim.

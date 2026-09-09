@@ -1,5 +1,9 @@
 import * as Notifications from 'expo-notifications';
 
+import { inSchedulingLane, PENDING_NOTIFICATION_LIMIT } from './scheduling-lane';
+import { isMissAlertIdentifierFamily } from '@/core/domain/miss-alerts';
+import { readMissContent } from './miss-content';
+
 import type {
   PendingReminderRequest,
   ReminderAuthorization,
@@ -8,6 +12,8 @@ import type {
   ReminderScheduler,
   ReminderScheduleRequest,
 } from '@/core/domain/ports';
+
+export { missAlertScheduler } from './miss-alerts';
 
 const SCHEDULER_ERROR_MESSAGES: Record<ReminderSchedulerFailureCode, string> = {
   authorization_unavailable: 'Notification permission is temporarily unavailable.',
@@ -38,7 +44,7 @@ async function schedulerOperation<Value>(
 }
 
 // ios caps the pending local-notification pool at 64 requests
-const IOS_PENDING_LIMIT = 64;
+const IOS_PENDING_LIMIT = PENDING_NOTIFICATION_LIMIT;
 
 // without a handler expo suppresses notifications that fire while the app
 // is foregrounded; reminders must still present as banners
@@ -146,29 +152,36 @@ export const reminderScheduler: ReminderScheduler = {
   },
 
   async schedule(request: ReminderScheduleRequest): Promise<string> {
-    return schedulerOperation('schedule_failed', () => Notifications.scheduleNotificationAsync({
-      content: {
-        title: request.title,
-        body: request.body,
-        sound: 'default',
-        // the tap handler deep-links straight to the add check-in sheet
-        data: { boardId: request.boardId, reminderId: request.reminderId },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: toExpoWeekday(request.weekday),
-        hour: Math.floor(request.minuteOfDay / 60),
-        minute: request.minuteOfDay % 60,
-      },
+    const owned = { ...request };
+    return schedulerOperation('schedule_failed', () => inSchedulingLane(async () => {
+      if ((await Notifications.getAllScheduledNotificationsAsync()).length >= IOS_PENDING_LIMIT) {
+        throw new ReminderSchedulerError('schedule_failed');
+      }
+      return Notifications.scheduleNotificationAsync({
+        content: {
+          title: owned.title,
+          body: owned.body,
+          sound: 'default',
+          // the tap handler deep-links straight to the add check-in sheet
+          data: { boardId: owned.boardId, reminderId: owned.reminderId },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: toExpoWeekday(owned.weekday),
+          hour: Math.floor(owned.minuteOfDay / 60),
+          minute: owned.minuteOfDay % 60,
+        },
+      });
     }));
   },
 
   async cancel(identifiers: string[]): Promise<void> {
-    await schedulerOperation('cancel_failed', () => Promise.all(
-      identifiers.map((identifier) =>
+    const owned = [...identifiers];
+    await schedulerOperation('cancel_failed', () => inSchedulingLane(() => Promise.all(
+      owned.map((identifier) =>
         Notifications.cancelScheduledNotificationAsync(identifier),
       ),
-    ));
+    )));
   },
 };
 
@@ -182,6 +195,38 @@ export function boardIdFromNotificationResponse(
     | null
     | undefined;
   return data && typeof data.boardId === 'string' ? data.boardId : null;
+}
+
+export type NotificationDestination = { kind: 'board' | 'new-check'; boardId: string };
+
+export function notificationDestinationFromResponse(response: Notifications.NotificationResponse): NotificationDestination | null {
+  const { identifier, content } = response.notification.request;
+  if (isMissAlertIdentifierFamily(identifier)) {
+    const miss = readMissContent(identifier, content);
+    return miss ? { kind: 'board', boardId: miss.boardId } : null;
+  }
+  const boardId = boardIdFromNotificationResponse(response);
+  return boardId ? { kind: 'new-check', boardId } : null;
+}
+
+export function addNotificationDestinationListener(handler: (destination: NotificationDestination) => void): () => void {
+  const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+    const destination = notificationDestinationFromResponse(response);
+    if (destination) handler(destination);
+  });
+  return () => subscription.remove();
+}
+
+export async function getInitialNotificationDestination(): Promise<NotificationDestination | null> {
+  const response = await Notifications.getLastNotificationResponseAsync();
+  if (!response) return null;
+  Notifications.clearLastNotificationResponse();
+  return notificationDestinationFromResponse(response);
+}
+
+export function addNotificationDeliveryListener(handler: () => void): () => void {
+  const subscription = Notifications.addNotificationReceivedListener(handler);
+  return () => subscription.remove();
 }
 
 // taps while the app runs (or is backgrounded) arrive through the listener

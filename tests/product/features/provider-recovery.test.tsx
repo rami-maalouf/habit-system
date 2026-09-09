@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { AppState, Text } from 'react-native';
 
 import { err } from '@/core/domain/result';
 import type { ProductCore } from '@/platform/database/product-core';
@@ -21,30 +21,34 @@ describe('product provider recovery', () => {
   });
 
   it('reconciles once with the new timezone when the native clock changes while active', async () => {
-    jest.useFakeTimers();
-    let onTimeChange: () => void = () => {};
-    const remove = jest.fn();
-    jest.spyOn(timeChange, 'addSignificantTimeChangeListener').mockImplementation((listener) => {
-      onTimeChange = listener;
-      return remove;
-    });
-    const reconcile = jest.spyOn(reminderCommands, 'reconcileReminderSchedules');
-    const opened = await coreModule.getProductCore();
-    if (!opened.ok) throw new Error('core failed');
-    const { unmount } = renderComponent(
-      <ProductProvider coreOverride={opened.value as ProductCore}>
-        <Text>ready</Text>
-      </ProductProvider>,
-    );
-    await settle();
-    reconcile.mockClear();
-    coreModule.mockClock.zone = 'Europe/Paris';
-    await act(async () => { onTimeChange(); });
-    await settle();
-    expect(reconcile).toHaveBeenCalledTimes(1);
-    expect(reconcile.mock.calls[0][0].clock.timeZoneId()).toBe('Europe/Paris');
-    unmount();
-    expect(remove).toHaveBeenCalledTimes(1);
+    const appState = Object.getOwnPropertyDescriptor(AppState, 'currentState')!;
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' });
+    try {
+      jest.useFakeTimers();
+      let onTimeChange: () => void = () => {};
+      const remove = jest.fn();
+      jest.spyOn(timeChange, 'addSignificantTimeChangeListener').mockImplementation((listener) => {
+        onTimeChange = listener;
+        return remove;
+      });
+      const reconcile = jest.spyOn(reminderCommands, 'reconcileReminderSchedules');
+      const opened = await coreModule.getProductCore();
+      if (!opened.ok) throw new Error('core failed');
+      const { unmount } = renderComponent(
+        <ProductProvider coreOverride={opened.value as ProductCore}>
+          <Text>ready</Text>
+        </ProductProvider>,
+      );
+      await settle();
+      reconcile.mockClear();
+      coreModule.mockClock.zone = 'Europe/Paris';
+      await act(async () => { onTimeChange(); });
+      await settle();
+      expect(reconcile).toHaveBeenCalledTimes(1);
+      expect(reconcile.mock.calls[0][0].clock.timeZoneId()).toBe('Europe/Paris');
+      unmount();
+      expect(remove).toHaveBeenCalledTimes(1);
+    } finally { Object.defineProperty(AppState, 'currentState', appState); }
   });
 
   it('shows the recovery surface on a failed open and retries into the app', async () => {

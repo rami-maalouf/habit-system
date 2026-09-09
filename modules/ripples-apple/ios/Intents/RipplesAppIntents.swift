@@ -1,6 +1,7 @@
 #if os(iOS)
 import AppIntents
 import Foundation
+import UIKit
 import WidgetKit
 
 public struct RipplesBoardEntity: AppEntity {
@@ -54,6 +55,7 @@ public struct RipplesCheckInIntent: AppIntent {
     let executor = try RipplesIntentRuntime.open()
     if let receipt = try executor.replay(commandId: commandId, as: IntentCreatedCheckIn.self) {
       let result = try receipt.get()
+      await RipplesIntentRuntime.reconcileMissAlerts(executor, checkInId: result.checkInId)
       RipplesIntentRuntime.publishWidgets(executor)
       let text = RipplesIntentRuntime.checkInText(result, title: board.title)
       return .result(value: text, dialog: "\(text)")
@@ -71,6 +73,7 @@ public struct RipplesCheckInIntent: AppIntent {
     }
     let result = try executor.checkIn(IntentCheckInInput(commandId: commandId, boardId: board.id,
       logicalDate: logicalDate, occurredAtUtc: occurredAt, amount: amount, note: note)).get()
+    await RipplesIntentRuntime.reconcileMissAlerts(executor, checkInId: result.checkInId)
     RipplesIntentRuntime.publishWidgets(executor)
     let text = RipplesIntentRuntime.checkInText(result, title: record.title)
     return .result(value: text, dialog: "\(text)")
@@ -94,6 +97,7 @@ public struct RipplesRemoveLatestCheckInIntent: AppIntent {
     let executor = try RipplesIntentRuntime.open()
     if let receipt = try executor.replay(commandId: commandId, as: IntentRemovedCheckIn.self) {
       let result = try receipt.get()
+      await RipplesIntentRuntime.reconcileMissAlerts(executor, checkInId: result.removedCheckInId)
       RipplesIntentRuntime.publishWidgets(executor)
       let text = RipplesIntentRuntime.removalText(result, title: board.title)
       return .result(value: text, dialog: "\(text)")
@@ -106,6 +110,7 @@ public struct RipplesRemoveLatestCheckInIntent: AppIntent {
     let result = try executor.removeLatest(commandId: commandId, boardId: board.id,
       logicalDate: candidate.logicalDate, expectedCheckInId: candidate.checkInId,
       expectedCheckInIds: candidate.checkInIds, expectedSnapshot: candidate.snapshot).get()
+    await RipplesIntentRuntime.reconcileMissAlerts(executor, checkInId: result.removedCheckInId)
     RipplesIntentRuntime.publishWidgets(executor)
     let text = RipplesIntentRuntime.removalText(result, title: candidate.boardTitle)
     return .result(value: text, dialog: "\(text)")
@@ -132,6 +137,12 @@ public struct RipplesTodayCheckInsIntent: AppIntent {
 }
 
 enum RipplesIntentRuntime {
+  @MainActor static func reconcileMissAlerts(_ executor: IntentExecutor, checkInId: String) async {
+    let alerts = IntentMissAlertReconciliation(executor: executor, center: IntentMissNotifications(api: .live()),
+      foreground: { UIApplication.shared.applicationState == .active })
+    _ = await alerts.run(checkInId: checkInId)
+  }
+
   static func checkInText(_ result: IntentCreatedCheckIn, title: String) -> String {
     result.created ? String(localized: "Checked in to \(title) for \(result.logicalDate).")
       : String(localized: "\(title) is already checked for \(result.logicalDate).")

@@ -165,3 +165,9 @@ it('refuses malformed caller rows before writing and distinct identity substitut
   await expect(write(null, { ...rowFor(a), status: 'scheduled' } as MissAlertRow)).rejects.toThrow('invalid');
   expect(await readMissAlertRows(h.db, [a, b])).toEqual([]);
 });
+it('reads only explicit board identities when requalifying an acquired pair', async () => {
+  const a = await board(); const b = await board();
+  expect((await readMissAlertBoards(h.db, [a], false)).map(row => row.id)).toEqual([a]);
+  expect(await readMissAlertBoards(h.db, [], false)).toEqual([]);
+  expect((await readMissAlertBoards(h.db, [a])).map(row => row.id)).toEqual([a, b]);
+});

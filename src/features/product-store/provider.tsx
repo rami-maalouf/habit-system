@@ -9,13 +9,15 @@ import type { CommandId } from '@/core/domain/ids';
 import { parseBoardId } from '@/core/domain/ids';
 import { getBoard } from '@/core/domain/queries';
 import { refreshWidgetProjection } from '@/core/domain/widget-projection';
-import { reconcileReminderSchedules } from '@/core/domain/reminder-commands';
+import type { MissAlertScheduler } from '@/core/domain/ports';
 import type { DomainError, DomainResult } from '@/core/domain/result';
 import type { ProductCore } from '@/platform/database/product-core';
 import { getProductCore } from '@/platform/database/product-core';
 import {
-  addNotificationTapListener,
-  getInitialNotificationBoardId,
+  addNotificationDestinationListener,
+  addNotificationDeliveryListener,
+  getInitialNotificationDestination,
+  missAlertScheduler,
   reminderScheduler,
 } from '@/platform/notifications';
 import { addWidgetQuickActionListener, refreshWidgets } from '@/platform/widgets';
@@ -25,6 +27,7 @@ import { cloudKitTransport } from '@/platform/sync';
 import type { SyncTransport, WireSyncRecord } from '@/core/sync/transport';
 
 import { INITIAL_SYNC, SyncCoordinator, type SyncSnapshot } from './sync-coordinator';
+import { NotificationCoordinator } from './notification-coordinator';
 
 type ProductContextValue = {
   core: ProductCore;
@@ -35,6 +38,8 @@ type ProductContextValue = {
   syncNow: () => void;
   pauseSync: () => void;
   resumeSync: () => void;
+  missAlertScheduler: MissAlertScheduler;
+  missAlertVersion: number;
 };
 
 const ProductContext = createContext<ProductContextValue | null>(null);
@@ -50,15 +55,20 @@ type ProductProviderProps = {
   // shared sqlite core
   coreOverride?: ProductCore;
   syncTransportOverride?: SyncTransport<WireSyncRecord>;
+  missAlertSchedulerOverride?: MissAlertScheduler;
 };
 
-export function ProductProvider({ children, coreOverride, syncTransportOverride }: ProductProviderProps) {
+export function ProductProvider({ children, coreOverride, syncTransportOverride, missAlertSchedulerOverride }: ProductProviderProps) {
   const [state, setState] = useState<ProviderState>(
     coreOverride ? { status: 'ready', core: coreOverride } : { status: 'loading' },
   );
   const [version, setVersion] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [sync, setSync] = useState(INITIAL_SYNC);
+  const [missAlertVersion, setMissAlertVersion] = useState(0);
+  const missScheduler = missAlertSchedulerOverride ?? missAlertScheduler;
+  const notificationsRef = useRef<NotificationCoordinator | null>(null);
+  const active = useRef(AppState.currentState === 'active');
   const projectionGeneration = useRef(0);
   const refreshQueries = useCallback(() => {
     projectionGeneration.current += 1;
@@ -120,28 +130,24 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
     syncNow();
   }, [refreshQueries, syncNow]);
 
-  // the reminder reconciler reruns on cold start and every return to the
-  // foreground, covering permission flips, time changes, and restores
-  const reconcile = useCallback(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
-    const core = state.core;
-    void reconcileReminderSchedules(
-      { ...core, scheduler: reminderScheduler },
-      { commandId: core.ids.uuid() as CommandId },
-    ).then((result) => {
-      if (result.ok && result.value.updated > 0) {
-        invalidate();
-      }
-    });
-  }, [invalidate, state]);
-
-  // reruns on cold start and after every mutation (archive, restore,
-  // delete, import), not only on foreground transitions
   useEffect(() => {
-    reconcile();
-  }, [reconcile, version]);
+    if (state.status !== 'ready') return;
+    const coordinator = new NotificationCoordinator(state.core, missScheduler, reminderScheduler,
+      active.current, () => setMissAlertVersion(value => value + 1), invalidate);
+    notificationsRef.current = coordinator;
+    return () => { coordinator.dispose(); notificationsRef.current = null; };
+  }, [state, missScheduler, invalidate]);
+
+  // miss-only progress has its own observer revision and cannot trigger this effect.
+  useEffect(() => { notificationsRef.current?.request(); }, [state, version, missScheduler]);
+
+  useEffect(() => {
+    let current = true;
+    const remove = addNotificationDeliveryListener(() => {
+      if (current) setMissAlertVersion(value => value + 1);
+    });
+    return () => { current = false; remove(); };
+  }, []);
 
   // native clock changes invalidate queries and rearm the day-boundary timer.
   // the existing version effect performs one reconciliation for the event.
@@ -182,13 +188,14 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
   // the in-process database-change hook lands with the widget stage.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (appState) => {
+      active.current = appState === 'active';
+      notificationsRef.current?.setActive(active.current);
       if (appState === 'active') {
         invalidate();
-        reconcile();
       }
     });
     return () => subscription?.remove?.();
-  }, [invalidate, reconcile]);
+  }, [invalidate]);
 
   // daily events open explicit fresh-state actions; count events retain
   // their existing quick-create behavior and form fallback.
@@ -227,16 +234,16 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
     if (state.status !== 'ready') {
       return;
     }
-    const open = (boardId: string) => {
-      router.push(`/boards/${boardId}/check-ins/new`);
+    const open = ({ boardId, kind }: { boardId: string; kind: 'board' | 'new-check' }) => {
+      if (!cancelled) router.push(kind === 'board' ? `/boards/${boardId}` : `/boards/${boardId}/check-ins/new`);
     };
     let cancelled = false;
-    void getInitialNotificationBoardId().then((boardId) => {
-      if (boardId && !cancelled) {
-        open(boardId);
+    void getInitialNotificationDestination().then((destination) => {
+      if (destination && !cancelled) {
+        open(destination);
       }
-    });
-    const remove = addNotificationTapListener(open);
+    }).catch(() => {});
+    const remove = addNotificationDestinationListener(open);
     return () => {
       cancelled = true;
       remove();
@@ -256,8 +263,10 @@ export function ProductProvider({ children, coreOverride, syncTransportOverride 
       syncNow,
       pauseSync,
       resumeSync,
+      missAlertScheduler: missScheduler,
+      missAlertVersion,
     };
-  }, [state, version, invalidate, sync, syncNow, pauseSync, resumeSync]);
+  }, [state, version, invalidate, sync, syncNow, pauseSync, resumeSync, missScheduler, missAlertVersion]);
 
   if (state.status === 'loading') {
     return <View testID="product-loading" />;

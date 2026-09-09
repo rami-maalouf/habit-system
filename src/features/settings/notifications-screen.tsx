@@ -5,10 +5,11 @@ import { AppState, Linking, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import { getNotificationOverview } from '@/core/domain/queries';
+import { getPendingMissAlertCount } from '@/core/domain/miss-alert-reconciliation';
 import { semanticColor, spacing } from '@/theme';
 
 import { InlineError, PrimaryButton, useScheme } from '../ui';
-import { useProductQuery } from '../product-store';
+import { useProduct, useProductQuery } from '../product-store';
 import { SettingsGroup, SettingsRow } from './rows';
 
 type AuthorizationState = 'loading' | 'granted' | 'denied' | 'undetermined';
@@ -30,6 +31,9 @@ export function NotificationsScreen() {
   const [authorization, setAuthorization] = useState<AuthorizationState>('loading');
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const overview = useProductQuery((c) => getNotificationOverview(c), []);
+  const { missAlertScheduler, missAlertVersion } = useProduct();
+  const missCount = useProductQuery(core => getPendingMissAlertCount({ db: core.db, scheduler: missAlertScheduler }),
+    [missAlertScheduler, missAlertVersion]);
 
   // the status re-reads on every return to the foreground, so coming back
   // from the system settings app shows the fresh authorization
@@ -91,6 +95,8 @@ export function NotificationsScreen() {
             detail={overview.status === 'ready' ? String(overview.value.enabledReminderCount) : '…'}
             testID="notifications-reminder-count"
           />
+          <SettingsRow title="Pending miss alerts" testID="notifications-miss-count"
+            detail={missCount.status === 'ready' ? String(missCount.value) : missCount.status === 'error' ? 'Unavailable' : '…'} />
         </SettingsGroup>
         {overview.status === 'ready' && overview.value.scheduleErrors.length > 0 ? (
           <View style={{ gap: spacing.sm }} testID="notifications-schedule-errors">

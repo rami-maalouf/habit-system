@@ -63,11 +63,11 @@ export async function replaceMissAlertRow(tx: SqlExecutor, expected: MissAlertRo
   return result.changes > 0;
 }
 
-export async function readMissAlertBoards(tx: SqlExecutor, extraBoardIds: readonly BoardId[]): Promise<MissAlertBoard[]> {
+export async function readMissAlertBoards(tx: SqlExecutor, extraBoardIds: readonly BoardId[], includeActive = true): Promise<MissAlertBoard[]> {
   const rows = await tx.getAllAsync<MissAlertBoard>(`SELECT id, kind, title, start_of_day_minute AS startOfDayMinute,
     archived_at AS archivedAt, deleted_at AS deletedAt FROM boards
-    WHERE (kind = 'daily' AND archived_at IS NULL AND deleted_at IS NULL)
-      OR id IN (SELECT value FROM json_each(?)) ORDER BY id`, [JSON.stringify([...new Set(extraBoardIds)])]);
+    WHERE (? = 1 AND kind = 'daily' AND archived_at IS NULL AND deleted_at IS NULL)
+      OR id IN (SELECT value FROM json_each(?)) ORDER BY id`, [includeActive ? 1 : 0, JSON.stringify([...new Set(extraBoardIds)])]);
   for (const row of rows) {
     if (typeof row.id !== 'string' || row.id.length !== 36 || !isUuidV4(row.id) ||
       !['daily', 'count'].includes(row.kind) || typeof row.title !== 'string' ||

@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 
 import type { BoardId } from '@/core/domain/ids';
 import { createReminder, updateReminder } from '@/core/domain/reminder-commands';
@@ -493,19 +493,23 @@ describe('sol reminder remediation - ui and wiring', () => {
   });
 
   it('cancels schedules right after an archive, without a foreground event', async () => {
-    const boardId = await seedBoard('archive me');
-    await seedReminder(boardId, { weekdaysMask: 0b0000001 });
-    expect(notificationsPlatformMock.pending.size).toBe(1);
-    renderRouter('src/app', { initialUrl: `/boards/${boardId}/edit` });
-    await screen.findByTestId('archive-board');
-    alertSpy.mockImplementationOnce((_title, _message, buttons) => {
-      buttons?.find((button) => button.text === 'Archive')?.onPress?.();
-    });
-    await press('archive-board');
-    await settle();
-    await settle();
-    // the invalidation-driven reconcile suspended the schedule
-    expect(notificationsPlatformMock.pending.size).toBe(0);
+    const appState = Object.getOwnPropertyDescriptor(AppState, 'currentState')!;
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' });
+    try {
+      const boardId = await seedBoard('archive me');
+      await seedReminder(boardId, { weekdaysMask: 0b0000001 });
+      expect(notificationsPlatformMock.pending.size).toBe(1);
+      renderRouter('src/app', { initialUrl: `/boards/${boardId}/edit` });
+      await screen.findByTestId('archive-board');
+      alertSpy.mockImplementationOnce((_title, _message, buttons) => {
+        buttons?.find((button) => button.text === 'Archive')?.onPress?.();
+      });
+      await press('archive-board');
+      await settle();
+      await settle();
+      // the invalidation-driven reconcile suspended the schedule
+      expect(notificationsPlatformMock.pending.size).toBe(0);
+    } finally { Object.defineProperty(AppState, 'currentState', appState); }
   });
 
   it('explains a denied schedule when a drafted reminder commits with a new board', async () => {
