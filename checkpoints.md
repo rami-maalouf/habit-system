@@ -2389,3 +2389,19 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
    shut down. Evidence and reproducible verifier are in `.artifacts/t19/foundation-qa/`;
    root reran the packaged verifier successfully. This proves the foundation and does
    not establish schema-2 CloudKit or account/device convergence.
+9. Immutable preparation and inbox storage are complete as a separate increment.
+   Preparation snapshots the envelope and payload before hashing, preserves exact
+   canonical bytes, and distinguishes bounded invalid diagnostics from operation
+   capacity/hash failures. Inbox updates compare bytes after digest hits, preserve
+   first-seen time, combine deferred import upload intent, and report durable state
+   changes even without new occupancy. Final-plan limits include removals and all
+   retained variants without eviction. Real SQLite tests pin 32,768 variants, exactly
+   64 MiB and an additional single byte, rollback and close/reopen persistence.
+10. Independent review reproduced and resolved async envelope mutation, oversized
+    policy classification and unnecessary selector payload copying. Full main
+    validation passes 123 suites / 1,855 tests, global coverage
+    97.37/95.88/95.95/97.99, with all 82 core files at 100 percent. The existing
+    9 plugin/141 Swift gate and signed foundation proof cover unchanged native
+    sources; this uncalled preparation/storage increment adds no device behavior.
+    Review and red/green evidence are in `.artifacts/t19/admission-preparation/`.
+    Economic admission and sync/import composition remain subsequent work.
