@@ -921,6 +921,7 @@ final class IntentExecutorTests: XCTestCase {
     let source = try migrations()
     let checksums = Dictionary(uniqueKeysWithValues: source.map { ($0["version"] as! Int, $0["checksum"] as! String) })
     XCTAssertEqual(IntentExecutor.migrationChecksums, checksums)
+    XCTAssertEqual(IntentExecutor.schemaVersion, try XCTUnwrap(checksums.keys.max()))
   }
 
   func testAppIntentFailuresExposeTheirSanitizedLocalizedMessages() throws {

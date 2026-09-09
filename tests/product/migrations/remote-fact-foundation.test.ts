@@ -12,7 +12,7 @@ import type { Hashing } from '@/core/domain/ports';
 import { migrateDatabase, migrationChecksum } from '@/core/persistence/migrations';
 import { appendHabitAction } from '@/core/persistence/repositories/habit-actions';
 import { appendLedgerEntry, getLedgerEntry } from '@/core/persistence/repositories/ledger';
-import { migrations } from '@/core/persistence/schema';
+import { latestSchemaVersion, migrations } from '@/core/persistence/schema';
 
 import { NodeSqlDatabase } from '../helpers/test-db';
 
@@ -110,7 +110,7 @@ describe('remote fact storage and explicit legacy migration', () => {
       await rawCheck(db, 3, 101);
       const before = await payloads(db);
       const settings = await db.getFirstAsync('SELECT hlc_wall_time, hlc_counter FROM app_settings');
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await payloads(db)).toEqual(before);
       const baseline = await baselineAction(legacy, hashing);
       expect(await db.getAllAsync('SELECT id, kind, created_at, policy_json FROM habit_actions'))
@@ -123,7 +123,7 @@ describe('remote fact storage and explicit legacy migration', () => {
       expect(await db.getAllAsync('SELECT * FROM command_receipts')).toEqual([]);
       expect(await db.getFirstAsync('SELECT hlc_wall_time, hlc_counter FROM app_settings')).toEqual(settings);
       const outbox = await db.getAllAsync('SELECT * FROM mutation_outbox');
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await db.getAllAsync('SELECT * FROM mutation_outbox')).toEqual(outbox);
     } finally { await db.closeAsync(); }
   });
@@ -134,7 +134,7 @@ describe('remote fact storage and explicit legacy migration', () => {
       const before = await payloads(db);
       const savedAward = await db.getFirstAsync('SELECT * FROM coin_ledger WHERE id = ?', [award.id]);
       const baseline = await baselineAction(legacy, hashing);
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await payloads(db)).toEqual(before);
       expect(await db.getFirstAsync('SELECT * FROM coin_ledger WHERE id = ?', [award.id])).toEqual(savedAward);
       expect(await db.getAllAsync('SELECT kind, delta FROM coin_ledger ORDER BY rowid'))
@@ -144,7 +144,7 @@ describe('remote fact storage and explicit legacy migration', () => {
         { state_suppressed: 0 }, { state_suppressed: 0 },
       ]);
       const rows = await db.getAllAsync('SELECT * FROM coin_ledger ORDER BY id');
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await db.getAllAsync('SELECT * FROM coin_ledger ORDER BY id')).toEqual(rows);
     } finally { await db.closeAsync(); }
   });
@@ -171,7 +171,7 @@ describe('remote fact storage and explicit legacy migration', () => {
         error: { code: 'migration', message: 'Database migration failed: simulated disk failure' } });
       expect(await snapshot(db)).toEqual(before);
       spy.mockRestore();
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await db.getAllAsync('SELECT kind, delta FROM coin_ledger ORDER BY rowid'))
         .toEqual([{ kind: 'check', delta: 1 }, { kind: 'adjustment', delta: -1 }]);
       expect(await db.getAllAsync("SELECT id FROM habit_actions WHERE kind = 'baseline'")).toHaveLength(2);
@@ -187,7 +187,7 @@ describe('remote fact storage and explicit legacy migration', () => {
         error: { code: 'migration', message: 'Database migration failed: hash unavailable' } });
       expect(failing[method]).toHaveBeenCalled();
       expect(await snapshot(db)).toEqual(before);
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
     } finally { await db.closeAsync(); }
   });
 
@@ -209,8 +209,8 @@ describe('remote fact storage and explicit legacy migration', () => {
         expect(await snapshot(reader)).toEqual(before);
         return hashing.sha1(bytes);
       } };
-      expect(await migrateDatabase(db, { hashing: checkedHashing })).toEqual({ ok: true, value: 11 });
-      expect(await reader.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 11 });
+      expect(await migrateDatabase(db, { hashing: checkedHashing })).toEqual({ ok: true, value: latestSchemaVersion });
+      expect(await reader.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: latestSchemaVersion });
       expect(await reader.getFirstAsync('SELECT applied_at FROM schema_migrations WHERE version = 11'))
         .toEqual({ applied_at: 200 });
       expect(await reader.getAllAsync("SELECT created_at FROM mutation_outbox WHERE entity_type = 'habit_action'"))
@@ -243,7 +243,7 @@ describe('remote fact storage and explicit legacy migration', () => {
         boardId, logicalDate: date, checkInId: null, kind: 'uncheck', createdAt: now,
         mutationStamp: stamp, policyJson: null });
       const before = await payloads(db);
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(await payloads(db)).toEqual(before);
       expect(await db.getAllAsync('SELECT state_suppressed FROM check_ins')).toEqual([{ state_suppressed: 1 }]);
       expect(await db.getAllAsync("SELECT id FROM habit_actions WHERE kind = 'baseline'")).toHaveLength(1);
@@ -259,7 +259,7 @@ describe('remote fact storage and explicit legacy migration', () => {
       for (const row of vector.rows) await appendLedgerEntry(db, row as CoinLedgerRow);
       const before = await db.getAllAsync<{ id: string }>('SELECT * FROM coin_ledger ORDER BY id');
       expect(before.length).toBeGreaterThan(0);
-      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: 11 });
+      expect(await migrateDatabase(db, { hashing })).toEqual({ ok: true, value: latestSchemaVersion });
       expect(vector.expectedAppendedRows).toHaveLength(1);
       expect(vector.expectedAppendedRows[0]).toMatchObject({ kind: 'adjustment', delta: -1 });
       expect(await db.getAllAsync('SELECT * FROM coin_ledger')).toHaveLength(before.length + 1);

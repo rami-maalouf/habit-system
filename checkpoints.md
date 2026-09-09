@@ -2911,3 +2911,52 @@ actual two-target service acceptance and Checkpoint C remain open.
     This is not a zero-warning runtime claim. The inherited `ripples-export`
     filename remains a T24 cosmetic item. Native share presentation is verified;
     external file delivery and live CloudKit convergence are not claimed.
+
+### T21 - local miss alerts (2026-09-09)
+
+Status: in progress. Storage, native schema gate and pure date/repository
+foundations are complete. Runtime reconciliation, notification adapters,
+provider/Settings integration and actual delivery remain subsequent work.
+
+1. Migration 12, `local_miss_alerts`, adds only board id, second missed date,
+   nullable native identifier and the four approved statuses. The board/date
+   primary key retains deduplication; status indexing supports local recovery.
+   Status/identifier constraints distinguish denied, scheduled and unresolved
+   work. Board tombstones preserve rows, and the foreign key has no cascade.
+   Checksum `45bc5f98` is paired with the Swift schema-12 gate in this increment.
+2. Migration tests start with a nonempty schema-11 store populated through public
+   board/check/reward/claim commands. All prior data, evidence, coins, receipts,
+   outbox and settings survive; only schema markers and the empty local table
+   change. Five failure points roll back the entire new migration and retry.
+   The first eleven checksums and schema-11 derived step remain unchanged.
+   Existing migration tests now expect the latest final version while retaining
+   their exact older-step rollback and evidence assertions.
+3. Pure rules use active Daily boards, their own day shift and exactly the two
+   preceding closed date labels. Both dates must be eligible and lack an effective
+   check; an ineligible gap is never skipped. Inherited inclusive activity-period
+   ends remain distinct from stack eligibility. The separate cancellation rule
+   allows older truthful pairs but rejects checked, ineligible or reopened dates.
+4. Deterministic local identifiers preserve board identity and date bytes. The
+   pure notification intent targets civil 09:00 or foreground immediate delivery.
+   A future native observation does not promote unconfirmed acceptance. Repository
+   reads hydrate only requested pairs/dates and needed board/period fields; stale
+   conditional writes cannot overwrite a newer status/id. Integrity failures use
+   static errors, and there is no row-deletion helper or economic/sync write path.
+5. Final foundation validation passes 162 suites / 2,565 tests, with all 103 core
+   files at 100 percent on all four metrics. Global coverage is
+   97.99/96.69/96.82/98.47; lint and typecheck pass. Native checks pass 9 plugin /
+   169 Swift tests without compiler warnings. The native checksum test first
+   failed against schema 12, then passed with the paired gate and strengthened
+   maximum-version assertion. Evidence is under `.artifacts/t21/foundation/`.
+6. Independent storage/spec review reruns 29 migration tests, including direct
+   orphan rejection, no-cascade identity retention and export/wire exclusion.
+   The pure/repository owner passes 67 tests with both new core files at full
+   coverage; independent composition review is recorded with the final manifest.
+   No UI or runtime scheduler is changed in this foundation, so these results
+   do not claim notification registration, delivery or tap acceptance.
+7. Runtime design preserves existing reminders, distinguishes native pending
+   inventory from confirmed acceptance, and avoids awaiting SQL under the shared
+   notification scheduling lane. Existing dated App Intents can invalidate or
+   create missed pairs while JavaScript is suspended; their private post-commit
+   integration remains an explicit runtime requirement. T21, T19's live service
+   gate, Checkpoint C and final closure remain open.

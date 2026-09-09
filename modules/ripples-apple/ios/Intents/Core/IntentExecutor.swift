@@ -8,8 +8,8 @@ final class IntentExecutor {
 
   // native code never migrates. the fixture test compares these checksums
   // with the authoritative typescript migrations before executing cases.
-  static let schemaVersion = 11
-  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b", 7: "a901fb95", 8: "14ff0dae", 9: "421ece28", 10: "5d0cab85", 11: "507c9875"]
+  static let schemaVersion = 12
+  static let migrationChecksums = [1: "c459cef6", 2: "34363ca0", 3: "bac085e2", 4: "dcbb9394", 5: "633f8fb7", 6: "0191110b", 7: "a901fb95", 8: "14ff0dae", 9: "421ece28", 10: "5d0cab85", 11: "507c9875", 12: "45bc5f98"]
 
   init(database: IntentDatabase, now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
        zone: @escaping () -> String = { TimeZone.current.identifier },

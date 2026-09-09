@@ -344,6 +344,24 @@ export const migrations: readonly Migration[] = [
       `UPDATE app_settings SET schema_revision = 11 WHERE id = 1`,
     ],
   },
+  {
+    version: 12,
+    name: 'local_miss_alerts',
+    statements: [
+      `CREATE TABLE miss_alerts (
+        board_id TEXT NOT NULL REFERENCES boards (id),
+        second_missed_date TEXT NOT NULL,
+        native_identifier TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'scheduled', 'denied', 'error')),
+        PRIMARY KEY (board_id, second_missed_date),
+        CHECK ((status = 'scheduled' AND native_identifier IS NOT NULL)
+          OR (status = 'denied' AND native_identifier IS NULL)
+          OR status IN ('pending', 'error'))
+      )`,
+      `CREATE INDEX idx_miss_alerts_status ON miss_alerts (status)`,
+      `UPDATE app_settings SET schema_revision = 12 WHERE id = 1`,
+    ],
+  },
 ];
 
 export const latestSchemaVersion = migrations[migrations.length - 1].version;

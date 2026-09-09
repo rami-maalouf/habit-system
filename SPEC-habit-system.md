@@ -241,10 +241,13 @@ Rules:
 ### 4.6 Never miss twice
 
 - Applies to `daily` boards only.
+- New alerts require a currently active, undeleted board. Use that board's own start-of-day shift and exactly the two preceding logical-date labels; do not skip an ineligible gap to find older misses. Optional membership, usual times and coin settings do not change this rule.
 - A miss is an eligible logical date with no check-in on that date. Stacked boards use the same exact-date rule as stack completion. Eligibility uses the inherited date-based activity periods, not an assertion about every intraday instant. Creation dates and closed periods follow the inherited analytics convention; tests explicitly cover same-day archive/restore.
 - When a board's two most recent closed windows are both misses and no alert has been recorded for that pair, the reconciler schedules one local notification for the next 09:00 local time, or immediately if that has passed and the app is in the foreground. Body: "[title] was missed twice. Fix the environment before anything else today." The tap deep-links to the board.
 - New device-local table `miss_alerts` stores boardId, the second missed date key, nullable native identifier, and schedule status (`pending`, `scheduled`, `denied`, `error`). It never syncs and is excluded from export.
 - The alert uses the existing notification permission. If permission is denied, the alert is recorded as `denied` and nothing prompts. Settings > Notifications shows the count of pending miss alerts.
+- A denied pair is terminal and does not become a backlog after permission is granted. Undetermined permission waits without prompting while the pair remains current and eligible. The pending count comes from the platform's pending-request inventory matched to local records; historical scheduled rows are not counted. An unavailable inventory is reported as unavailable, never as zero.
+- Reserve a pair before the native scheduling call. Proven non-acceptance may retry; a lost or unknown result retains its identifier and is not reissued merely because it is absent from pending/delivered inspection. A positively observed future request may be updated under the same identifier. Keep deduplication after cancellation or board deletion. Database and native effects are not one transaction, so this prevents ordinary duplicate reconciliation without claiming crash-proof exactly-once delivery. Platform delivery precision and suspended-app time-zone handling remain native constraints.
 - Ripples' per-board reminders are unchanged and remain the way to be reminded before a habit.
 
 ### 4.7 Home screen
