@@ -3229,3 +3229,15 @@ T19/Checkpoint C external gates remain open.
    retaining raw SQL oracles. Root reviewed the production and test changes,
    requested the reproduced options Back correction and verified all ten
    final manifest hashes. Production sample routes remain unactivated.
+5. The root sample session now joins the registered real host before opening
+   memory and owns the sample operation authority before publishing ready.
+   Close retires admission synchronously, waits for accepted work and scene
+   removal, then disposes memory once before navigation and real resumption.
+   Late opens never mount after Close; failed disposal remains retired with
+   an observable error. External removal shares cleanup without replaying
+   navigation. Independent review reproduced stale cleanup when a handle
+   object was reused; per-registration tokens correct it, with paired real
+   SQLite controls. Nineteen tests across two suites, owned lint and composed
+   typecheck pass. The non-author review approves the four exact files.
+   Actual presentation commit acknowledgement and route/runtime integration
+   remain subsequent work; the controller alone does not establish those.
