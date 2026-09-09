@@ -2486,3 +2486,15 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     all prior data plus one enumerated startup reminder no-op receipt. Devices are
     shut down and debugger processes stopped. The relocatable verifier passes in
     `.artifacts/t24/animation-probe/`; the warning's cause remains unresolved.
+22. Two public-command replica regressions reproduce a valid archive range being
+    rejected after travel from Auckland to Honolulu moves the logical date backward.
+    The receiving replica retained the old open interval and reported needs-attention.
+    Removing the inbound endpoint-order restriction preserves the exact empty range,
+    stamp and zero eligible days, with or without a prior download of the open range.
+    Invalid calendar dates, v1 interval identities and mutable LWW remain unchanged.
+23. The three-file period fix passes 128 suites / 1,919 tests, global coverage
+    97.45/96.01/96.02/98.04 and all 84 core files at 100 percent. Independent review
+    repeats 67 focused tests and approves the fix. Native code is unchanged; actual
+    CloudKit convergence remains the later T19 gate. Evidence is retained under
+    `.artifacts/t19/period-sync/`. This implements the already approved endpoint
+    semantics and does not implement the proposed permanent interval identities.

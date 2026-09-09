@@ -1,6 +1,6 @@
 import { archiveBoard, createCheckIn, deleteBoard, dismissMetricsEducation, setICloudSyncEnabled, updateBoard } from '@/core/domain/commands';
 import type { BoardId, LogicalDate } from '@/core/domain/ids';
-import { getBoard, getGroupedCheckInHistory, getMetricsEducationDismissed, getSyncSummary, listActiveBoards, listArchivedBoards } from '@/core/domain/queries';
+import { getBoard, getBoardSummary, getGroupedCheckInHistory, getMetricsEducationDismissed, getSyncSummary, listActiveBoards, listArchivedBoards } from '@/core/domain/queries';
 import { runSync, retryDelayMs } from '@/core/sync/engine';
 import type { SyncDeps } from '@/core/sync/engine';
 import { SYNC_SCHEMA_VERSION, periodEntityId } from '@/core/sync/records';
@@ -65,6 +65,40 @@ function remoteBoard(overrides: Partial<SyncRecord> & { id: string; stamp: strin
 }
 
 describe('sync engine', () => {
+  it.each([false, true])('preserves a real backward archive with a previously synced open range: %s', async receivedOpen => {
+    const { harness: source, transport, deps: sourceDeps } = await setup();
+    const { harness: destination, deps: destinationDeps } = await setup();
+    destinationDeps.transport = transport;
+    try {
+      source.clock.utcMs = Date.parse('2026-09-08T23:00:00Z');
+      source.clock.zone = 'Pacific/Auckland';
+      const boardId = await createBoardForTest(source, { title: 'Travel history', kind: 'count',
+        startOfDayMinute: 0, tracksTime: false, tracksAmount: false });
+      expect(await runSync(sourceDeps)).toMatchObject({ ok: true, value: { status: 'up_to_date' } });
+      if (receivedOpen) expect(await runSync(destinationDeps)).toMatchObject({ ok: true, value: { status: 'up_to_date' } });
+      source.clock.utcMs = Date.parse('2026-09-09T01:00:00Z');
+      source.clock.zone = 'Pacific/Honolulu';
+      expect(await archiveBoard(source.deps, { commandId: source.ids.nextCommandId(), boardId }))
+        .toMatchObject({ ok: true });
+      const sql = 'SELECT board_id, start_date, end_date, mutation_stamp, deleted_at FROM board_activity_periods WHERE board_id = ?';
+      const expected = await source.db.getAllAsync(sql, [boardId]);
+      expect(expected).toEqual([expect.objectContaining({ start_date: '2026-09-09', end_date: '2026-09-08' })]);
+      expect(await runSync(sourceDeps)).toMatchObject({ ok: true, value: { status: 'up_to_date' } });
+      const synced = await runSync(destinationDeps);
+      expect(await destination.db.getAllAsync(sql, [boardId])).toEqual(expected);
+      expect(synced).toMatchObject({ ok: true, value: { status: 'up_to_date' } });
+      expect(await destination.db.getAllAsync('SELECT * FROM sync_deferred')).toEqual([]);
+      for (const h of [source, destination]) {
+        h.clock.utcMs = Date.parse('2026-09-10T12:00:00Z');
+        h.clock.zone = 'UTC';
+        expect(await getBoardSummary(h.deps, boardId)).toMatchObject({ ok: true,
+          value: { eligibleDayCount: 0, currentStreak: 0, longestStreak: 0, consistencyPercent: null } });
+      }
+      expect(await runSync(destinationDeps)).toMatchObject({ ok: true, value: { applied: 0, uploaded: 0 } });
+      expect(await destination.db.getAllAsync(sql, [boardId])).toEqual(expected);
+    } finally { await source.db.closeAsync(); await destination.db.closeAsync(); }
+  });
+
   it('stays idle and uploads nothing while sync is disabled', async () => {
     const harness = await createTestHarness();
     const transport = new FakeSyncTransport();
@@ -864,7 +898,7 @@ describe('sync engine edges', () => {
       fields: {
         board_id: boardId,
         start_date: '2026-08-20',
-        end_date: '2026-08-19',
+        end_date: '2026-02-30',
         deleted_at: null,
       },
     });

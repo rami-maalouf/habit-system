@@ -334,7 +334,6 @@ function normalizePeriod(record: IdentifiedRecord, boardId: string, startDate: s
     fieldString(fields, 'board_id') !== boardId ||
     fieldString(fields, 'start_date') !== startDate ||
     (endDate !== null && (typeof endDate !== 'string' || !isValidLogicalDate(endDate))) ||
-    (typeof endDate === 'string' && endDate < startDate) ||
     !isNullableTimestamp(fields.deleted_at ?? null)
   ) {
     return null;

@@ -339,6 +339,8 @@ describe('inbound sync validation', () => {
     expect((await validate(harness, periodRecord({ fields: { end_date: '2026-08-21' } }))).kind).toBe(
       'valid',
     );
+    expect(await validate(harness, periodRecord({ fields: { end_date: '2026-08-19' } })))
+      .toMatchObject({ kind: 'valid', record: { fields: { start_date: '2026-08-20', end_date: '2026-08-19' } } });
     const tombstone = await validate(
       harness,
       periodRecord({ deleted: true, fields: { end_date: 'private malformed value' } }),
@@ -352,7 +354,6 @@ describe('inbound sync validation', () => {
       { start_date: '2026-08-21' },
       { end_date: 1 },
       { end_date: '2026-02-30' },
-      { end_date: '2026-08-19' },
       { deleted_at: 'later' },
     ];
     for (const fields of invalidFields) {
