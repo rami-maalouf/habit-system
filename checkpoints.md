@@ -2812,3 +2812,42 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     three coins and seven queued changes; only enumerated toggle/reminder receipts
     and retry metadata differ. All runtime substitutions were restored while Off,
     owned resources were stopped, and original data remains unchanged.
+
+### T20 - backup compatibility and import recovery (2026-09-09)
+
+Status: in progress. The request/receipt recovery increment is integrated;
+export format 2 and its complete restore path remain subsequent work. T19's
+actual two-target service acceptance and Checkpoint C remain open.
+
+1. A submitted import now belongs to its ProductCore through the existing
+   attempt-holder pattern. The controller captures the current complete draft
+   before dispatch, immediately blocks duplicate submissions, and retains one
+   command id across retryable errors, thrown/lost responses and route remounts.
+   Current subscribers refresh even after an uncertain committed response. A
+   deliberate new file remains a separate import through the terminal action.
+2. Route ownership, preview identity and attempt-id guards ignore abandoned
+   picker results, stale confirmations, stale retries and old reset callbacks.
+   Public SQLite reproductions show the old response-loss retry created a second
+   CSV copy; the corrected retry returns the original receipt and preserves the
+   exact imported rows, HLC and outbox. The holder stays private and transient;
+   it does not claim persistence across process termination or global CSV dedup.
+3. The three exact previously reviewed files compose with the current schema-2
+   engine. Six focused suites / 88 tests pass; a non-author independently reran
+   all 14 routed recovery cases on that composition. Main validation passes
+   154 suites / 2,413 tests with all 99 core files at 100 percent and global
+   coverage 97.91/96.58/96.63/98.40. Native sources are unchanged from the green
+   9 plugin / 169 Swift gate. Evidence is under
+   `.artifacts/t20/import-recovery-candidate/current-integration/`.
+4. The earlier signed simulator package remains preserved in the same artifact
+   tree's `qa/` directory: 98 verified checks cover preview, remount/retry,
+   intentional second-file import, restored runtime identities and cold state.
+   Its two intentional copies produced two boards, four checks, four non-earning
+   baselines and two receipts while preserving the existing seven-coin balance.
+   This is historical sync-Off evidence for the exact three-file correction;
+   later native self-anchor validation means the binary is not described as
+   identical to the current build. Current composition tests and independent
+   review cover integration without claiming format-2 or live-service acceptance.
+5. This increment changes no parser, export schema, import economics or database
+   schema. The forthcoming v2 work must extend complete request capture to every
+   new field, settings/reward value and immutable evidence input. Both declined
+   period/graph proposals remain excluded; migration 12 remains local alerts.
