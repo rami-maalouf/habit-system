@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -7,7 +6,9 @@ import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { BoardSymbol, deriveBoardColors } from '../boards';
 import { coinAmountLabel } from '../coins/history-presentation';
+import { useProductRouter } from '../sample/navigation';
 import { ProductPressable, useScheme } from '../ui';
+import { useRewardActivity } from './use-reward-activity';
 
 type Props = {
   reward: Reward; archived: boolean; editing: boolean; claimDisabled: boolean; moving: boolean;
@@ -16,13 +17,14 @@ type Props = {
 
 export function RewardRow({ reward, archived, editing, claimDisabled, moving, canMoveUp, canMoveDown, onClaim, onMove }: Props) {
   const scheme = useScheme();
-  const router = useRouter();
+  const router = useProductRouter();
+  const { isCurrent } = useRewardActivity();
   const colors = deriveBoardColors(reward.accentHex, scheme);
   return <View testID={`reward-row-${reward.id}`} style={{ padding: spacing.lg, marginBottom: spacing.md, gap: spacing.md,
     backgroundColor: semanticColor('secondaryGroupedBackground', scheme), borderRadius: radius.lg, borderCurve: radiusCurve }}>
     <ProductPressable label={`${reward.title}, ${coinAmountLabel(reward.costCoins)}${archived ? ', archived reward' : ''}`}
       hint={archived ? 'Opens restore and delete actions' : 'Edits this reward'} testID={`edit-reward-${reward.id}`}
-      disabled={moving} stretch onPress={() => router.push(`/coins/rewards/${reward.id}`)}>
+      disabled={moving} stretch onPress={() => { if (isCurrent()) router.push(`/coins/rewards/${reward.id}`); }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
           borderRadius: radius.md, borderCurve: radiusCurve, backgroundColor: colors.accent }}>

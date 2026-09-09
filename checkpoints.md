@@ -3290,3 +3290,14 @@ T19/Checkpoint C external gates remain open.
    tests across three suites. Root reviewed all twelve manifest files and
    verified their hashes. Routes and native acceptance remain subsequent
    increments; the real database is never closed by this host.
+10. Reward callers now join accepted preview, claim, retry, form and reorder
+    operations through their captured scope. Retained drafts survive pause;
+    uncertain results retry the exact command, and successful saves expose
+    a fresh Done action without creating duplicates or stale navigation.
+    Old prompts and covered-screen callbacks cannot adopt a successor. A
+    routed regression also prevents a false discard prompt after a saved
+    form resumes. Forty-one tests across seven suites and owned lint pass;
+    root independently reviewed all six files, verified their final hashes,
+    reran the preceding forty cases and confirmed composed typecheck passes.
+    Core commands and the per-core claim store remain unchanged. Native
+    presentation and the final route graph are still subsequent gates.

@@ -1,4 +1,4 @@
-import { Stack, useNavigation, useRouter } from 'expo-router';
+import { Stack, useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -19,9 +19,11 @@ import { BoardIconPicker } from '../board-configuration/board-icon-picker';
 import { BoardSymbol, deriveBoardColors } from '../boards';
 import { getBoardIcon } from '../boards/board-icon-catalog';
 import { coinAmountLabel } from '../coins/history-presentation';
+import { useProductRouter } from '../sample/navigation';
 import { useProduct, useProductQuery } from '../product-store';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { claimError } from './claim-store';
+import { useRewardActivity } from './use-reward-activity';
 
 type Draft = { title: string; costText: string; symbol: string; accentHex: string; expectedMutationStamp: string };
 type Attempt =
@@ -40,95 +42,114 @@ function FormGroup({ children }: { children: ReactNode }) {
 }
 
 export function RewardFormScreen({ rewardId }: { rewardId: RewardId | null }) {
-  const router = useRouter();
+  const router = useProductRouter();
+  const { isCurrent } = useRewardActivity();
   const existing = useProductQuery(c => rewardId ? getReward(c, rewardId) : Promise.resolve({ ok: true as const, value: null }), [rewardId]);
   const [lastReward, setLastReward] = useState<Reward | null>(null);
   // retain the editor and its draft when a later read fails; query cancellation still owns freshness.
   if (existing.status === 'ready' && existing.value !== lastReward) setLastReward(existing.value);
   const reward = existing.status === 'ready' ? existing.value : lastReward?.id === rewardId ? lastReward : null;
   const loadError = existing.status === 'error' ? existing.error : null;
+  const retryLoad = () => { if (isCurrent()) existing.refresh(); };
   if (rewardId && loadError && !reward) return <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.lg }}>
     <Stack.Screen options={{ title: 'Reward' }} />
     <AppText variant="title2">This reward is not available.</AppText>
     <InlineError message={loadError.message} testID="reward-load-error" />
-    {loadError.retryable ? <PrimaryButton title="Try again" testID="reward-load-retry" onPress={existing.refresh} /> : null}
-    <PrimaryButton title="Back to Coins" onPress={() => router.dismissTo('/coins')} />
+    {loadError.retryable ? <PrimaryButton title="Try again" testID="reward-load-retry" onPress={retryLoad} /> : null}
+    <PrimaryButton title="Back to Coins" onPress={() => { if (isCurrent()) router.dismissTo('/coins'); }} />
   </View>;
   if (rewardId && reward?.id !== rewardId) return <View testID="reward-form-loading" />;
-  return <RewardEditor key={rewardId ?? 'new'} reward={reward} loadError={loadError} retryLoad={existing.refresh} />;
+  return <RewardEditor key={rewardId ?? 'new'} reward={reward} loadError={loadError} retryLoad={retryLoad} />;
 }
 
 function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null; loadError: DomainError | null; retryLoad: () => void }) {
-  const router = useRouter();
+  const router = useProductRouter();
   const navigation = useNavigation();
   const scheme = useScheme();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { invalidate, nextCommandId } = useProduct();
+  const { scope, owner, isCurrent } = useRewardActivity();
   const [draft, setDraft] = useState(() => draftFrom(reward));
   const [savedDraft, setSavedDraft] = useState(() => draftFrom(reward));
   const [error, setError] = useState<DomainError | null>(null);
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [symbolOpen, setSymbolOpen] = useState(false);
   const [customColorOpen, setCustomColorOpen] = useState(false);
   const busyRef = useRef(false);
+  const completedRef = useRef(false);
   const attemptRef = useRef<Attempt | null>(null);
   const mounted = useRef(false);
   const deliberateExit = useRef(false);
+  const prompt = useRef<(() => void) | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedDraft);
   const archived = reward?.archivedAt != null;
   const unavailable = loadError !== null && !loadError.retryable;
-  const locked = busy || attempt !== null;
+  const locked = busy || attempt !== null || completed;
   const previewAccent = validateAccentHex(archived ? reward!.accentHex : draft.accentHex);
   const colors = deriveBoardColors(previewAccent.ok ? previewAccent.value : savedDraft.accentHex, scheme);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
-  usePreventRemove(dirty || busy || attempt !== null, ({ data }) => {
+  useEffect(() => () => { prompt.current?.(); }, [owner]);
+
+  usePreventRemove(scope.active && !completed && (dirty || busy || attempt !== null), ({ data }) => {
+    if (!isCurrent()) return;
     if (deliberateExit.current) { navigation.dispatch(data.action); return; }
     if (busyRef.current || attemptRef.current) return;
     let decided = false;
     Alert.alert('Discard changes?', 'Your edits to this reward are not saved.', [
       { text: 'Keep Editing', style: 'cancel', onPress: () => { decided = true; } },
       { text: 'Discard', style: 'destructive', onPress: () => {
-        if (decided || !mounted.current || busyRef.current || attemptRef.current) return;
+        if (decided || !mounted.current || !isCurrent() || busyRef.current || attemptRef.current) return;
         decided = true; deliberateExit.current = true; navigation.dispatch(data.action);
       } },
     ]);
   });
 
   const change = (patch: Partial<Draft>) => {
-    if (busyRef.current || attemptRef.current || archived || unavailable) return;
+    if (!isCurrent() || busyRef.current || attemptRef.current || completedRef.current || archived || unavailable) return;
     setDraft(current => ({ ...current, ...patch }));
   };
+  const finish = () => {
+    if (!isCurrent()) return;
+    deliberateExit.current = true;
+    router.dismissTo('/coins');
+  };
   const execute = async (current: Attempt) => {
+    if (!isCurrent() || completedRef.current) return;
     attemptRef.current = current; setAttempt(current); setError(null);
-    try {
-      const result = current.kind === 'create' ? await createReward(core, current.input)
-        : current.kind === 'update' ? await updateReward(core, current.input)
-          : current.kind === 'archive' ? await archiveReward(core, current.input)
-            : current.kind === 'restore' ? await restoreReward(core, current.input)
-              : await deleteReward(core, current.input);
-      if (result.ok) {
-        attemptRef.current = null;
-        invalidate();
-        if (mounted.current) { setAttempt(null); deliberateExit.current = true; router.dismissTo('/coins'); }
-      } else if (mounted.current) {
-        setError(result.error);
-        if (!result.error.retryable) {
-          attemptRef.current = null; setAttempt(null);
-          if (result.error.code === 'conflict') setConflict(true);
-          else if (result.error.code === 'not_found' || result.error.code === 'archived') invalidate();
+    await scope.run(async ({ core }) => {
+      try {
+        const result = current.kind === 'create' ? await createReward(core, current.input)
+          : current.kind === 'update' ? await updateReward(core, current.input)
+            : current.kind === 'archive' ? await archiveReward(core, current.input)
+              : current.kind === 'restore' ? await restoreReward(core, current.input)
+                : await deleteReward(core, current.input);
+        if (result.ok) {
+          completedRef.current = true;
+          attemptRef.current = null;
+          invalidate();
+          // a retained successful create must never become a second fresh save.
+          if (mounted.current) { setAttempt(null); setCompleted(true); finish(); }
+        } else if (mounted.current) {
+          setError(result.error);
+          if (!result.error.retryable) {
+            attemptRef.current = null; setAttempt(null);
+            if (result.error.code === 'conflict') setConflict(true);
+            else if (result.error.code === 'not_found' || result.error.code === 'archived') invalidate();
+          }
         }
-      }
-    } catch (cause) { if (mounted.current) setError(claimError(cause)); }
-    finally { busyRef.current = false; if (mounted.current) setBusy(false); }
+      } catch (cause) { if (mounted.current) setError(claimError(cause)); }
+      finally { busyRef.current = false; if (mounted.current) setBusy(false); }
+    });
   };
   const retry = () => {
-    if (busyRef.current || !attemptRef.current) return;
+    if (!isCurrent() || busyRef.current || !attemptRef.current || completedRef.current) return;
     busyRef.current = true; setBusy(true); void execute(attemptRef.current);
   };
   const save = () => {
-    if (busyRef.current || archived || conflict || loadError) return;
+    if (!isCurrent() || busyRef.current || completedRef.current || archived || conflict || loadError) return;
     if (attemptRef.current) { retry(); return; }
     if (!/^\d+$/.test(draft.costText)) {
       setError({ code: 'validation', message: 'Enter a whole-number cost from 1 to 100,000 coins.', field: 'costCoins', retryable: false });
@@ -146,16 +167,18 @@ function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null;
     } catch (cause) { busyRef.current = false; setBusy(false); setError(claimError(cause)); }
   };
   const targetAction = (kind: 'archive' | 'restore' | 'delete') => {
-    if (!reward || busyRef.current || attemptRef.current || loadError) return;
+    if (!isCurrent() || !reward || busyRef.current || attemptRef.current || completedRef.current || loadError) return;
     busyRef.current = true; setBusy(true); Keyboard.dismiss();
     let decided = false;
     const decide = (confirmed: boolean) => {
       if (decided) return;
       decided = true;
-      if (!confirmed || !mounted.current) { busyRef.current = false; if (mounted.current) setBusy(false); return; }
+      prompt.current = null;
+      if (!confirmed || !mounted.current || !isCurrent()) { busyRef.current = false; if (mounted.current) setBusy(false); return; }
       try { void execute({ kind, input: { commandId: nextCommandId(), rewardId: reward.id } }); }
       catch (cause) { busyRef.current = false; setBusy(false); setError(claimError(cause)); }
     };
+    prompt.current = () => decide(false);
     if (kind === 'restore') { decide(true); return; }
     Alert.alert(kind === 'delete' ? 'Delete reward?' : 'Archive reward?', kind === 'delete'
       ? 'This reward will be deleted. Past claims and their recorded titles remain in Coin History.'
@@ -165,22 +188,24 @@ function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null;
     ], { cancelable: true, onDismiss: () => decide(false) });
   };
   const reload = async () => {
-    if (!reward || busyRef.current || attemptRef.current) return;
+    if (!isCurrent() || !reward || busyRef.current || attemptRef.current || completedRef.current) return;
     busyRef.current = true; setBusy(true);
-    try {
-      const result = await getReward(core, reward.id);
-      if (!mounted.current) return;
-      if (result.ok) { const next = draftFrom(result.value); setDraft(next); setSavedDraft(next); setConflict(false); setError(null); invalidate(); }
-      else { setError(result.error); if (!result.error.retryable) invalidate(); }
-    } catch (cause) { if (mounted.current) setError(claimError(cause)); }
-    finally { busyRef.current = false; if (mounted.current) setBusy(false); }
+    await scope.run(async ({ core }) => {
+      try {
+        const result = await getReward(core, reward.id);
+        if (!mounted.current || !isCurrent()) return;
+        if (result.ok) { const next = draftFrom(result.value); setDraft(next); setSavedDraft(next); setConflict(false); setError(null); invalidate(); }
+        else { setError(result.error); if (!result.error.retryable) invalidate(); }
+      } catch (cause) { if (mounted.current && isCurrent()) setError(claimError(cause)); }
+      finally { busyRef.current = false; if (mounted.current) setBusy(false); }
+    });
   };
   const inputStyle = { minHeight: minimumTouchTarget, fontSize: 17, color: semanticColor('label', scheme) as string };
 
   return <View style={{ flex: 1, backgroundColor: semanticColor('groupedBackground', scheme) }}>
     <Stack.Screen options={{ title: archived ? 'Archived Reward' : reward ? 'Edit Reward' : 'Create Reward',
-      headerLeft: () => <ProductPressable label="Cancel" testID="reward-form-cancel" disabled={locked} onPress={() => router.back()}><AppText selectable={false}>Cancel</AppText></ProductPressable>,
-      headerRight: () => archived || unavailable ? null : <ProductPressable label="Save reward" testID="reward-form-save" disabled={busy || conflict || loadError !== null || (attempt !== null && !['create', 'update'].includes(attempt.kind))} onPress={save}>
+      headerLeft: () => <ProductPressable label="Cancel" testID="reward-form-cancel" disabled={locked} onPress={() => { if (isCurrent()) router.back(); }}><AppText selectable={false}>Cancel</AppText></ProductPressable>,
+      headerRight: () => completed ? <ProductPressable label="Done" testID="reward-form-done" onPress={finish}><AppText selectable={false}>Done</AppText></ProductPressable> : archived || unavailable ? null : <ProductPressable label="Save reward" testID="reward-form-save" disabled={busy || conflict || loadError !== null || (attempt !== null && !['create', 'update'].includes(attempt.kind))} onPress={save}>
         <AppText variant="headline" selectable={false}>{attempt ? 'Retry' : 'Save'}</AppText></ProductPressable>,
     }} />
     <ScrollView testID="reward-form" contentInsetAdjustmentBehavior="automatic" automaticallyAdjustKeyboardInsets
@@ -193,6 +218,7 @@ function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null;
         <AppText>Retry this action to confirm its saved result before making more changes.</AppText>
         <PrimaryButton title="Retry" testID="reward-form-retry" onPress={retry} />
       </View> : null}
+      {completed ? <AppText testID="reward-form-completed">Your reward change was saved.</AppText> : null}
       {busy ? <AppText accessibilityLiveRegion="polite" testID="reward-form-pending">Please wait...</AppText> : null}
       {conflict && !unavailable ? <FormGroup><AppText testID="reward-form-conflict">This reward changed elsewhere. Your draft is still here. Reload the latest values before saving again.</AppText>
         <PrimaryButton title="Reload latest" testID="reward-form-reload" onPress={() => { void reload(); }} disabled={busy} /></FormGroup> : null}
@@ -211,7 +237,7 @@ function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null;
       </> : <>
         <FormGroup><View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <ProductPressable label={`Choose icon, ${getBoardIcon(draft.symbol)?.label ?? 'current icon'}`} hint="Opens the icon picker" testID="open-symbol-picker" disabled={locked}
-            onPress={() => { if (!busyRef.current && !attemptRef.current) { Keyboard.dismiss(); setSymbolOpen(true); } }}>
+            onPress={() => { if (isCurrent() && !busyRef.current && !attemptRef.current && !completedRef.current) { Keyboard.dismiss(); setSymbolOpen(true); } }}>
             <View testID="reward-symbol-picker-tile" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
               borderRadius: radius.md, borderCurve: radiusCurve, backgroundColor: colors.accent }}>
               <BoardSymbol symbol={draft.symbol} color={colors.onAccent} size={28} />
@@ -226,7 +252,7 @@ function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null;
           <AppText variant="footnote">Choose a whole number from 1 to 100,000.</AppText>
         </FormGroup>
         <FormGroup><AppText variant="subheadline">Color</AppText><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          <ProductPressable label="Custom color" testID="custom-color" disabled={locked} onPress={() => { if (!busyRef.current && !attemptRef.current) setCustomColorOpen(value => !value); }}><AppText selectable={false}>Custom</AppText></ProductPressable>
+          <ProductPressable label="Custom color" testID="custom-color" disabled={locked} onPress={() => { if (isCurrent() && !busyRef.current && !attemptRef.current && !completedRef.current) setCustomColorOpen(value => !value); }}><AppText selectable={false}>Custom</AppText></ProductPressable>
           {boardPalette.map(entry => <ProductPressable key={entry.name} label={`Color ${entry.name}`} selected={draft.accentHex.toUpperCase() === entry.hex}
             testID={`color-${entry.name}`} disabled={locked} onPress={() => change({ accentHex: entry.hex })}>
             <View style={{ width: 32, height: 32, borderRadius: radius.capsule, backgroundColor: entry.hex,
@@ -239,7 +265,7 @@ function RewardEditor({ reward, loadError, retryLoad }: { reward: Reward | null;
       {reward ? <PrimaryButton title="Delete Reward" testID="delete-reward" destructive disabled={locked} onPress={() => targetAction('delete')} /> : null}
       </>}
     </ScrollView>
-    <BoardIconPicker isPresented={symbolOpen} symbol={draft.symbol} accent={colors.accent}
-      onSelect={symbol => { change({ symbol }); if (!busyRef.current && !attemptRef.current) setSymbolOpen(false); }} onDismiss={() => setSymbolOpen(false)} />
+    <BoardIconPicker isPresented={symbolOpen && scope.active} symbol={draft.symbol} accent={colors.accent}
+      onSelect={symbol => { change({ symbol }); if (isCurrent() && !busyRef.current && !attemptRef.current && !completedRef.current) setSymbolOpen(false); }} onDismiss={() => { if (isCurrent()) setSymbolOpen(false); }} />
   </View>;
 }

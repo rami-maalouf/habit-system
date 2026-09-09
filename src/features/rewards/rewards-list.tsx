@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import type { ReactElement } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
@@ -10,14 +9,17 @@ import { listRewards } from '@/core/domain/reward-queries';
 import { spacing } from '@/theme';
 
 import { coinAmountLabel } from '../coins/history-presentation';
+import { useProductRouter } from '../sample/navigation';
 import { useProduct, useProductQuery } from '../product-store';
 import { InlineError, PrimaryButton, ProductPressable } from '../ui';
 import { RewardRow } from './reward-row';
 import { useRewardClaim } from './use-reward-claim';
+import { useRewardActivity } from './use-reward-activity';
 
 export function RewardsList({ header, onLayout }: { header: ReactElement; onLayout: () => void }) {
-  const router = useRouter();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const router = useProductRouter();
+  const { invalidate, nextCommandId } = useProduct();
+  const { scope, isCurrent } = useRewardActivity();
   const [archived, setArchived] = useState(false);
   const [editing, setEditing] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -33,18 +35,20 @@ export function RewardsList({ header, onLayout }: { header: ReactElement; onLayo
   const rows = result.status === 'ready' && result.value.archived === archived ? result.value.rows : [];
   const loaded = result.status === 'ready' && result.value.archived === archived;
   const move = async (index: number, direction: -1 | 1) => {
-    if (movingRef.current || !rows[index + direction]) return;
+    if (!isCurrent() || movingRef.current || !rows[index + direction]) return;
     movingRef.current = true; setMoving(true); setMoveError(null);
     const ordered = [...rows]; const [reward] = ordered.splice(index, 1); const target = index + direction;
-    try {
-      const response = await reorderReward(core, { commandId: nextCommandId(), rewardId: reward.id,
-        previousRewardId: ordered[target - 1]?.id ?? null, nextRewardId: ordered[target]?.id ?? null });
-      if (mounted.current && !response.ok) setMoveError(response.error.message);
-    } catch { if (mounted.current) setMoveError('The reward could not be moved. Try again.'); }
-    finally { movingRef.current = false; if (mounted.current) setMoving(false); invalidate(); }
+    await scope.run(async ({ core }) => {
+      try {
+        const response = await reorderReward(core, { commandId: nextCommandId(), rewardId: reward.id,
+          previousRewardId: ordered[target - 1]?.id ?? null, nextRewardId: ordered[target]?.id ?? null });
+        if (mounted.current && isCurrent() && !response.ok) setMoveError(response.error.message);
+      } catch { if (mounted.current && isCurrent()) setMoveError('The reward could not be moved. Try again.'); }
+      finally { movingRef.current = false; if (mounted.current) setMoving(false); invalidate(); }
+    });
   };
   const filter = (value: boolean) => {
-    if (movingRef.current) return;
+    if (!isCurrent() || movingRef.current) return;
     setArchived(value); setEditing(false); setMoveError(null);
   };
   return <FlatList<Reward> testID="coins-screen" data={rows} keyExtractor={item => item.id}
@@ -55,13 +59,13 @@ export function RewardsList({ header, onLayout }: { header: ReactElement; onLayo
       <View style={{ gap: spacing.sm }}>
         <AppText variant="title2" accessibilityRole="header">{archived ? 'Archived Rewards' : 'Rewards'}</AppText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
-          <ProductPressable label="Create Reward" testID="create-reward" onPress={() => router.push('/coins/rewards/new')}>
+          <ProductPressable label="Create Reward" testID="create-reward" onPress={() => { if (isCurrent()) router.push('/coins/rewards/new'); }}>
             <AppText variant="headline" selectable={false}>Create Reward</AppText>
           </ProductPressable>
           <ProductPressable label={archived ? 'Active rewards' : 'Archived rewards'} testID={archived ? 'rewards-active' : 'rewards-archived'}
             disabled={moving} onPress={() => filter(!archived)}><AppText selectable={false}>{archived ? 'Active' : 'Archived'}</AppText></ProductPressable>
           {!archived && rows.length > 0 ? <ProductPressable label={editing ? 'Done reordering rewards' : 'Reorder rewards'} testID="rewards-edit"
-            disabled={moving || claim.blocked} onPress={() => setEditing(value => !value)}><AppText selectable={false}>{editing ? 'Done' : 'Reorder'}</AppText></ProductPressable> : null}
+            disabled={moving || claim.blocked} onPress={() => { if (isCurrent()) setEditing(value => !value); }}><AppText selectable={false}>{editing ? 'Done' : 'Reorder'}</AppText></ProductPressable> : null}
         </View>
       </View>
       {claim.error ? <InlineError testID="reward-claim-error" message={claim.error.message} /> : null}
@@ -72,7 +76,7 @@ export function RewardsList({ header, onLayout }: { header: ReactElement; onLayo
     </View>}
     ListEmptyComponent={result.status === 'error' ? <View style={{ gap: spacing.md }}>
       <InlineError testID="rewards-error" message={result.error.message} />
-      <PrimaryButton title="Try again" testID="rewards-retry" onPress={result.refresh} />
+      <PrimaryButton title="Try again" testID="rewards-retry" onPress={() => { if (isCurrent()) result.refresh(); }} />
     </View> : !loaded ? <AppText testID="rewards-loading">Loading rewards...</AppText>
       : <AppText testID={archived ? 'rewards-archived-empty' : 'rewards-empty'}>{archived ? 'Archived rewards stay here until you restore or delete them.' : 'Choose something to look forward to and give it a coin price.'}</AppText>}
     renderItem={({ item, index }) => <RewardRow reward={item} archived={archived} editing={editing} moving={moving}
