@@ -175,6 +175,77 @@ final class CloudKitTransportTests: XCTestCase {
     }
   }
 
+  func testNewerSelfAnchoredServerBoardCannotAcknowledgeAValidLocalUpload() async throws {
+    let original = try schemaTwoFixtures()[0]
+    for arrival in 0..<3 {
+      let client = FakeCloudKitClient()
+      let server = try CloudKitRecordMapping.toRecord(original, zoneID: testZone)
+      server["mutation_stamp"] = "99999999999999-zzzzz-remote" as NSString
+      server["anchor_kind"] = "board" as NSString
+      server["anchor_board_id"] = original.entityId as NSString
+      server["anchor_preset"] = nil
+      let serverValue = try CloudKitRecordMapping.fromRecord(server)
+      switch arrival {
+      case 0: await client.seed(server)
+      case 1: await client.configure(mode: .conflict(server))
+      default: await client.configure(mode: .unknownRace(server))
+      }
+      do { try await transport(client).upload([original]); XCTFail("expected self-anchor acknowledgement failure") }
+      catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+      let saves = await client.savedNames
+      let attempts = await client.saveBatchSizes
+      let stored = await client.store[server.recordID]
+      XCTAssertTrue(saves.isEmpty)
+      XCTAssertEqual(attempts.count, arrival == 0 ? 0 : 1)
+      XCTAssertEqual(try CloudKitRecordMapping.fromRecord(XCTUnwrap(stored)), serverValue)
+    }
+  }
+
+  func testSelfAnchorCannotUploadButRemainsAvailableAsInboundDiagnostics() async throws {
+    var invalid = try schemaTwoFixtures()[0]
+    invalid.fields["anchor_kind"] = .string("board")
+    invalid.fields["anchor_board_id"] = .string(invalid.entityId)
+    invalid.fields["anchor_preset"] = .null
+    for archived in [false, true] {
+      var candidate = invalid
+      if archived { candidate.fields["archived_at"] = .number(1787572800000) }
+      let client = FakeCloudKitClient()
+      do { try await transport(client).upload([candidate]); XCTFail("expected invalid local self-anchor failure") }
+      catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+      let fetches = await client.fetchBatchSizes
+      let saves = await client.savedNames
+      XCTAssertTrue(fetches.isEmpty)
+      XCTAssertTrue(saves.isEmpty)
+
+      let server = try CloudKitRecordMapping.toRecord(schemaTwoFixtures()[0], zoneID: testZone)
+      server["anchor_kind"] = "board" as NSString
+      server["anchor_board_id"] = candidate.entityId as NSString
+      server["anchor_preset"] = nil
+      if archived { server["archived_at"] = NSNumber(value: 1787572800000) }
+      await client.setPage(CloudKitChangedRecords(records: [server], token: nil, more: false, hardDeletedRecordCount: 0))
+      let page = try await transport(client).fetchChanges(nil)
+      XCTAssertEqual(page.records, [candidate])
+    }
+  }
+
+  func testSelfAnchorGuardPreservesBoardTombstoneNormalizationAndAcknowledgement() async throws {
+    let fixtures = try schemaTwoFixtures()
+    var tombstone = fixtures[1]
+    tombstone.fields["anchor_relation"] = .string("after")
+    tombstone.fields["anchor_kind"] = .string("board")
+    tombstone.fields["anchor_board_id"] = .string(tombstone.entityId)
+    XCTAssertEqual(try CloudKitRecordMapping.normalizedOutbound(tombstone), fixtures[1])
+    let server = try CloudKitRecordMapping.toRecord(fixtures[1], zoneID: testZone)
+    server["anchor_relation"] = "after" as NSString
+    server["anchor_kind"] = "board" as NSString
+    server["anchor_board_id"] = tombstone.entityId as NSString
+    let client = FakeCloudKitClient()
+    await client.seed(server)
+    try await transport(client).upload([fixtures[0]])
+    let saves = await client.savedNames
+    XCTAssertTrue(saves.isEmpty)
+  }
+
   func testAccountSwitchRefusesZoneUploadAndFetchBeforeCloudOperations() async throws {
     let client = FakeCloudKitClient()
     try await transport(client).upload([])

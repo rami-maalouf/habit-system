@@ -2705,3 +2705,33 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     container despite empty signature entitlement dictionaries; runtime container
     access remains untested. No account, device or sync operation was performed.
     Evidence is in `.artifacts/t19/cloudkit-readiness-2026-09-09/`.
+53. The v2 board reader now rejects exact self-targets before parent dependency
+    handling. A real public SQLite sync reproduction previously persisted an
+    existing self-link and deferred a new self-linked board. Both now retain
+    invalid diagnostics without changing product rows, actions, ledger, HLC or
+    outbox; the existing invalid-page token advancement remains intact. Valid
+    non-self and tombstone controls pass. This enforces the existing self-link
+    rule and does not choose a multi-board cycle policy.
+54. The matching native guard rejects live or archived self-links before cloud
+    calls and prevents false acknowledgment of newer self-linked server rows on
+    initial fetch, server-record-change and unknown-item retries. Bounded inbound
+    diagnostics, tombstone normalization and v1 behavior remain intact. Independent
+    cross-review, 146 suites / 2,319 tests, all 95 core files at 100 percent, and
+    9 plugin / 169 Swift checks pass. Evidence is in `.artifacts/t19/self-anchor/`.
+55. Fresh generic compilation includes the changed mapping, actual Expo bridge
+    and codec on arm64 and x86_64. The separate development-signed copy verifies
+    all 20 targets with code and entitlement sections preserved. Root reran the
+    relocatable artifact verifier successfully: 76 checks. All 780 checkout hashes
+    stayed exact throughout the build; the previous wire package is preserved.
+    The full incremental build log retains 135 warning lines / 37 messages, none
+    new against the prior inventory and none at an owned Swift source location.
+    The lower count is not a warning fix. Build/signing evidence under
+    `self-anchor/build-qa/` does not establish live sync or account access.
+56. `docs/offline-anchor-cycles-proposal.md` now makes the pending multi-board
+    cycle choice concrete: preserve raw LWW rows, ignore the outgoing link of
+    each cycle's smallest binary ID in a shared TS/Swift effective graph, and
+    explicitly allow those raw cycles through v2 restore. Self-links remain
+    invalid. Independent document review passes, but user approval remains
+    pending, as does the separate period/backup compatibility proposal. The task
+    list distinguishes completed increments from the prepared engine and import
+    recovery candidates; neither candidate is integrated or active in main.

@@ -512,7 +512,8 @@ export async function validateSchema2MutableRecord(
     const normalized = normalizeReward(record);
     return normalized === null ? invalid : { kind: 'valid', record: normalized };
   }
-  if (record.entityType === 'board' && !record.deleted && !validBoardExtensions(record.fields)) return invalid;
+  if (record.entityType === 'board' && !record.deleted && (!validBoardExtensions(record.fields) ||
+    (record.fields.anchor_kind === 'board' && record.fields.anchor_board_id === record.entityId))) return invalid;
   if (record.entityType === 'settings' && Object.keys(LEGACY_PRESET_DEFAULTS).some(key => {
     const minute = record.fields[key];
     return typeof minute !== 'number' || !normalizeBoardAnchorFields({ usualTimeMinute: minute }).ok;

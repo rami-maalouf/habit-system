@@ -183,6 +183,10 @@ enum CloudKitRecordMapping {
     if input.schemaVersion == 2, !immutable(input.entityType), input.entityType != "settings" {
       guard input.deleted == (input.fields["deleted_at"] != .null) else { throw CloudKitFailure.failure }
     }
+    if input.schemaVersion == 2, input.entityType == "board", !input.deleted,
+      input.fields["anchor_kind"] == .string("board"), let target = input.fields["anchor_board_id"]?.string {
+      guard !sameBytes(target, input.entityId) else { throw CloudKitFailure.failure }
+    }
     if immutable(input.entityType) {
       guard uuid(input.entityId), !input.deleted else { throw CloudKitFailure.failure }
       for value in input.fields.values { if case .number(let number) = value {

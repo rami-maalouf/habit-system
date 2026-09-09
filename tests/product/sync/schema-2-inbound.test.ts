@@ -84,9 +84,31 @@ describe('schema-2 mutable inbound normalization', () => {
   it('preserves raw board anchors, defers missing identities and accepts existing tombstoned targets', async () => {
     const anchor = record('board', { anchor_kind: 'board', anchor_board_id: missingId, anchor_preset: null });
     expect(await validate(anchor)).toEqual({ kind: 'deferred', record: anchor });
+    anchor.entityId = missingId;
+    anchor.fields.id = missingId;
     anchor.fields.anchor_board_id = parentId;
     await h.db.runAsync('UPDATE boards SET deleted_at = 8 WHERE id = ?', [parentId]);
     expect(await validate(anchor)).toEqual({ kind: 'valid', record: anchor });
+  });
+
+  it.each([['existing', parentId], ['new', missingId]])(
+    'rejects a %s board self-anchor before parent lookup while retaining the exact invalid record', async (_, ownerId) => {
+      const input = record('board', { id: ownerId, anchor_kind: 'board', anchor_board_id: ownerId, anchor_preset: null });
+      input.entityId = ownerId;
+      const before = await h.db.getAllAsync('SELECT * FROM boards ORDER BY id');
+      expect(await validate(input)).toEqual({ kind: 'invalid', record: input });
+      expect(await h.db.getAllAsync('SELECT * FROM boards ORDER BY id')).toEqual(before);
+    });
+
+  it('does not grant malformed anchor metadata or a mismatched owner identity a valid topology exception', async () => {
+    for (const fields of [
+      { id: missingId, anchor_board_id: missingId },
+      { id: parentId, anchor_board_id: parentId, anchor_relation: 'during' },
+      { id: parentId, anchor_board_id: missingId, anchor_text: 'unused target' },
+    ]) {
+      const input = record('board', { anchor_kind: 'board', anchor_preset: null, ...fields });
+      expect(await validate(input)).toEqual({ kind: 'invalid', record: input });
+    }
   });
 });
 
@@ -118,6 +140,8 @@ describe('schema-2 inherited and extended boundaries', () => {
     for (const anchor of fields) for (const usual_time_minute of [null, 0, 15, 1425]) {
       const value = record('board', { ...anchor, kind: 'daily', tracks_amount: 0, tracks_time: 0,
         earns_coins: 0, required_in_stack: 0, coin_cap_per_day: 10, usual_time_minute });
+      value.entityId = missingId;
+      value.fields.id = missingId;
       expect(await validate(value)).toEqual({ kind: 'valid', record: value });
     }
   });

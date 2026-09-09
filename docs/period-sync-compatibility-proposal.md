@@ -2,7 +2,7 @@
 
 **Status: proposed, not approved or implemented.** This proposal refines the independently reviewed T19 wire contract. Review evidence and the reproduced legacy counterexample are retained under `.artifacts/t19/compatibility-design/`.
 
-`SPEC-habit-system.md`, section 8, **Ask first**, requires approval for “Any new column, table, sync entity type, or export field beyond section 4.” The additions below need that approval, including the narrow exception to the current exclusion of raw tombstones from backups. The proposal has received independent design review; user approval remains pending. The cycle-display decision remains separate and pending.
+`SPEC-habit-system.md`, section 8, **Ask first**, requires approval for “Any new column, table, sync entity type, or export field beyond section 4.” The additions below need that approval, including the narrow exception to the current exclusion of raw tombstones from backups. The proposal has received independent design review; user approval remains pending. The [offline anchor-cycle policy](offline-anchor-cycles-proposal.md) remains separate and pending.
 
 ## 1. Durable activity-period identity
 
@@ -66,6 +66,6 @@ This is a narrowly scoped **exception** to `docs/remote-fact-admission.md`'s no-
 
 ## Requested approval scope
 
-Approve the one-column period identity change, its explicit legacy limitation, version-2 `period.id`, and the restricted `deletedAnchorTargets` backup exception with missing-only insertion. No approval of a cycle-display policy, additional schema/export fields, source-stamp backup preservation, new dependency or Swift public API is implied.
+Approve the one-column period identity change, its explicit legacy limitation, version-2 `period.id`, and the restricted `deletedAnchorTargets` backup exception with missing-only insertion. No approval of the separate offline anchor-cycle policy, additional schema/export fields, source-stamp backup preservation, new dependency or Swift public API is implied.
 
 Implementation acceptance must demonstrate transactional backfill rollback, old checksum preservation, repeated-start and identical-duplicate parity, the documented legacy counterexample, future two-peer interval updates, v1 alias isolation and actual old-decoder rejection, id-preserving backup/replay, fresh A-to-deleted-B restoration, existing live/deleted B preservation under both older and newer imported metadata, privacy allowlists, and no fresh coin earning from restoration.
