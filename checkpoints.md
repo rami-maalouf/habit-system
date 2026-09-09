@@ -3332,3 +3332,11 @@ T19/Checkpoint C external gates remain open.
     scenarios with explicit SQL-state oracles. All final hashes match.
     Archive/delete/reminder callbacks and native route acceptance remain
     subsequent work.
+14. Widget action callers stop sample entries before queries and scope
+    their real snapshot, toggle, Undo and haptic work. Retirement cancels
+    unanswered confirmation waits, suppresses stale callbacks and expires
+    Undo ownership/timers. Seven new routed SQLite cases and eighteen
+    inherited widget cases pass with lint/typecheck clean. A non-author
+    reviewed both complete files and independently reran the seven directed
+    cases, verifying final hashes. Native delivery and final sample routes
+    remain outside this bounded caller acceptance.
