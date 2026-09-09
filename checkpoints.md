@@ -3241,3 +3241,16 @@ T19/Checkpoint C external gates remain open.
    typecheck pass. The non-author review approves the four exact files.
    Actual presentation commit acknowledgement and route/runtime integration
    remain subsequent work; the controller alone does not establish those.
+6. The sample presentation now renders loading, error and closing states with
+   the persistent banner and Close, and mounts product scenes only after
+   ready. Its retirement acknowledgement follows scene passive cleanup;
+   accepted work still drains before actual memory close and the pinned
+   route leave. Actual StrictMode replay opens memory once. A reproduced
+   early-Close race no longer reopens the sample. Nine host and nineteen
+   controller/context tests pass; one host case executes a public command,
+   verifies its SQL, closes real Node SQLite and proves later reads fail.
+   Independent review approves all three frozen files and adds passing
+   scratch controls for early Close under replay and replacement during
+   pending external cleanup. Owned lint and composed typecheck pass. This
+   is React cleanup acknowledgement, not native animation completion or
+   final route/chrome acceptance. Evidence is retained with the task.
