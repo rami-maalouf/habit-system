@@ -2332,3 +2332,60 @@ none can be built or verified without a signed Apple Developer team:
     justified suppression was found. T24 retains this specific diagnostic
     investigation and final-runtime follow-up. T18 is complete; sync/export
     integration and release compatibility remain T19/T20 and Checkpoint C.
+
+
+### T19 - immutable sync evidence and effective visibility (2026-09-08)
+
+Status: in progress. The schema/legacy/visibility foundation is complete with source
+review, full automated gates and signed simulator upgrade/native proof. Immutable
+admission, schema-2 mapping and actual convergence remain subsequent T19 increments.
+
+1. Migration 11 (`remote_fact_admission`, checksum `507c9875`) appends the bounded
+   inbox and local suppression column. Its versioned `legacy_check_evidence` data
+   step is covered by the checksum and runs after DDL, before both schema markers,
+   inside the exclusive transaction. Released checksums 1-10 are unchanged. The
+   Swift executor uses the same version/checksum and never migrates on its own.
+2. Only explicit legacy migration, applied valid v1 sync and legacy imports establish
+   zero-time, null-policy baselines. Generic raw-row inference is removed from app
+   and native writers and bonus settlement. Complete surviving accepted tokens are
+   intersected with current raw ID/board/date, and all effective history, journal,
+   analytics, stack, widget and export readers respect the local visibility result.
+   Suppressed payloads retain their private history and do not affect earnings.
+3. The migration settles newly baselined scopes and every retained ledger scope,
+   including bonus roots without live parents or new legacy checks. Mixed Daily
+   migration and public export/parse/v1-import tests preserve the original +1 and
+   append exactly one justified -1 correction. Replays preserve ledger identity.
+   Accepted legacy imports never earn new coins.
+4. Ninety-five migration/storage tests cover old fixtures, all old checksums,
+   unknown descriptors, second-baseline/outbox and correction/visibility/marker
+   failures, hashing failure, acquired enqueue time and two-connection atomic
+   visibility. The rootless-history bonus case requires the exact independently
+   specified correction. Storage tests exposed SQLite's embedded-null text-length
+   behavior; an exact byte-length guard rejects hidden digest suffixes.
+5. Full validation passes 121 suites / 1,823 tests, global coverage
+   97.32/95.75/95.89/97.95, all 80 core files at 100 percent, and noncore branch
+   coverage 90.06 percent. Nine plugin and 141 Swift tests pass. Native tests include
+   actual old-schema fixture migration, rollback, both-kind file reopen/later genuine
+   earning and exact visibility intersections. Independent review approves the final
+   production sources and strengthened correction proof. Evidence is under
+   `.artifacts/t19/foundation/`.
+6. UTF-8 CocoaPods regeneration includes the new private visibility source. The
+   generic build and signing-only copy pass; all 20 code targets carry the expected
+   team and deep strict signature verification passes.
+7. Actual in-place simulator migration preserves every original board, check payload,
+   action, period, ledger row, receipt and outbox row; the original balance remains 5.
+   Two isolated raw payloads stay hidden across cold reopen, Home/history/export/widgets
+   and actual Shortcuts Today/Check/Remove. Each native check earns +1 and removal
+   appends -1 without touching either pending payload or manufacturing a baseline.
+   Four native receipt replays through public app commands are exact database fixed
+   points. Two subsequent app checks earn correctly and remain visible after restart.
+8. Final QA has 35 boards, 81 checks, 111 actions, 35 ledger rows, 37 periods,
+   369 receipts and 367 outbox rows. The six synthetic ledger additions give earned
+   22, spent 15, balance 7; all original 29 ledger rows remain exact. The stopped
+   backup SHA256 is `05c265e8f8ba0f022f8f707caf1464f84b3a7ef3d028d13ee969670db3cc2d3d`.
+   All 328 source hashes and 20 installed executable hashes match. Captured native,
+   replay and final cold-navigation runtime logs contain zero diagnostics; a debugger
+   timeout recovered without a database change. All four owned QA simulators are
+   shut down. Evidence and reproducible verifier are in `.artifacts/t19/foundation-qa/`;
+   root reran the packaged verifier successfully. This proves the foundation and does
+   not establish schema-2 CloudKit or account/device convergence.
