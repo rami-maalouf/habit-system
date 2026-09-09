@@ -11,7 +11,6 @@ import type { BoardId } from '@/core/domain/ids';
 import { setReminderEnabled } from '@/core/domain/reminder-commands';
 import type { DomainError } from '@/core/domain/result';
 import { getBoard, getBoardDependentCounts, listBoardReminders } from '@/core/domain/queries';
-import { reminderScheduler } from '@/platform/notifications';
 import { minimumTouchTarget } from '@/foundation/accessibility';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
@@ -20,6 +19,7 @@ import { formatMinuteOfDay, weekdaySummary } from '../reminders';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import { useProductRouter } from '../sample/navigation';
+import { useProductActivity } from '../product-store/use-product-activity';
 import { getBoardIcon } from '../boards/board-icon-catalog';
 import { BoardIconPicker } from './board-icon-picker';
 import { BoardKindPicker } from './board-kind-picker';
@@ -77,7 +77,9 @@ function ExistingReminderRows({
   onError: (error: DomainError) => void;
 }) {
   const router = useProductRouter();
-  const { core, invalidate, nextCommandId } = useProduct();
+  const { scope, invalidate, nextCommandId } = useProduct();
+  const activity = useProductActivity(scope);
+  const pending = useRef(new Set<string>());
   const reminders = useProductQuery((c) => listBoardReminders(c, boardId), [boardId]);
   if (reminders.status !== 'ready') {
     return null;
@@ -108,20 +110,25 @@ function ExistingReminderRows({
             accessibilityLabel={`Reminder ${formatMinuteOfDay(reminder.minuteOfDay)} enabled`}
             value={reminder.enabled}
             onValueChange={(enabled) => {
-              void setReminderEnabled(
-                { ...core, scheduler: reminderScheduler },
-                { commandId: nextCommandId(), reminderId: reminder.id, enabled },
-              ).then((result) => {
-                if (result.ok) {
-                  invalidate();
-                  if (enabled && !result.value.enabled) {
-                    Alert.alert(
-                      'Notifications are off',
-                      'Allow notifications in Settings to turn this reminder on.',
-                    );
+              if (!activity.active || pending.current.has(reminder.id)) return;
+              const input = { commandId: nextCommandId(), reminderId: reminder.id, enabled };
+              pending.current.add(reminder.id);
+              void scope.run(async ({ core: accepted, effects }) => {
+                try {
+                  if (effects.kind !== 'real') return;
+                  const result = await setReminderEnabled({ ...accepted, scheduler: effects.reminders }, input);
+                  if (result.ok) {
+                    invalidate();
+                    if (activity.active && enabled && !result.value.enabled) {
+                      Alert.alert('Notifications are off', 'Allow notifications in Settings to turn this reminder on.');
+                    }
+                  } else if (activity.active) {
+                    onError(result.error);
                   }
-                } else {
-                  onError(result.error);
+                } catch {
+                  if (activity.active) onError({ code: 'database', message: 'The reminder could not be updated. Try again.', retryable: true });
+                } finally {
+                  pending.current.delete(reminder.id);
                 }
               });
             }}
@@ -175,9 +182,11 @@ function ToggleRow({
   );
 }
 
-type SaveAttempt =
+type BoardAttempt =
   | { kind: 'create'; input: Parameters<typeof createBoardWithReminders>[1] }
-  | { kind: 'update'; input: Parameters<typeof updateBoard>[1] };
+  | { kind: 'update'; input: Parameters<typeof updateBoard>[1] }
+  | { kind: 'archive'; input: Parameters<typeof archiveBoard>[1] }
+  | { kind: 'delete'; input: Parameters<typeof deleteBoard>[1] };
 
 // shared by create board and edit board; a null boardId means creation
 export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
@@ -185,6 +194,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const navigation = useNavigation();
   const scheme = useScheme();
   const { core, scope, invalidate, nextCommandId } = useProduct();
+  const activity = useProductActivity(scope);
   const existing = useProductQuery(
     (c) => (boardId ? getBoard(c, boardId) : Promise.resolve({ ok: true as const, value: null })),
     [boardId],
@@ -195,9 +205,10 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const [error, setError] = useState<DomainError | null>(null);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [attempt, setAttempt] = useState<SaveAttempt | null>(null);
+  const [attempt, setAttempt] = useState<BoardAttempt | null>(null);
   const [completed, setCompleted] = useState(false);
-  const attemptRef = useRef<SaveAttempt | null>(null);
+  const attemptRef = useRef<BoardAttempt | null>(null);
+  const exitToBoardsRef = useRef(false);
   const busyRef = useRef(false);
   const completedRef = useRef(false);
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false);
@@ -210,8 +221,8 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const [ownerId] = useState(newDraftOwner);
   const ownsDraft = useCallback(() => draftStore.owns(ownerId, boardId), [boardId, draftStore, ownerId]);
   const updateDraft = useCallback((patch: Partial<BoardDraft>) => {
-    if (scope.isCurrent() && navigation.isFocused() && ownsDraft() && !busyRef.current && !attemptRef.current && !completedRef.current) draftStore.update(ownerId, patch);
-  }, [draftStore, navigation, ownerId, ownsDraft, scope]);
+    if (activity.active && navigation.isFocused() && ownsDraft() && !busyRef.current && !attemptRef.current && !completedRef.current) draftStore.update(ownerId, patch);
+  }, [activity, draftStore, navigation, ownerId, ownsDraft]);
 
   // reserve this route's session before its asynchronous board read finishes.
   // query refreshes may seed this owner, but never reclaim a successor's draft.
@@ -254,7 +265,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
 
   // a swipe-down or any other removal of a dirty sheet must confirm first
   usePreventRemove(scope.active && !completed && (saving || attempt !== null || (draftMatches && draft.dirty)), ({ data }) => {
-    if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft()) return;
+    if (!activity.active || !navigation.isFocused() || !ownsDraft()) return;
     if (busyRef.current || attemptRef.current) return;
     if (skipGuardRef.current) {
       navigation.dispatch(data.action);
@@ -266,7 +277,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft() || busyRef.current || attemptRef.current) return;
+          if (!activity.active || !navigation.isFocused() || !ownsDraft() || busyRef.current || attemptRef.current) return;
           skipGuardRef.current = true;
           navigation.dispatch(data.action);
         },
@@ -277,26 +288,23 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
   const colors = deriveBoardColors(draft.accentHex, scheme);
 
   const finish = useCallback(() => {
-    if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft()) return;
+    if (!activity.active || !navigation.isFocused() || !ownsDraft()) return;
     skipGuardRef.current = true;
-    router.back();
-  }, [navigation, ownsDraft, router, scope]);
+    if (exitToBoardsRef.current) router.dismissTo('/');
+    else router.back();
+  }, [activity, navigation, ownsDraft, router]);
 
-  const save = useCallback(async () => {
-    if (!scope.isCurrent() || !navigation.isFocused() || !ownsDraft() || busyRef.current || completedRef.current) return;
+  const runAttempt = useCallback(async (current: BoardAttempt) => {
+    if (!activity.active || !navigation.isFocused() || !ownsDraft() || busyRef.current || completedRef.current) return;
     busyRef.current = true;
     setSaving(true); setError(null); setConflict(false);
-    const currentDraft = draftStore.getSnapshot().draft;
-    const fields = draftToCommandFields(currentDraft);
-    const current: SaveAttempt = attemptRef.current ?? (editing
-      ? { kind: 'update', input: { commandId: nextCommandId(), boardId: boardId as BoardId,
-        expectedMutationStamp: currentDraft.expectedMutationStamp ?? '', ...fields } }
-      : { kind: 'create', input: { commandId: nextCommandId(), ...fields,
-        reminders: currentDraft.reminders.map(reminder => ({ ...reminder })) } });
     attemptRef.current = current; setAttempt(current);
+    exitToBoardsRef.current = current.kind === 'archive' || current.kind === 'delete';
     await scope.run(async ({ core: accepted, effects }) => {
       try {
-        const result = current.kind === 'update' ? await updateBoard(accepted, current.input)
+        const result = current.kind === 'archive' ? await archiveBoard(accepted, current.input)
+          : current.kind === 'delete' ? await deleteBoard(accepted, current.input)
+          : current.kind === 'update' ? await updateBoard(accepted, current.input)
           : effects.kind === 'real' ? await createBoardWithReminders({ ...accepted, scheduler: effects.reminders }, current.input)
             : await createBoard(accepted, current.input);
         if (result.ok) {
@@ -304,8 +312,8 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
           // record the factual result before the operation join settles.
           if (!ownsDraft()) return;
           setAttempt(null); setCompleted(true); invalidate();
-          if (!scope.isCurrent() || !navigation.isFocused()) return;
-          if ('remindersDenied' in result.value && result.value.remindersDenied) {
+          if (!activity.active || !navigation.isFocused()) return;
+          if (result.value && 'remindersDenied' in result.value && result.value.remindersDenied) {
             Alert.alert('Notifications are off', 'The reminder is saved but disabled. Allow notifications in Settings to turn it on.');
           }
           finish();
@@ -322,10 +330,25 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         if (ownsDraft()) setSaving(false);
       }
     });
-  }, [boardId, draftStore, editing, finish, invalidate, navigation, nextCommandId, ownsDraft, scope]);
+  }, [activity, finish, invalidate, navigation, ownsDraft, scope]);
+
+  const canEdit = useCallback(() => activity.active && navigation.isFocused() && ownsDraft()
+    && !busyRef.current && !attemptRef.current && !completedRef.current, [activity, navigation, ownsDraft]);
+
+  const save = useCallback(async () => {
+    if (!activity.active || !navigation.isFocused() || !ownsDraft() || busyRef.current || completedRef.current) return;
+    const currentDraft = draftStore.getSnapshot().draft;
+    const fields = draftToCommandFields(currentDraft);
+    const current: BoardAttempt = attemptRef.current ?? (editing
+      ? { kind: 'update', input: { commandId: nextCommandId(), boardId: boardId as BoardId,
+        expectedMutationStamp: currentDraft.expectedMutationStamp ?? '', ...fields } }
+      : { kind: 'create', input: { commandId: nextCommandId(), ...fields,
+        reminders: currentDraft.reminders.map(reminder => ({ ...reminder })) } });
+    await runAttempt(current);
+  }, [activity, boardId, draftStore, editing, navigation, nextCommandId, ownsDraft, runAttempt]);
 
   const confirmArchive = useCallback(() => {
-    if (!editing || !boardId || !ownsDraft()) {
+    if (!editing || !boardId || !canEdit()) {
       return;
     }
     Alert.alert('Archive Board', 'The board moves to Archived Boards. Its data stays.', [
@@ -333,32 +356,27 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
       {
         text: 'Archive',
         onPress: () => {
-          if (!ownsDraft()) return;
-          void archiveBoard(core, { commandId: nextCommandId(), boardId }).then((result) => {
-            if (result.ok) {
-              invalidate();
-              if (!ownsDraft()) return;
-              skipGuardRef.current = true;
-              router.dismissTo('/');
-            } else if (ownsDraft()) {
-              setError(result.error);
-            }
-          });
+          if (!canEdit()) return;
+          void runAttempt({ kind: 'archive', input: { commandId: nextCommandId(), boardId } });
         },
       },
     ]);
-  }, [boardId, core, editing, invalidate, nextCommandId, ownsDraft, router]);
+  }, [boardId, canEdit, editing, nextCommandId, runAttempt]);
 
   const confirmDelete = useCallback(async () => {
-    if (!editing || !boardId || !ownsDraft()) {
+    if (!editing || !boardId || !canEdit()) {
       return;
     }
-    const counts = await getBoardDependentCounts(core, boardId);
-    if (!ownsDraft()) return;
-    const message = counts.ok
+    let counts: Awaited<ReturnType<typeof getBoardDependentCounts>> | undefined;
+    try {
+      const dispatch = await scope.run(({ core: accepted }) => getBoardDependentCounts(accepted, boardId));
+      if (dispatch.started) counts = dispatch.value;
+    } catch { /* the confirmation can use its existing generic count summary */ }
+    if (!canEdit()) return;
+    const message = counts?.ok
       ? `This permanently deletes ${counts.value.checkIns} check-in${counts.value.checkIns === 1 ? '' : 's'}, ${counts.value.notes} note${counts.value.notes === 1 ? '' : 's'}, and ${counts.value.reminders} reminder${counts.value.reminders === 1 ? '' : 's'}.`
       : 'This permanently deletes the board and everything it contains.';
-    const anchoredBoards = counts.ok ? counts.value.anchoredBoards : null;
+    const anchoredBoards = counts?.ok ? counts.value.anchoredBoards : null;
     const anchorSummary = anchoredBoards === null
       ? 'Habits anchored to this board will lose that anchor. Those habits and their history remain.'
       : anchoredBoards === 0
@@ -370,25 +388,16 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         text: 'Delete Board',
         style: 'destructive',
         onPress: () => {
-          if (!ownsDraft()) return;
-          void deleteBoard(core, { commandId: nextCommandId(), boardId }).then((result) => {
-            if (result.ok) {
-              invalidate();
-              if (!ownsDraft()) return;
-              skipGuardRef.current = true;
-              router.dismissTo('/');
-            } else if (ownsDraft()) {
-              setError(result.error);
-            }
-          });
+          if (!canEdit()) return;
+          void runAttempt({ kind: 'delete', input: { commandId: nextCommandId(), boardId } });
         },
       },
     ]);
-  }, [boardId, core, editing, invalidate, nextCommandId, ownsDraft, router]);
+  }, [boardId, canEdit, editing, nextCommandId, runAttempt, scope]);
 
   if (attempt || completed) return <View style={{ flex: 1, padding: spacing.lg, gap: spacing.md }}>
     <Stack.Screen options={{ title: editing ? 'Edit Board' : 'Create Board', headerLeft: () => null, headerRight: () => null }} />
-    <AppText>{completed ? 'Your board was saved.' : saving ? 'Saving board...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
+    <AppText>{completed ? 'Your board change was saved.' : saving ? 'Saving board...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
     {error ? <InlineError message={error.message} testID="board-form-error" /> : null}
     {completed ? <PrimaryButton title="Done" onPress={finish} />
       : <PrimaryButton title="Retry" onPress={save} disabled={saving || !scope.active} testID="board-form-retry" />}
@@ -485,6 +494,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <ProductPressable
               onPress={() => {
+                if (!canEdit()) return;
                 Keyboard.dismiss();
                 setSymbolPickerOpen(true);
               }}
@@ -522,7 +532,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
             }}
           >
             <ProductPressable
-              onPress={() => setCustomColorOpen((current) => !current)}
+              onPress={() => { if (canEdit()) setCustomColorOpen((current) => !current); }}
               label="Custom color"
               testID="custom-color"
             >
@@ -622,6 +632,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         </FormRow> : null}
 
         <FormRow>
+          {scope.kind === 'sample' ? <AppText variant="footnote">Reminders are unavailable in Sample mode.</AppText> : <>
           {editing && boardId ? (
             <ExistingReminderRows boardId={boardId} onError={setError} />
           ) : (
@@ -654,6 +665,7 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
           >
             <AppText selectable={false}>Add reminder…</AppText>
           </ProductPressable>
+          </>}
         </FormRow>
 
         <FormRow>
@@ -686,10 +698,11 @@ export function BoardFormScreen({ boardId }: { boardId: BoardId | null }) {
         symbol={draft.symbol}
         accent={colors.accent}
         onSelect={(symbol) => {
+          if (!canEdit()) return;
           updateDraft({ symbol });
           setSymbolPickerOpen(false);
         }}
-        onDismiss={() => setSymbolPickerOpen(false)}
+        onDismiss={() => { if (canEdit()) setSymbolPickerOpen(false); }}
       />
     </View>
   );

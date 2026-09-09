@@ -3382,3 +3382,13 @@ T19/Checkpoint C external gates remain open.
     Forty-six tests across four suites pass independently; owned lint and
     composed typecheck pass. All four final hashes match. Native sheets and
     the complete route graph remain subsequent integration gates.
+19. Board archive/delete and check-in removal now retain exact accepted
+    attempts and outcomes across sample suspension, including committed
+    responses that were lost. Existing reminder toggles join authorization
+    and SQL using the captured scheduler; sample forms explain unavailability
+    before mounting reminder controls. Native sheet, icon and color callbacks
+    retain their original focus, and the sample banner/Close are embedded
+    inside check-in sheet content. Seventy-one tests across four suites pass
+    without diagnostics. Root independently reviewed all four files, verified
+    final hashes and reran forty-four cases across two suites. Owned lint
+    passes; production routes and actual native geometry remain later gates.

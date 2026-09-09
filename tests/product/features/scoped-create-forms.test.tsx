@@ -1,16 +1,21 @@
 import { BottomSheet } from '@expo/ui/community/bottom-sheet';
-import { act, cleanup } from '@testing-library/react-native';
+import { act, cleanup, within } from '@testing-library/react-native';
 import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
 import { useState, useSyncExternalStore } from 'react';
-import { Alert, Text, TextInput } from 'react-native';
+import { Alert, Keyboard, Text, TextInput, Switch } from 'react-native';
 
 import * as commands from '@/core/domain/commands';
 import * as checkCommands from '@/core/domain/check-in-commands';
+import * as queries from '@/core/domain/queries';
+import { createReminder } from '@/core/domain/reminder-commands';
 import { ProductPressable } from '@/features/ui';
 import * as boardCreation from '@/core/domain/create-board-with-reminders';
 import type { CommandId } from '@/core/domain/ids';
 import { BoardFormScreen } from '@/features/board-configuration/board-form-screen';
 import { CheckInFormScreen } from '@/features/check-in-history/check-in-form-screen';
+import { BoardIconPicker } from '@/features/board-configuration/board-icon-picker';
+import { SampleSession } from '@/features/sample/session';
+import { SampleSessionProvider } from '@/features/sample/session-context';
 import { ProductContext, type FeatureEffects } from '@/features/product-store/context';
 import { createOperationOwner } from '@/features/product-store/operation-scope';
 import { missAlertScheduler, reminderScheduler, notificationsPlatformMock } from '@/testing/notifications-platform.mock';
@@ -29,7 +34,7 @@ const effects: FeatureEffects = {
   supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(),
 };
 
-async function setup(kind: 'board' | 'check', mode: 'real' | 'sample' = 'real', edit = false, dirty = true) {
+async function setup(kind: 'board' | 'check', mode: 'real' | 'sample' = 'real', edit = false, dirty = true, withReminder = false) {
   const h = await createTestHarness();
   const created = await commands.createBoard(h.deps, {
     commandId: h.ids.uuid() as CommandId, title: 'Existing count', kind: 'count',
@@ -41,20 +46,27 @@ async function setup(kind: 'board' | 'check', mode: 'real' | 'sample' = 'real', 
     commandId: h.ids.uuid() as CommandId, boardId: created.value.boardId, source: 'app', note: 'Original note',
   }) : null;
   if (seeded && !seeded.ok) throw Error(seeded.error.message);
+  const reminder = withReminder ? await createReminder({ ...h.deps, scheduler: reminderScheduler }, {
+    commandId: h.ids.uuid() as CommandId, boardId: created.value.boardId,
+    weekdaysMask: 1, minuteOfDay: 540, enabled: false,
+  }) : null;
+  if (reminder && !reminder.ok) throw Error(reminder.error.message);
   const owner = createOperationOwner(h.deps, mode === 'real' ? effects : { kind: 'sample-disabled' });
+  const session = new SampleSession(async () => { throw Error('This test has already supplied its core.'); });
   function Layout() {
     const scope = useSyncExternalStore(owner.subscribe, owner.getScope, owner.getScope);
     const [version, setVersion] = useState(0);
-    return <ThemeProvider value={DefaultTheme}><ProductContext.Provider value={{
+    return <ThemeProvider value={DefaultTheme}><SampleSessionProvider sessionOverride={session}><ProductContext.Provider value={{
       core: owner.core, scope, closeSample: null, version,
       invalidate: () => { if (scope.isCurrent()) setVersion(value => value + 1); },
       nextCommandId: () => h.ids.uuid() as CommandId,
       sync: { status: 'idle', busy: false, error: null },
       syncNow: jest.fn(), pauseSync: jest.fn(), resumeSync: jest.fn(),
       missAlertScheduler, missAlertVersion: 0,
-    }}><Stack /></ProductContext.Provider></ThemeProvider>;
+    }}><Stack /></ProductContext.Provider></SampleSessionProvider></ThemeProvider>;
   }
   renderRouter({ _layout: Layout, index: () => <Text>Original destination</Text>,
+    other: () => <Text>Other scene</Text>,
     form: () => kind === 'board' ? <BoardFormScreen boardId={edit ? created.value.boardId : null} />
       : <CheckInFormScreen boardId={created.value.boardId} checkInId={seeded?.ok ? seeded.value.checkInId : null} />,
   }, { initialUrl: '/' });
@@ -63,7 +75,7 @@ async function setup(kind: 'board' | 'check', mode: 'real' | 'sample' = 'real', 
   await screen.findByTestId(saveId);
   if (dirty && kind === 'board') fireEvent.changeText(await screen.findByTestId('board-title-input'), 'Created once');
   else if (dirty) fireEvent.changeText(await screen.findByTestId('check-in-note'), 'Created once');
-  return { h, owner, saveId, boardId: created.value.boardId };
+  return { h, owner, session, saveId, boardId: created.value.boardId, reminderId: reminder?.ok ? reminder.value.reminderId : null };
 }
 
 beforeEach(() => notificationsPlatformMock.reset());
@@ -139,14 +151,15 @@ describe.each(['board', 'check'] as const)('%s form accepted create ownership', 
     } finally { cleanup(); await h.db.closeAsync(); }
   });
 
-  it('ignores an old dirty Discard after pause and resume, then accepts a fresh decision', async () => {
+  it.each(['pause', 'cover'] as const)('ignores an old dirty Discard after %s and return, then accepts a fresh decision', async movement => {
     const { h, owner } = await setup(kind);
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
       act(() => router.back()); await settle();
       const oldDiscard = alert.mock.calls.at(-1)![2]!.find(button => button.text === 'Discard')!.onPress!;
-      await act(async () => { await owner.suspend(); });
-      act(() => owner.resume()); await settle();
+      if (movement === 'pause') await act(async () => { await owner.suspend(); });
+      else { act(() => router.push('/other')); await settle(); }
+      act(() => { if (movement === 'pause') owner.resume(); else router.back(); }); await settle();
       act(() => oldDiscard()); await settle();
       expect(screen).toHavePathname('/form');
       act(() => router.back()); await settle();
@@ -308,4 +321,174 @@ it.each(['board', 'check'] as const)('pending untouched %s cannot be removed wit
     expect(await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id')).toEqual(before);
     expect(screen).toHavePathname('/');
   } finally { await act(async () => { response.resolve(); await saved; }); cleanup(); await h.db.closeAsync(); }
+});
+
+const destructiveActions = [
+  { kind: 'board', command: 'archiveBoard', button: 'archive-board', confirmation: 'Archive' },
+  { kind: 'board', command: 'deleteBoard', button: 'form-delete-board', confirmation: 'Delete Board' },
+  { kind: 'check', command: 'removeCheckIn', button: 'delete-check-in', confirmation: 'Delete Check-In' },
+] as const;
+
+it.each(destructiveActions)('retains the exact $command receipt through a committed lost response and resume', async action => {
+  const { h, owner } = await setup(action.kind, 'real', true, false);
+  const entered = gate(), response = gate();
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const actualCommand = action.command === 'archiveBoard' ? commands.archiveBoard
+    : action.command === 'deleteBoard' ? commands.deleteBoard : commands.removeCheckIn;
+  const held = async (...args: unknown[]) => {
+    // each row below pairs one actual public command with its captured arguments.
+    const result = await (actualCommand as (...input: unknown[]) => Promise<{ ok: boolean }>)(...args);
+    expect(result.ok).toBe(true); entered.resolve(); await response.promise;
+    throw Error('private destructive response');
+  };
+  const call = action.command === 'removeCheckIn'
+    ? jest.spyOn(checkCommands, 'removeCheckIn').mockImplementationOnce(held)
+    : jest.spyOn(commands, action.command).mockImplementationOnce(held);
+  let join: Promise<void> | undefined;
+  try {
+    fireEvent.press(screen.getByTestId(action.button)); await settle();
+    act(() => alert.mock.calls.at(-1)![2]!.find(button => button.text === action.confirmation)!.onPress!());
+    await entered.promise;
+    const input = structuredClone(call.mock.calls[0][1]);
+    const receipts = await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id');
+    const boards = await h.db.getAllAsync('SELECT * FROM boards ORDER BY id');
+    const checks = await h.db.getAllAsync('SELECT * FROM check_ins ORDER BY id');
+    let joined = false;
+    act(() => { join = owner.suspend(); void join.then(() => { joined = true; }); }); await settle();
+    expect(joined).toBe(false);
+    await act(async () => { response.resolve(); await join; }); await settle();
+    act(() => owner.resume()); await settle();
+    expect(screen.getByText('Retry')).toBeOnTheScreen();
+    expect(screen.queryByText(/private destructive response/)).toBeNull();
+    fireEvent.press(screen.getByText('Retry')); await settle();
+    expect(call.mock.calls[1][1]).toEqual(input);
+    expect(screen).toHavePathname('/');
+    expect(await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id')).toEqual(receipts);
+    expect(await h.db.getAllAsync('SELECT * FROM boards ORDER BY id')).toEqual(boards);
+    expect(await h.db.getAllAsync('SELECT * FROM check_ins ORDER BY id')).toEqual(checks);
+  } finally { await act(async () => { response.resolve(); await join; }); await settle(); cleanup(); await h.db.closeAsync(); }
+});
+
+it.each(destructiveActions.flatMap(action => (['pause', 'cover'] as const).map(movement => ({ ...action, movement }))))('rejects a retained $command confirmation before IDs or SQL after $movement and return', async action => {
+  const { h, owner } = await setup(action.kind, 'real', true, false);
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  try {
+    fireEvent.press(screen.getByTestId(action.button)); await settle();
+    const confirm = alert.mock.calls.at(-1)![2]!.find(button => button.text === action.confirmation)!.onPress!;
+    const receipts = await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id');
+    const ids = jest.spyOn(h.ids, 'uuid');
+    if (action.movement === 'pause') await act(async () => { await owner.suspend(); });
+    else { act(() => router.push('/other')); await settle(); }
+    act(() => { if (action.movement === 'pause') owner.resume(); else router.back(); }); await settle();
+    act(() => confirm()); await settle();
+    expect(ids).not.toHaveBeenCalled();
+    expect(await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id')).toEqual(receipts);
+    expect(screen).toHavePathname('/form');
+  } finally { cleanup(); await h.db.closeAsync(); }
+});
+
+it('joins a board-delete count preflight but never opens its old alert after pause', async () => {
+  const { h, owner } = await setup('board', 'real', true);
+  const entered = gate(), response = gate();
+  const actual = queries.getBoardDependentCounts;
+  jest.spyOn(queries, 'getBoardDependentCounts').mockImplementationOnce(async (...args) => {
+    const result = await actual(...args); entered.resolve(); await response.promise; return result;
+  });
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  let join: Promise<void> | undefined;
+  try {
+    fireEvent.press(screen.getByTestId('form-delete-board')); await entered.promise;
+    let joined = false;
+    act(() => { join = owner.suspend(); void join.then(() => { joined = true; }); }); await settle();
+    expect(joined).toBe(false);
+    await act(async () => { response.resolve(); await join; }); await settle();
+    expect(alert).not.toHaveBeenCalled();
+  } finally { await act(async () => { response.resolve(); await join; }); await settle(); cleanup(); await h.db.closeAsync(); }
+});
+
+it('joins an existing reminder toggle permission await and rejects its old callback after resume', async () => {
+  const { h, owner, reminderId } = await setup('board', 'real', true, false, true);
+  const entered = gate(), response = gate();
+  jest.spyOn(reminderScheduler, 'authorization').mockImplementationOnce(async () => {
+    entered.resolve(); await response.promise; return 'granted';
+  });
+  const toggleId = `reminder-toggle-${reminderId}`;
+  const toggle = screen.UNSAFE_getAllByType(Switch).find(node => node.props.testID === toggleId)!.props.onValueChange!;
+  let join: Promise<void> | undefined;
+  try {
+    act(() => toggle(true)); await entered.promise;
+    let joined = false;
+    act(() => { join = owner.suspend(); void join.then(() => { joined = true; }); }); await settle();
+    expect(joined).toBe(false);
+    await act(async () => { response.resolve(); await join; }); await settle();
+    expect(await h.db.getFirstAsync('SELECT enabled FROM reminders WHERE id = ?', [reminderId])).toEqual({ enabled: 1 });
+    act(() => owner.resume()); await settle();
+    const receipts = await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id');
+    act(() => toggle(false)); await settle();
+    expect(await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id')).toEqual(receipts);
+    fireEvent(screen.getByTestId(toggleId), 'valueChange', false); await settle();
+    expect(await h.db.getFirstAsync('SELECT enabled FROM reminders WHERE id = ?', [reminderId])).toEqual({ enabled: 0 });
+  } finally { await act(async () => { response.resolve(); await join; }); await settle(); cleanup(); await h.db.closeAsync(); }
+});
+
+it('shows the sample reminder explanation without mounting existing reminder controls', async () => {
+  const { h } = await setup('board', 'sample', true, false, true);
+  try {
+    expect(screen.getByText('Reminders are unavailable in Sample mode.')).toBeOnTheScreen();
+    expect(screen.queryByTestId('add-reminder-row')).toBeNull();
+    expect(screen.queryAllByTestId(/^reminder-toggle-/)).toEqual([]);
+  } finally { cleanup(); await h.db.closeAsync(); }
+});
+
+it('ignores retained board picker and color callbacks after same-scope cover and return', async () => {
+  const { h } = await setup('board');
+  const keyboard = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
+  try {
+    const oldOpen = screen.UNSAFE_getAllByType(ProductPressable).find(node => node.props.testID === 'open-symbol-picker')!.props.onPress!;
+    const oldColor = screen.UNSAFE_getAllByType(ProductPressable).find(node => node.props.testID === 'custom-color')!.props.onPress!;
+    const oldPicker = screen.UNSAFE_getByType(BoardIconPicker).props;
+    act(() => router.push('/other')); await settle();
+    act(() => router.back()); await settle();
+    act(() => { oldOpen(); oldColor(); }); await settle();
+    expect(keyboard).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('custom-color-input')).toBeNull();
+    expect(screen.UNSAFE_getByType(BoardIconPicker).props.isPresented).toBe(false);
+    fireEvent.press(screen.getByTestId('open-symbol-picker')); await settle();
+    expect(screen.UNSAFE_getByType(BoardIconPicker).props.isPresented).toBe(true);
+    act(() => { oldPicker.onSelect('heart.fill'); oldPicker.onDismiss(); }); await settle();
+    expect(screen.UNSAFE_getByType(BoardIconPicker).props.isPresented).toBe(true);
+    expect(screen.UNSAFE_getByType(BoardIconPicker).props.symbol).not.toBe('heart.fill');
+    fireEvent.press(screen.getByTestId('close-symbol-picker')); await settle();
+    expect(screen.UNSAFE_getByType(BoardIconPicker).props.isPresented).toBe(false);
+  } finally { cleanup(); await h.db.closeAsync(); }
+});
+
+it('does not let an old Keep editing alert reopen the native check sheet after refocus', async () => {
+  const { h } = await setup('check');
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  try {
+    const sheet = screen.UNSAFE_getByType(BottomSheet);
+    act(() => sheet.props.onClose());
+    const keep = alert.mock.calls.at(-1)![2]!.find(button => button.text === 'Keep editing')!.onPress!;
+    act(() => router.push('/other')); await settle();
+    act(() => router.back()); await settle();
+    const present = jest.spyOn(screen.UNSAFE_getByType(BottomSheet).props.ref.current, 'present');
+    act(() => keep());
+    expect(present).not.toHaveBeenCalled();
+    act(() => screen.UNSAFE_getByType(BottomSheet).props.onClose());
+    act(() => alert.mock.calls.at(-1)![2]!.find(button => button.text === 'Keep editing')!.onPress!());
+    expect(present).toHaveBeenCalledTimes(1);
+  } finally { cleanup(); await h.db.closeAsync(); }
+});
+
+it('keeps the Sample notice and Close control inside the native check sheet', async () => {
+  const { h, session } = await setup('check', 'sample');
+  const close = jest.spyOn(session, 'close');
+  try {
+    const sheet = within(screen.getByTestId('bottom-sheet'));
+    expect(sheet.getByText('Sample data. Nothing here is saved.')).toBeOnTheScreen();
+    fireEvent.press(sheet.getByTestId('sample-close')); await settle();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(await h.db.getAllAsync('SELECT * FROM check_ins')).toEqual([]);
+  } finally { cleanup(); await h.db.closeAsync(); }
 });

@@ -26,6 +26,8 @@ import { BoardSymbol, deriveBoardColors } from '../boards';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
 import { useProductRouter } from '../sample/navigation';
+import { useProductActivity } from '../product-store/use-product-activity';
+import { SampleChrome } from '../sample/chrome';
 
 type CheckInFormScreenProps = {
   boardId: BoardId;
@@ -125,6 +127,7 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
   const router = useProductRouter();
   const scheme = useScheme();
   const { core, scope } = useProduct();
+  const activity = useProductActivity(scope);
   const navigation = useNavigation();
   // conflicts remount the body with the reloaded record, so the notice
   // lives here where the remount cannot wipe it
@@ -150,7 +153,7 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
   // a pan-down or backdrop tap already dismissed the native sheet; either
   // leave the route, or reopen the sheet when unsaved edits need a decision
   const closeFromSheet = useCallback(() => {
-    if (!scope.isCurrent() || !navigation.isFocused()) return;
+    if (!activity.active || !navigation.isFocused()) return;
     if (pendingRef.current) { sheetRef.current?.present(); return; }
     if (skipGuardRef.current) {
       return;
@@ -160,13 +163,13 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
         {
           text: 'Keep editing',
           style: 'cancel',
-          onPress: () => sheetRef.current?.present(),
+          onPress: () => { if (activity.active && navigation.isFocused()) sheetRef.current?.present(); },
         },
         {
           text: 'Discard',
           style: 'destructive',
           onPress: () => {
-            if (!scope.isCurrent() || !navigation.isFocused() || pendingRef.current) return;
+            if (!activity.active || !navigation.isFocused() || pendingRef.current) return;
             skipGuardRef.current = true;
             router.back();
           },
@@ -176,7 +179,7 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
     }
     skipGuardRef.current = true;
     router.back();
-  }, [navigation, router, scope]);
+  }, [activity, navigation, router]);
 
   const loadedRecord =
     checkInId && existing.status === 'ready' ? existing.value : null;
@@ -255,14 +258,15 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
       onClose={closeFromSheet}
       backgroundStyle={{ backgroundColor: semanticColor('groupedBackground', scheme) as string }}
     >
-      <BottomSheetView style={{ flex: 1 }}>{content}</BottomSheetView>
+      <BottomSheetView style={{ flex: 1 }}><SampleChrome />{content}</BottomSheetView>
     </BottomSheet>
   );
 }
 
-type SaveAttempt =
+type CheckAttempt =
   | { kind: 'create'; input: Parameters<typeof createCheckIn>[1] }
-  | { kind: 'update'; input: Parameters<typeof updateCheckIn>[1] };
+  | { kind: 'update'; input: Parameters<typeof updateCheckIn>[1] }
+  | { kind: 'delete'; input: Parameters<typeof removeCheckIn>[1] };
 
 // mounted only once its data exists, so form state seeds in useState
 function CheckInFormBody({
@@ -290,6 +294,7 @@ function CheckInFormBody({
   const navigation = useNavigation();
   const scheme = useScheme();
   const { core, scope, invalidate, nextCommandId } = useProduct();
+  const activity = useProductActivity(scope);
   const productZone = core.clock.timeZoneId();
   const [dirty, setDirtyState] = useState(false);
   // the parent's sheet-close guard reads the ref; react state still drives
@@ -330,15 +335,15 @@ function CheckInFormBody({
   const [note, setNote] = useState(record?.note ?? '');
   const [error, setError] = useState<DomainError | null>(null);
   const [saving, setSaving] = useState(false);
-  const [attempt, setAttempt] = useState<SaveAttempt | null>(null);
+  const [attempt, setAttempt] = useState<CheckAttempt | null>(null);
   const [completed, setCompleted] = useState(false);
-  const attemptRef = useRef<SaveAttempt | null>(null);
+  const attemptRef = useRef<CheckAttempt | null>(null);
   const busyRef = useRef(false), completedRef = useRef(false), mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   // a swipe-down or other removal of an edited form must confirm first
   usePreventRemove(scope.active && !completed && (dirty || saving || attempt !== null), ({ data }) => {
-    if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current) return;
+    if (!activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current) return;
     if (skipGuardRef.current) {
       navigation.dispatch(data.action);
       return;
@@ -349,7 +354,7 @@ function CheckInFormBody({
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          if (!mounted.current || !scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current) return;
+          if (!mounted.current || !activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current) return;
           skipGuardRef.current = true;
           navigation.dispatch(data.action);
         },
@@ -359,7 +364,7 @@ function CheckInFormBody({
 
   const changeDate = useCallback(
     (value: Date) => {
-      if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
+      if (!activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
       const next = logicalFromDate(value, productZone);
       setLogicalDate(next);
       setDirty(true);
@@ -379,36 +384,25 @@ function CheckInFormBody({
         );
       }
     },
-    [board.tracksTime, core, navigation, productZone, scope, setDirty, timeTouched, today],
+    [activity, board.tracksTime, core, navigation, productZone, setDirty, timeTouched, today],
   );
 
   const finish = useCallback(() => {
-    if (!scope.isCurrent() || !navigation.isFocused() || !mounted.current) return;
+    if (!activity.active || !navigation.isFocused() || !mounted.current) return;
     skipGuardRef.current = true;
     router.back();
-  }, [navigation, router, scope, skipGuardRef]);
+  }, [activity, navigation, router, skipGuardRef]);
 
-  const save = useCallback(async () => {
-    if (!scope.isCurrent() || !navigation.isFocused() || !mounted.current || busyRef.current || completedRef.current) return;
-    if (!attemptRef.current && board.tracksAmount && amountText.trim().length === 0) {
-      setError({ code: 'validation', message: 'Enter an amount greater than zero.', retryable: false });
-      return;
-    }
+  const runAttempt = useCallback(async (current: CheckAttempt) => {
+    if (!activity.active || !navigation.isFocused() || !mounted.current || busyRef.current || completedRef.current) return;
     busyRef.current = true; pendingRef.current = true;
     setSaving(true); setError(null);
-    const amount = board.tracksAmount ? Number(amountText.replace(',', '.')) : undefined;
-    const occurredAtUtc = board.tracksTime && timeOfDay !== null && (record === null || occurrenceEdited)
-      ? instantFor(logicalDate, timeOfDay, productZone, board.startOfDayMinute) : undefined;
-    const current: SaveAttempt = attemptRef.current ?? (record
-      ? { kind: 'update', input: { commandId: nextCommandId(), checkInId: record.id,
-        expectedMutationStamp: record.mutationStamp, logicalDate, occurredAtUtc, amount, note } }
-      : { kind: 'create', input: { commandId: nextCommandId(), boardId: board.id,
-        logicalDate, occurredAtUtc, amount, note, source } });
     attemptRef.current = current; setAttempt(current);
     retainEditor({ board, record });
     await scope.run(async ({ core: accepted }) => {
       try {
-        const result = current.kind === 'update' ? await updateCheckIn(accepted, current.input)
+        const result = current.kind === 'delete' ? await removeCheckIn(accepted, current.input)
+          : current.kind === 'update' ? await updateCheckIn(accepted, current.input)
           : await createCheckIn(accepted, current.input);
         if (result.ok) {
           attemptRef.current = null; completedRef.current = true; pendingRef.current = false;
@@ -428,10 +422,27 @@ function CheckInFormBody({
         if (mounted.current) setSaving(false);
       }
     });
-  }, [amountText, board, finish, invalidate, logicalDate, navigation, nextCommandId, note, occurrenceEdited, onConflict, pendingRef, productZone, record, retainEditor, scope, setDirty, source, timeOfDay]);
+  }, [activity, board, finish, invalidate, navigation, onConflict, pendingRef, record, retainEditor, scope, setDirty]);
+
+  const save = useCallback(async () => {
+    if (!activity.active || !navigation.isFocused() || !mounted.current || busyRef.current || completedRef.current) return;
+    if (!attemptRef.current && board.tracksAmount && amountText.trim().length === 0) {
+      setError({ code: 'validation', message: 'Enter an amount greater than zero.', retryable: false });
+      return;
+    }
+    const amount = board.tracksAmount ? Number(amountText.replace(',', '.')) : undefined;
+    const occurredAtUtc = board.tracksTime && timeOfDay !== null && (record === null || occurrenceEdited)
+      ? instantFor(logicalDate, timeOfDay, productZone, board.startOfDayMinute) : undefined;
+    const current: CheckAttempt = attemptRef.current ?? (record
+      ? { kind: 'update', input: { commandId: nextCommandId(), checkInId: record.id,
+        expectedMutationStamp: record.mutationStamp, logicalDate, occurredAtUtc, amount, note } }
+      : { kind: 'create', input: { commandId: nextCommandId(), boardId: board.id,
+        logicalDate, occurredAtUtc, amount, note, source } });
+    await runAttempt(current);
+  }, [activity, amountText, board, logicalDate, navigation, nextCommandId, note, occurrenceEdited, productZone, record, runAttempt, source, timeOfDay]);
 
   const confirmDelete = useCallback(() => {
-    if (!record) {
+    if (!record || !activity.active || !navigation.isFocused() || !mounted.current || busyRef.current || attemptRef.current || completedRef.current) {
       return;
     }
     Alert.alert('Delete Check-In', 'This permanently deletes the check-in.', [
@@ -440,24 +451,15 @@ function CheckInFormBody({
         text: 'Delete Check-In',
         style: 'destructive',
         onPress: () => {
-          void removeCheckIn(core, { commandId: nextCommandId(), checkInId: record.id }).then(
-            (result) => {
-              if (result.ok) {
-                invalidate();
-                skipGuardRef.current = true;
-                router.back();
-              } else {
-                setError(result.error);
-              }
-            },
-          );
+          if (!activity.active || !navigation.isFocused() || !mounted.current || busyRef.current || attemptRef.current || completedRef.current) return;
+          void runAttempt({ kind: 'delete', input: { commandId: nextCommandId(), checkInId: record.id } });
         },
       },
     ]);
-  }, [core, invalidate, nextCommandId, record, router, skipGuardRef]);
+  }, [activity, navigation, nextCommandId, record, runAttempt]);
 
   if (attempt || completed) return <View style={{ padding: spacing.lg, gap: spacing.md }}>
-    <AppText>{completed ? 'Your check-in was saved.' : saving ? 'Saving check-in...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
+    <AppText>{completed ? 'Your check-in change was saved.' : saving ? 'Saving check-in...' : 'Retry to confirm this saved result before making more changes.'}</AppText>
     {error ? <InlineError message={error.message} testID="check-in-error" /> : null}
     {completed ? <PrimaryButton title="Done" onPress={finish} />
       : <PrimaryButton title="Retry" onPress={save} disabled={saving || !scope.active} testID="check-in-retry" />}
@@ -558,7 +560,7 @@ function CheckInFormBody({
                 style={{ width: 110, height: 36 }}
                 accentColor={colors.accent}
                 onValueChange={(_event, date) => {
-                  if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
+                  if (!activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
                   const selected = Platform.OS === 'android'
                     ? { hour: date.getHours(), minute: date.getMinutes(),
                       exactInstant: nativeTimeZone === productZone ? date.getTime() : null }
@@ -583,7 +585,7 @@ function CheckInFormBody({
                 keyboardType="decimal-pad"
                 value={amountText}
                 onChangeText={(text) => {
-                  if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
+                  if (!activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
                   setAmountText(text);
                   setDirty(true);
                 }}
@@ -606,7 +608,7 @@ function CheckInFormBody({
           placeholderTextColor={semanticColor('secondaryLabel', scheme) as string}
           value={note}
           onChangeText={(text) => {
-            if (!scope.isCurrent() || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
+            if (!activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
             setNote(text);
             setDirty(true);
           }}

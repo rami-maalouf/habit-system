@@ -1,3 +1,4 @@
+import { act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import { resetProductCoreForTests } from '../../../src/testing/product-core.mock';
@@ -143,7 +144,9 @@ describe('boards vertical slice', () => {
 
     fireEvent.press(screen.getByTestId('archive-board'));
     const archiveButtons = alertSpy.mock.calls.at(-1)?.[2];
-    archiveButtons?.find((button) => button.text === 'Archive')?.onPress?.();
+    await act(async () => {
+      archiveButtons?.find((button) => button.text === 'Archive')?.onPress?.();
+    });
     await settle();
     await settle();
 
