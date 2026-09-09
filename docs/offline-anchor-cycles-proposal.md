@@ -1,6 +1,6 @@
-# Proposed handling of offline anchor cycles
+# Declined proposal: automatic handling of offline anchor cycles
 
-**Status: proposed, not approved or implemented.** The user has not selected a cycle policy. This document makes the recommended option and its required import exception concrete. It consolidates the cycle portion of `.artifacts/t19/compatibility-design/t19-wire-contract.md`; it does not amend the product specification.
+**Status: declined by Rami, not implemented.** Rami chose to avoid the additional complexity and expects mostly sequential device use. Do not implement the proposed effective-graph cut, alternate component flattening, explanatory editing UI, or raw-cycle restore exception. Keep the existing rejection of self-links and cyclic anchor graphs. The technical design below is retained only as historical review context, not an implementation task. It consolidates the cycle portion of `.artifacts/t19/compatibility-design/t19-wire-contract.md`; it does not amend the product specification.
 
 Two individually valid offline edits can produce a cycle after whole-row last-writer-wins (LWW) merge. For example, one device saves A after B while another saves B after A. Rejecting whichever row arrives second can leave different graphs on the two devices. Keeping both winning raw rows requires a consistent derived interpretation.
 
@@ -63,7 +63,7 @@ A missing parent is not a cycle and must not be fabricated: the existing wire de
 
 The alternative is to show **every habit in the entire weakly connected component containing a cycle individually**, including incoming branches. Raw links still remain saved. To keep app and native commands consistent, that option would also treat those members as unstacked for future policy capture until an edit resolves the cycle. It avoids choosing a temporary root but removes otherwise usable stack relationships. Existing captured economics remain unchanged under either option. Raw backup preservation and the explicit restore exception are still necessary.
 
-The recommended cut preserves more of the user's relationships and yields a stable root, at the cost of temporarily ignoring one link the user saved. Approval should cover the exact ID-based cut, its application to future policy capture in TS and Swift, truthful editing, and the sync/version-2-restore exception above. It does not authorize a schema/export-field addition, dependency, public native API, automatic raw repair, or historical action rewrite. User approval remains pending.
+The recommended cut would preserve more of the user's relationships and yield a stable root, at the cost of temporarily ignoring one link the user saved. The historical request covered the exact ID-based cut, its application to future policy capture in TS and Swift, truthful editing, and the sync/version-2-restore exception above. It did not authorize a schema/export-field addition, dependency, public native API, automatic raw repair, or historical action rewrite. Rami declined the proposal; neither option is an implementation task.
 
 Implementation acceptance must pin:
 

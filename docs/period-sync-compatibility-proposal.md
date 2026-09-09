@@ -1,8 +1,8 @@
-# Proposed T19 period identity and backup compatibility changes
+# Declined proposal: T19 period identity and backup compatibility
 
-**Status: proposed, not approved or implemented.** This proposal refines the independently reviewed T19 wire contract. Review evidence and the reproduced legacy counterexample are retained under `.artifacts/t19/compatibility-design/`.
+**Status: declined by Rami, not implemented.** Rami chose to avoid the additional complexity and expects mostly sequential device use. Do not add the proposed period identity column, identity backfill, period backup IDs, or deleted-anchor-target backup metadata. Migration 12 remains reserved for T21's local miss alerts. The technical design below is retained only as historical review context, not an implementation task. Review evidence and the reproduced legacy counterexample are retained under `.artifacts/t19/compatibility-design/`.
 
-`SPEC-habit-system.md`, section 8, **Ask first**, requires approval for “Any new column, table, sync entity type, or export field beyond section 4.” The additions below need that approval, including the narrow exception to the current exclusion of raw tombstones from backups. The proposal has received independent design review; user approval remains pending. The [offline anchor-cycle policy](offline-anchor-cycles-proposal.md) remains separate and pending.
+The proposal primarily addressed distinct archive/restore intervals sharing a start date during sync and restore; it was not primarily protection against future model migrations. Sequential use reduces concurrent-edit conflicts but does not recover missing historical identities or prevent all same-start intervals. Retain the existing identity/backup contracts and document their limits rather than claiming this declined design is implemented. The separate [offline anchor-cycle policy](offline-anchor-cycles-proposal.md) was also declined. Ordinary validation, transaction safety and required supported-path verification still apply.
 
 ## 1. Durable activity-period identity
 
@@ -64,7 +64,7 @@ This supports exact raw-anchor restoration into an empty store while preserving 
 
 This is a narrowly scoped **exception** to `docs/remote-fact-admission.md`'s no-raw-tombstones backup rule. The privacy scanner may permit only these structural paths; suppressed payloads, unrelated tombstones, inbox state and other device metadata remain excluded.
 
-## Requested approval scope
+## Historical requested approval scope (declined)
 
 Approve the one-column period identity change, its explicit legacy limitation, version-2 `period.id`, and the restricted `deletedAnchorTargets` backup exception with missing-only insertion. No approval of the separate offline anchor-cycle policy, additional schema/export fields, source-stamp backup preservation, new dependency or Swift public API is implied.
 

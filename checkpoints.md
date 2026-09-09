@@ -2735,3 +2735,14 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     pending, as does the separate period/backup compatibility proposal. The task
     list distinguishes completed increments from the prepared engine and import
     recovery candidates; neither candidate is integrated or active in main.
+57. Rami declined both additional compatibility proposals to avoid their added
+    complexity, explaining that device use will mostly be sequential. The spec,
+    plan and task list now exclude permanent period IDs, their migration/backfill,
+    the proposed period/deleted-target backup fields, and automatic interpretation
+    or restoration of raw anchor cycles. Migration 12 remains T21's local alerts.
+    Both proposal documents are marked declined and retained only as historical
+    design context. The first proposal concerned distinguishing archive/restore
+    records during sync and restore, not primarily future model migrations.
+    Existing self-link/cycle validation, atomicity and supported sync/import
+    verification remain required; no declined guarantees or external acceptance
+    are claimed. This decision supersedes the pending-approval status in item 56.
