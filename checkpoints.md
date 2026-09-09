@@ -2336,9 +2336,10 @@ none can be built or verified without a signed Apple Developer team:
 
 ### T19 - immutable sync evidence and effective visibility (2026-09-08)
 
-Status: in progress. The schema/legacy/visibility foundation is complete with source
-review, full automated gates and signed simulator upgrade/native proof. Immutable
-admission, schema-2 mapping and actual convergence remain subsequent T19 increments.
+Status: local implementation is complete, including immutable admission, schema-2
+transport integration and effective visibility, with independent review, automated
+gates and signed simulator evidence below. Actual two-target CloudKit service
+acceptance remains open; local runtime transport substitutes do not close that gate.
 
 1. Migration 11 (`remote_fact_admission`, checksum `507c9875`) appends the bounded
    inbox and local suppression column. Its versioned `legacy_check_evidence` data
@@ -2815,8 +2816,8 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
 
 ### T20 - backup compatibility and import recovery (2026-09-09)
 
-Status: in progress. The request/receipt recovery increment is integrated;
-export format 2 and its complete restore path remain subsequent work. T19's
+Status: done. Request/receipt recovery and the paired export-format-2 restore
+path pass automated, native, independent and signed simulator checks. T19's
 actual two-target service acceptance and Checkpoint C remain open.
 
 1. A submitted import now belongs to its ProductCore through the existing
@@ -2847,7 +2848,66 @@ actual two-target service acceptance and Checkpoint C remain open.
    later native self-anchor validation means the binary is not described as
    identical to the current build. Current composition tests and independent
    review cover integration without claiming format-2 or live-service acceptance.
-5. This increment changes no parser, export schema, import economics or database
-   schema. The forthcoming v2 work must extend complete request capture to every
-   new field, settings/reward value and immutable evidence input. Both declined
-   period/graph proposals remain excluded; migration 12 remains local alerts.
+5. That first increment changed no parser, export schema, import economics or
+   database schema. The following paired v2 increment extends complete request
+   capture to every new field, settings/reward value and immutable evidence input.
+   Both declined period/graph proposals remain excluded; migration 12 remains
+   local alerts.
+6. Export format 2 is paired with its parser, acquired import transaction and
+   confirmation/result screens. One export read snapshot includes effective live
+   checks, date-only activity periods, all accepted action/ledger evidence, live
+   rewards and shared settings. Immutable history is independent of live parents:
+   a deleted reward's claim title survives, while cleared private notes do not.
+   The spec records only the exact immutable-evidence metadata exception.
+7. V2 restore preserves valid historical check values and exact period lists,
+   validates the complete anchor graph, skips existing/tombstoned product ids,
+   and uses T19's shared admission boundary in the same transaction. Valid
+   shared settings restore only into an acquired empty, unconfigured store;
+   existing settings stay unchanged. Genuine v1/CSV fallback remains supported,
+   including approved corrections to existing coins without fresh import awards.
+8. The shared capture boundary owns every nested input before an asynchronous
+   wait. Receipt replay precedes replacement-input validation. Independent real
+   SQLite probes exposed raw receipt-read errors; import now maps lookup and
+   corrupt-JSON failures safely after rollback while preserving genuine stored
+   receipts and ordinary callers. Checked summary arithmetic rejects overflow.
+9. Eight new routed cases exercise the actual codec/transaction/screens, including
+   exact exported bytes into a fresh provider, lost committed responses, nested
+   draft/result mutation, retry/remount, settings restore/preservation and partial
+   admission. Remaining history counts explicitly refer to this device. Legacy
+   recovery/settings coverage remains green. No process-death attempt persistence,
+   new period identity or automatic graph repair is introduced.
+10. Final automated gates pass 159 suites / 2,490 tests, with all 101 core files at
+    100 percent on all four metrics and global coverage 97.96/96.64/96.77/98.45.
+    Lint and typecheck pass. A fresh native gate passes 9 plugin / 169 Swift tests
+    without compiler warnings. Native implementation/configuration/dependencies
+    are unchanged. Non-author review approves the complete composed source and
+    tracked tests, with an exact 20-file pre-QA manifest.
+11. Two fresh owned signed simulator stores exercise the actual source Export
+    screen, native share sheet and cancellation, then destination Import using a
+    disclosed picker-return substitute with the exact 13,347-byte source file.
+    Source SHA-256 starts `ac7d999badb49d43`. The real import commits before a
+    one-shot response loss; dismiss/remount/Retry retains the original complete
+    input, receipt and summary even after nested draft/result mutation. Only two
+    explicitly identified reminder no-op receipts differ in that retry snapshot.
+12. The destination restores two boards, two checks, one live reward, six actions
+    and eight ledger rows with zero generated awards. Earned 5, spent 3 and balance
+    2 match the source. An actual Anchors edit changes Wake from 360 to 375;
+    intentional repeat import preserves 375 and all immutable history. One
+    malformed extra-field action creates exactly one quarantine, with readable
+    whole-device status in dark enlarged text and no private sentinel leakage.
+    Cold Home, Coins, history, Stacks and the live note pass; the cleared note
+    stays absent and the deleted reward's claim title remains visible.
+13. All runtime wrappers are restored by identity with persisted sync Off before
+    cold checks. Guarded transport/availability counts remain zero. Both owned
+    simulators and Metro 8082 are stopped; original Migration QA and protected
+    resources remain unchanged. Source, native implementation and all 20 signed
+    executables match before/after. The reused binary differs from its historical
+    source only by a later TypeScript native-transport test, not native code.
+    Stopped source/destination databases and the relocatable proof are retained
+    under `.artifacts/t20/v2-integration/qa/`. Its verifier passes 244 assertions,
+    including an independent root run from the relocated package.
+14. Device logs retain 74 categorized native diagnostics and no animation-listener
+    warnings in these captured streams; Metro retains color and tooling notices.
+    This is not a zero-warning runtime claim. The inherited `ripples-export`
+    filename remains a T24 cosmetic item. Native share presentation is verified;
+    external file delivery and live CloudKit convergence are not claimed.

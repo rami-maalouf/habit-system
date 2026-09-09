@@ -1,29 +1,22 @@
 import { importSnapshot, type ImportSnapshotInput, type ImportSummary } from '@/core/domain/commands';
 import type { CommandId } from '@/core/domain/ids';
 import type { DomainError } from '@/core/domain/result';
-import type { ImportDraft } from '@/core/export/import-parsers';
+import { captureImportDraft } from '@/core/export/import-capture';
+import { getImportPreview, type ImportDraft, type ImportPreview } from '@/core/export/import-parsers';
 import type { ProductCore } from '@/platform/database/product-core';
 
 export type ImportOwner = { active: boolean };
-type Details = { fileName: string; source: ImportDraft['source']; boards: number; checkIns: number };
+type Details = ImportPreview & { fileName: string; source: ImportDraft['source']; exportVersion?: 1 | 2 };
 type Attempt = { input: ImportSnapshotInput; details: Details };
 type ImportAttemptView =
   | { phase: 'idle' }
   | (Details & { phase: 'running' | 'uncertain' | 'failed'; commandId: CommandId; error: DomainError | null })
   | { phase: 'done'; fileName: string; commandId: CommandId; summary: ImportSummary };
 
-function captureDraft(draft: ImportDraft): ImportDraft {
-  const captured: ImportDraft = {
-    source: draft.source,
-    boards: draft.boards.map(board => ({ ...board,
-      periods: board.periods === null ? null : board.periods.map(period => Object.freeze({ ...period })),
-    })),
-    checkIns: draft.checkIns.map(check => Object.freeze({ ...check })),
-    reminders: draft.reminders.map(reminder => Object.freeze({ ...reminder })),
-  };
-  for (const board of captured.boards) { Object.freeze(board.periods); Object.freeze(board); }
-  Object.freeze(captured.boards); Object.freeze(captured.checkIns); Object.freeze(captured.reminders);
-  return Object.freeze(captured);
+function captureSummary(summary: ImportSummary): ImportSummary {
+  return Object.freeze({ ...summary, ...(summary.v2 ? { v2: Object.freeze({ ...summary.v2,
+    immutable: Object.freeze({ ...summary.v2.immutable }),
+  }) } : {}) });
 }
 
 // submitted work belongs to the provider's core and survives import route remounts.
@@ -46,9 +39,12 @@ class ImportAttemptStore {
   }
   async start(owner: ImportOwner, fileName: string, draft: ImportDraft, nextCommandId: () => CommandId, invalidate: () => void) {
     if (!owner.active || this.state.phase !== 'idle') return;
-    const captured = captureDraft(draft);
-    const attempt = { input: Object.freeze({ commandId: nextCommandId(), draft: captured }),
-      details: { fileName, source: captured.source, boards: captured.boards.length, checkIns: captured.checkIns.length } };
+    const captured = captureImportDraft(draft);
+    if (!captured.ok) throw new Error(captured.error.message);
+    const preview = getImportPreview(captured.value);
+    if (!preview.ok) throw new Error(preview.error.message);
+    const attempt = { input: Object.freeze({ commandId: nextCommandId(), draft: captured.value }),
+      details: { ...preview.value, fileName, source: captured.value.source, exportVersion: captured.value.exportVersion } };
     this.attempt = attempt;
     await this.run(attempt, invalidate);
   }
@@ -72,7 +68,7 @@ class ImportAttemptStore {
       if (result.ok) {
         this.attempt = null;
         this.publish({ phase: 'done', fileName: view.fileName, commandId: view.commandId,
-          summary: Object.freeze({ ...result.value }) });
+          summary: captureSummary(result.value) });
       } else {
         if (!result.error.retryable) this.attempt = null;
         this.publish({ ...view, phase: result.error.retryable ? 'uncertain' : 'failed', error: result.error });

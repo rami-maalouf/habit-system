@@ -3,8 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
-import type { ImportDraft } from '@/core/export/import-parsers';
-import { parseOwnExport, parseRipplesCsv } from '@/core/export/import-parsers';
+import type { ImportSummary } from '@/core/domain/commands';
+import type { ImportDraft, ImportPreview } from '@/core/export/import-parsers';
+import { getImportPreview, parseOwnExport, parseRipplesCsv } from '@/core/export/import-parsers';
 import { pickImportFile } from '@/platform/data-transfer';
 import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
 
@@ -15,10 +16,32 @@ import { importAttemptStoreFor, type ImportOwner } from './import-attempt';
 
 type ImportState =
   | { step: 'choose' }
-  | { step: 'preview'; fileName: string; draft: ImportDraft };
+  | { step: 'preview'; fileName: string; draft: ImportDraft; counts: ImportPreview };
 
 function count(value: number, noun: string): string {
   return `${value} ${noun}${value === 1 ? '' : 's'}`;
+}
+
+function V2Summary({ summary }: { summary: NonNullable<ImportSummary['v2']> }) {
+  const remaining = summary.immutable;
+  const settings = {
+    restored: 'Anchor times restored.', unchanged: 'Anchor times already match.',
+    preserved: 'Existing settings kept.', invalid: 'Settings could not be restored. Existing settings kept.',
+  }[summary.settings];
+  return (
+    <>
+      <AppText testID="import-reward-summary">
+        {`Added ${count(summary.rewardsCreated, 'reward')}.${summary.rewardsSkipped > 0
+          ? ` Skipped ${count(summary.rewardsSkipped, 'reward')} (already present or invalid).` : ''}`}
+      </AppText>
+      <AppText testID="import-settings-summary">{settings}</AppText>
+      {remaining.pending + remaining.blocked + remaining.quarantined > 0 ? (
+        <AppText variant="footnote" testID="import-history-remaining">
+          {`History on this device still needs attention: ${remaining.pending} waiting for related records, ${remaining.blocked} waiting to be processed, ${remaining.quarantined} needing review.`}
+        </AppText>
+      ) : null}
+    </>
+  );
 }
 
 // two import sources: a ripples csv export from the original app, and this
@@ -64,7 +87,12 @@ export function ImportScreen() {
           setPickError(parsed.error.message);
           return;
         }
-        const preview: ImportState = { step: 'preview', fileName: picked.value.name, draft: parsed.value };
+        const counts = getImportPreview(parsed.value);
+        if (!counts.ok) {
+          setPickError(counts.error.message);
+          return;
+        }
+        const preview: ImportState = { step: 'preview', fileName: picked.value.name, draft: parsed.value, counts: counts.value };
         selection.current = preview;
         setState(preview);
       } catch {
@@ -97,7 +125,7 @@ export function ImportScreen() {
 
   const preview = attempt.phase === 'running' || attempt.phase === 'uncertain' ? attempt
     : attempt.phase === 'idle' && state.step === 'preview'
-      ? { fileName: state.fileName, source: state.draft.source, boards: state.draft.boards.length, checkIns: state.draft.checkIns.length }
+      ? { ...state.counts, fileName: state.fileName, source: state.draft.source, exportVersion: state.draft.exportVersion }
       : null;
   const error = attempt.phase === 'uncertain' || attempt.phase === 'failed' ? attempt.error?.message : pickError;
   const another = () => {
@@ -118,7 +146,7 @@ export function ImportScreen() {
         {attempt.phase === 'idle' && state.step === 'choose' ? (
           <>
             <AppText variant="subheadline">
-              Imports add to your existing boards. Nothing is deleted or overwritten.
+              Imports add habits and history. Existing habits and rewards keep their current settings.
             </AppText>
             <SettingsGroup title="Import from">
               <SettingsRow
@@ -148,8 +176,17 @@ export function ImportScreen() {
           >
             <AppText variant="headline">{preview.fileName}</AppText>
             <AppText testID="import-preview-counts">
-              {`${count(preview.boards, 'board')}, ${count(preview.checkIns, 'check-in')}.`}
+              {`${[count(preview.boards, 'board'), count(preview.checkIns, 'check-in'),
+                ...(preview.exportVersion === 2 && preview.rewards > 0 ? [count(preview.rewards, 'reward')] : []),
+                ...(preview.exportVersion === 2 && preview.reminders > 0 ? [count(preview.reminders, 'reminder')] : []),
+              ].join(', ')}.`}
             </AppText>
+            {preview.exportVersion === 2 ? (
+              <AppText variant="footnote">
+                Existing settings are kept. An empty app can also restore the saved anchor times.
+                {' '}Restoring check and coin history does not earn coins again.
+              </AppText>
+            ) : null}
             <AppText variant="footnote">
               {preview.source === 'ripples-csv'
                 ? 'Boards keep their original creation dates, so streaks and consistency include the imported history.'
@@ -183,6 +220,13 @@ export function ImportScreen() {
                   : ''
               }`}
             </AppText>
+            {attempt.summary.remindersCreated + attempt.summary.remindersSkipped > 0 ? (
+              <AppText testID="import-reminder-summary">
+                {`Added ${count(attempt.summary.remindersCreated, 'reminder')}.${attempt.summary.remindersSkipped > 0
+                  ? ` Skipped ${count(attempt.summary.remindersSkipped, 'reminder')} (already present or invalid).` : ''}`}
+              </AppText>
+            ) : null}
+            {attempt.summary.v2 ? <V2Summary summary={attempt.summary.v2} /> : null}
             <PrimaryButton
               title="Import another file"
               onPress={another}

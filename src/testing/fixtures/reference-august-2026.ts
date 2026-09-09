@@ -7,7 +7,7 @@ import {
 import type { CommandId } from '@/core/domain/ids';
 import type { DomainResult } from '@/core/domain/result';
 import { err } from '@/core/domain/result';
-import type { ImportCheckInDraft, ImportDraft } from '@/core/export/import-parsers';
+import type { ImportCheckInDraft, LegacyImportDraft } from '@/core/export/import-parsers';
 import { hasAnyBoardRows } from '@/core/persistence/repositories/boards';
 
 // these are readable demo labels for visual validation. they are not
@@ -72,7 +72,7 @@ function makeCheckIns(): ImportCheckInDraft[] {
   );
 }
 
-export const referenceAugust2026Draft: ImportDraft = {
+export const referenceAugust2026Draft: LegacyImportDraft = {
   source: 'own',
   boards: REFERENCE_AUGUST_2026_DEMO_LABELS.map((title, index) => ({
     sourceId: BOARD_IDS[index],

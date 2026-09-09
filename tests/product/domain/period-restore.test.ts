@@ -149,9 +149,11 @@ describe('own-format activity period preservation', () => {
       .toEqual([{ entity_id: '1' }, { entity_id: '2' }, { entity_id: '3' }, { entity_id: '4' }]);
   });
 
-  it.each(['bad-start', 'bad-end', 'null-entry', 'missing', 'empty'])('retains the established lifetime fallback for %s period evidence', async mode => {
+  it.each(['bad-start', 'bad-end', 'null-entry', 'missing', 'empty'])('retains the version-one lifetime fallback for %s period evidence', async mode => {
     const boardId = await archivedBackward();
     const file = JSON.parse(await exportFile());
+    file.exportVersion = 1;
+    delete file.habitActions; delete file.coinLedger; delete file.rewards;
     if (mode === 'bad-start') file.boards[0].periods[0].startDate = 'malformed-date';
     if (mode === 'bad-end') file.boards[0].periods[0].endDate = 'malformed-date';
     if (mode === 'null-entry') file.boards[0].periods = [null];

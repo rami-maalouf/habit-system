@@ -4,7 +4,10 @@ import {
   isValidLogicalDate,
   offsetMinutesAt,
 } from '../calendar/logical-date';
-import type { ImportDraft } from '../export/import-parsers';
+import type { ImportDraft, LegacyImportDraft } from '../export/import-parsers';
+import { captureImportDraft } from '../export/import-capture';
+import { importOwnV2, mapImportFailure } from './import-v2';
+import { RemoteFactAdmissionError } from './remote-fact-validation';
 import { rebuildWidgetRows } from '../persistence/projections/widget-rows';
 import {
   boardIdExists,
@@ -499,6 +502,15 @@ export type ImportSummary = {
   checkInsSkipped: number;
   remindersCreated: number;
   remindersSkipped: number;
+  v2?: {
+    rewardsCreated: number;
+    rewardsSkipped: number;
+    settings: 'restored' | 'unchanged' | 'preserved' | 'invalid';
+    immutable: {
+      admitted: number; generated: number; duplicates: number;
+      pending: number; blocked: number; quarantined: number;
+    };
+  };
 };
 
 // stored dates survive zone-changing archive and restore operations exactly.
@@ -509,9 +521,6 @@ function sanitizeImportPeriods(
 ): { startDate: LogicalDate; endDate: LogicalDate | null }[] {
   const cleaned: { startDate: LogicalDate; endDate: LogicalDate | null }[] = [];
   for (const period of periods) {
-    if (typeof period !== 'object' || period === null) {
-      return [];
-    }
     if (typeof period.startDate !== 'string' || !isValidLogicalDate(period.startDate)) {
       return [];
     }
@@ -536,9 +545,16 @@ export function importSnapshot(
   deps: CommandDeps,
   input: ImportSnapshotInput,
 ): Promise<DomainResult<ImportSummary>> {
-  return runCommand(deps, input.commandId, (context) =>
-    importSnapshotInTransaction(deps, context, input.draft, 'preserve-history'),
-  );
+  const commandId = input.commandId;
+  let captured: DomainResult<ImportDraft>;
+  try { captured = captureImportDraft(input.draft); }
+  catch { captured = err('validation', 'This import data is invalid.'); }
+  return runCommand(deps, commandId, context => {
+    if (!captured.ok) throw new RemoteFactAdmissionError('envelope');
+    return captured.value.exportVersion === 2
+      ? importOwnV2(deps, context, captured.value)
+      : importSnapshotInTransaction(deps, context, captured.value, 'preserve-history');
+  }, mapImportFailure);
 }
 
 // callers that need another invariant in the same exclusive transaction
@@ -546,7 +562,7 @@ export function importSnapshot(
 export async function importSnapshotInTransaction(
   deps: CommandDeps,
   { tx, now, timeZoneId, stamp }: CommandContext,
-  importDraft: ImportDraft,
+  importDraft: LegacyImportDraft,
   earningMode: 'preserve-history',
 ): Promise<DomainResult<ImportSummary>> {
     if (earningMode !== 'preserve-history') {

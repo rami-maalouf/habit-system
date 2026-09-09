@@ -22,7 +22,13 @@ describe('explicit legacy import economic compatibility', () => {
     expect(await createCheckIn(h.deps, { commandId: h.ids.nextCommandId(), boardId, source: 'app' })).toMatchObject({ ok: true });
     const exported = await getExportSnapshot(h.deps, { databaseSchemaVersion: 11, appVersion: 'test', buildVersion: 'test', locale: 'en-US' });
     if (!exported.ok) throw new Error(exported.error.message);
-    const file = JSON.parse(serializeExport(exported.value));
+    const current = JSON.parse(serializeExport(exported.value));
+    // project the genuine historical v1 allowlist without newer evidence or fields.
+    const file = { format: 'ripples.export', exportVersion: 1, boards: current.boards.map((row: Record<string, unknown>) =>
+      Object.fromEntries(['id', 'title', 'symbol', 'accentHex', 'usesTintedBackground', 'tracksAmount', 'amountUnit',
+        'quickAmount', 'tracksTime', 'startOfDayMinute', 'metricsEnabled', 'orderKey', 'createdAtUtc', 'archivedAtUtc', 'periods']
+        .map(key => [key, row[key]]))), checkIns: current.checkIns, reminders: current.reminders,
+      settings: { metricsEducationDismissed: current.settings.metricsEducationDismissed } };
     file.checkIns[0].id = importedId;
     const parsed = parseOwnExport(JSON.stringify(file));
     if (!parsed.ok) throw new Error(parsed.error.message);

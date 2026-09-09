@@ -1,10 +1,9 @@
 import { archiveBoard, createCheckIn, deleteBoard, importSnapshot, removeCheckIn } from '@/core/domain/commands';
 import { createReminder } from '@/core/domain/reminder-commands';
-import { listBoardReminders } from '@/core/domain/queries';
 
 import { FakeReminderScheduler } from '../helpers/fake-scheduler';
 import type { BoardId, LogicalDate } from '@/core/domain/ids';
-import { getBoardSummary, getGroupedCheckInHistory, listActiveBoards, listArchivedBoards } from '@/core/domain/queries';
+import { getBoardSummary, getGroupedCheckInHistory, listActiveBoards, listArchivedBoards, listBoardReminders } from '@/core/domain/queries';
 import {
   exportFileName,
   getExportSnapshot,
@@ -372,7 +371,18 @@ describe('own export round trip', () => {
         }
       }
     };
-    collectKeys(JSON.parse(serialized));
+    const file = JSON.parse(serialized);
+    const { habitActions, coinLedger, ...mutableFile } = file;
+    collectKeys(mutableFile);
+    for (const action of habitActions) expect(Object.keys(action).sort()).toEqual([
+      'id', 'commandId', 'boardId', 'logicalDate', 'checkInId', 'kind', 'createdAt', 'mutationStamp', 'policyJson',
+    ].sort());
+    for (const row of coinLedger) {
+      expect(Object.keys(row).sort()).toEqual(['id', 'kind', 'delta', 'boardId', 'checkInId', 'runKey', 'rewardId',
+        'rewardTitleSnapshot', 'reversesId', 'scopeKey', 'sourceActionId', 'reconciliationKey', 'adjustsId',
+        'provenanceJson', 'logicalDate', 'createdAt', 'mutationStamp', 'deletedAt'].sort());
+      expect(row.deletedAt).toBeNull();
+    }
     const forbidden = [
       'receipt',
       'outbox',
@@ -756,7 +766,7 @@ describe('parser and command edge coverage', () => {
     await harness.db.closeAsync();
   });
 
-  it('keeps error messages from real export failures', async () => {
+  it('keeps raw export failure details out of the public result', async () => {
     const harness = await createTestHarness();
     const broken = Object.create(harness.db) as typeof harness.db;
     broken.withTransactionAsync = async () => {
@@ -765,12 +775,12 @@ describe('parser and command edge coverage', () => {
     const snapshot = await getExportSnapshot({ db: broken, clock: harness.clock }, META);
     expect(snapshot.ok).toBe(false);
     if (!snapshot.ok) {
-      expect(snapshot.error.message).toContain('genuine failure');
+      expect(snapshot.error.message).toBe('The export could not be generated. Try again.');
     }
     await harness.db.closeAsync();
   });
 
-  it('stringifies non-error export failures', async () => {
+  it('keeps non-error export failure payloads private', async () => {
     const harness = await createTestHarness();
     const broken = Object.create(harness.db) as typeof harness.db;
     broken.withTransactionAsync = async () => {
@@ -779,7 +789,7 @@ describe('parser and command edge coverage', () => {
     const snapshot = await getExportSnapshot({ db: broken, clock: harness.clock }, META);
     expect(snapshot.ok).toBe(false);
     if (!snapshot.ok) {
-      expect(snapshot.error.message).toContain('not an error object');
+      expect(snapshot.error.message).toBe('The export could not be generated. Try again.');
     }
     await harness.db.closeAsync();
   });

@@ -50,12 +50,12 @@ export function ExportScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}
       >
         <AppText>
-          The export is one JSON file holding every board, check-in, note, amount, and reminder
-          rule on this device.
+          The export is one JSON file with your habits, check-ins, notes, amounts, reminder
+          rules, rewards, coin history, and anchor times.
         </AppText>
         <AppText variant="footnote">
           It contains your private notes. Share it only with people you trust. Importing it back
-          into Ripples skips anything already here, so a restore is safe to repeat.
+          into this app keeps existing records and does not earn coins again.
         </AppText>
         <PrimaryButton
           title={exporting ? 'Preparing…' : 'Export Data'}

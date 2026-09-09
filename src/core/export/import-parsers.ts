@@ -1,3 +1,11 @@
+import { isValidLogicalDate } from '../calendar/logical-date';
+import { normalizeBoardAnchorFields, type BoardAnchorInput } from '../domain/board-anchor';
+import { isUuidV4, isUuidV5 } from '../domain/ids';
+import type { RemoteFactCandidate } from '../domain/remote-fact-validation';
+import { validateRewardFields } from '../domain/reward-validation';
+import { validateTitle, validateSymbol, validateAccentHex, validateUnit, validateStartOfDayMinute, validateAmount, validateNote, validateReminderMessage,
+  validateWeekdaysMask, validateMinuteOfDay } from '../domain/validation';
+import type { ExportBoardV2, ExportCheckInV2, ExportReminder, ExportReward, ExportSettingsV2 } from './serialize';
 import { boardLimits, boardPalette, boardSymbolAllowlist } from '../domain/entities';
 import type { DomainResult } from '../domain/result';
 import { err, ok } from '../domain/result';
@@ -51,12 +59,28 @@ export type ImportReminderDraft = {
   createdAtUtc: number;
 };
 
-export type ImportDraft = {
+export type LegacyImportDraft = {
   source: 'own' | 'ripples-csv';
+  exportVersion?: 1;
   boards: ImportBoardDraft[];
   checkIns: ImportCheckInDraft[];
   reminders: ImportReminderDraft[];
 };
+
+
+export type ImportBoardV2Draft = Omit<ExportBoardV2, 'id'> & { sourceId: string };
+export type ImportCheckInV2Draft = Omit<ExportCheckInV2, 'id' | 'boardId'> & { sourceId: string; sourceBoardId: string };
+export type ImportReminderV2Draft = Omit<ExportReminder, 'id' | 'boardId'> & { sourceId: string; sourceBoardId: string };
+export type ImportRewardDraft = Omit<ExportReward, 'id'> & { sourceId: string };
+export type ImportSettingsDraftResult = { kind: 'valid'; value: ExportSettingsV2 } | { kind: 'absent' } | { kind: 'invalid' };
+export type ImportSkippedCounts = { boards: number; checkIns: number; reminders: number; rewards: number };
+export type OwnV2ImportDraft = {
+  source: 'own'; exportVersion: 2; boards: ImportBoardV2Draft[]; checkIns: ImportCheckInV2Draft[];
+  reminders: ImportReminderV2Draft[]; rewards: ImportRewardDraft[]; settings: ImportSettingsDraftResult;
+  evidence: { sourceJson: string }; skipped: ImportSkippedCounts;
+};
+export type ImportDraft = LegacyImportDraft | OwnV2ImportDraft;
+export type ImportPreview = ImportSkippedCounts & { habitActions: number; coinLedger: number };
 
 const RIPPLES_DEFAULT_SYMBOL = boardSymbolAllowlist[1];
 const RIPPLES_DEFAULT_COLOR = boardPalette[2].hex;
@@ -86,6 +110,7 @@ export function parseOwnExport(json: string): DomainResult<ImportDraft> {
   if (data.format !== 'ripples.export') {
     return err('validation', 'This file is not a Ripples export.');
   }
+  if (data.exportVersion === 2) return parseOwnV2(data, json);
   if (data.exportVersion !== 1) {
     return err('validation', 'This export was created by a newer version of the app.');
   }
@@ -272,7 +297,7 @@ function roundShiftToStep(seconds: number): number {
   return Math.min(boardLimits.startOfDayMinuteMax, Math.max(0, minutes));
 }
 
-export function parseRipplesCsv(text: string): DomainResult<ImportDraft> {
+export function parseRipplesCsv(text: string): DomainResult<LegacyImportDraft> {
   const parsed = parseCsv(text);
   if (!parsed.ok) {
     return parsed;
@@ -387,4 +412,236 @@ export function parseRipplesCsv(text: string): DomainResult<ImportDraft> {
     return err('validation', 'This file has no boards to import.');
   }
   return ok({ source: 'ripples-csv', boards, checkIns, reminders: [] });
+}
+
+// v2 keeps mutable product validation separate from opaque immutable admission.
+const V2_COLLECTIONS = ['boards', 'checkIns', 'reminders', 'rewards', 'habitActions', 'coinLedger'] as const;
+const ORDER_KEY = /^[0-9a-z]+$/;
+const CHECK_SOURCES = new Set(['app', 'widget', 'shortcut', 'siri', 'sync']);
+const ownObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const timestamp = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 8_640_000_000_000_000;
+const nullableTimestamp = (value: unknown) => value === null || timestamp(value);
+const rewardTimestamp = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0;
+
+function fields(value: unknown, keys: readonly string[]): Record<string, unknown> | null {
+  if (!ownObject(value)) return null;
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (!Object.hasOwn(value, key)) return null;
+    result[key] = value[key];
+  }
+  return result;
+}
+
+function array(value: unknown): unknown[] {
+  if (!Array.isArray(value)) throw new Error('Invalid import collection.');
+  const count = value.length;
+  const result: unknown[] = [];
+  for (let index = 0; index < count; index++) result.push(value[index]);
+  return result;
+}
+
+function v2Collections(value: unknown): Record<typeof V2_COLLECTIONS[number], unknown[]> {
+  const captured = fields(value, ['format', 'exportVersion', ...V2_COLLECTIONS]);
+  if (captured === null || captured.format !== 'ripples.export' || captured.exportVersion !== 2) {
+    throw new Error('Invalid version two import.');
+  }
+  return { boards: array(captured.boards), checkIns: array(captured.checkIns), reminders: array(captured.reminders),
+    rewards: array(captured.rewards), habitActions: array(captured.habitActions), coinLedger: array(captured.coinLedger) };
+}
+
+function evidenceCandidates(data: Pick<ReturnType<typeof v2Collections>, 'habitActions' | 'coinLedger'>): RemoteFactCandidate[] {
+  const candidates: RemoteFactCandidate[] = [];
+  for (const [factType, values] of [['habit_action', data.habitActions], ['ledger_entry', data.coinLedger]] as const) {
+    for (const value of values) {
+      if (!ownObject(value) || !Object.hasOwn(value, 'id') || typeof value.id !== 'string' ||
+        !(isUuidV4(value.id) || isUuidV5(value.id))) throw new Error('Invalid immutable identity.');
+      candidates.push({ factType, factId: value.id, value, enqueueOnAdmission: true });
+    }
+  }
+  return candidates;
+}
+
+export function readOwnV2Evidence(sourceJson: string): DomainResult<RemoteFactCandidate[]> {
+  try { return ok(evidenceCandidates(v2Collections(JSON.parse(sourceJson)))); }
+  catch { return err('validation', 'This file has invalid version 2 data.'); }
+}
+
+function periodList(value: unknown): ExportBoardV2['periods'] | null {
+  if (!Array.isArray(value)) return null;
+  const result: ExportBoardV2['periods'] = [];
+  for (const item of array(value)) {
+    const row = fields(item, ['startDate', 'endDate']);
+    if (row === null || typeof row.startDate !== 'string' || !isValidLogicalDate(row.startDate) ||
+      (row.endDate !== null && (typeof row.endDate !== 'string' || !isValidLogicalDate(row.endDate)))) return null;
+    result.push({ startDate: row.startDate, endDate: row.endDate as string | null });
+  }
+  return result;
+}
+
+function boardV2(value: unknown, idKey: string): ImportBoardV2Draft | null {
+  const row = fields(value, [idKey, 'kind', 'anchorRelation', 'anchorKind', 'anchorBoardId', 'anchorPreset', 'anchorText',
+    'usualTimeMinute', 'requiredInStack', 'earnsCoins', 'coinCapPerDay', 'title', 'symbol', 'accentHex', 'usesTintedBackground',
+    'tracksAmount', 'amountUnit', 'quickAmount', 'tracksTime', 'startOfDayMinute', 'metricsEnabled', 'orderKey',
+    'createdAtUtc', 'archivedAtUtc', 'periods']);
+  if (row === null || typeof row[idKey] !== 'string' || !isUuidV4(row[idKey] as string) ||
+    !['daily', 'count'].includes(row.kind as string) || typeof row.title !== 'string' || typeof row.symbol !== 'string' ||
+    typeof row.accentHex !== 'string' || (row.amountUnit !== null && typeof row.amountUnit !== 'string') ||
+    typeof row.quickAmount !== 'number' || typeof row.startOfDayMinute !== 'number' ||
+    ['usesTintedBackground', 'tracksAmount', 'tracksTime', 'metricsEnabled', 'requiredInStack', 'earnsCoins'].some(key => typeof row[key] !== 'boolean') ||
+    (row.kind === 'daily' && (row.tracksAmount !== false || row.tracksTime !== false)) ||
+    (row.usualTimeMinute !== null && typeof row.usualTimeMinute !== 'number') ||
+    !Number.isInteger(row.coinCapPerDay) || (row.coinCapPerDay as number) < 1 || (row.coinCapPerDay as number) > 10 ||
+    typeof row.orderKey !== 'string' || !ORDER_KEY.test(row.orderKey) || !timestamp(row.createdAtUtc) ||
+    !nullableTimestamp(row.archivedAtUtc)) return null;
+  const title = validateTitle(row.title); const symbol = validateSymbol(row.symbol);
+  const accent = validateAccentHex(row.accentHex); const unit = validateUnit(row.amountUnit);
+  const quick = validateAmount(row.quickAmount, 'quickAmount'); const start = validateStartOfDayMinute(row.startOfDayMinute);
+  const periods = periodList(row.periods);
+  if (!title.ok || !symbol.ok || !accent.ok || !unit.ok || !quick.ok || !start.ok || periods === null) return null;
+  let anchor: BoardAnchorInput | null;
+  if (row.anchorKind === null) anchor = null;
+  else if (row.anchorKind === 'board') anchor = { kind: 'board', relation: row.anchorRelation as never, boardId: row.anchorBoardId as never };
+  else if (row.anchorKind === 'preset') anchor = { kind: 'preset', relation: row.anchorRelation as never, preset: row.anchorPreset as never };
+  else if (row.anchorKind === 'text') anchor = { kind: 'text', relation: row.anchorRelation as never, text: row.anchorText as never };
+  else return null;
+  const normalized = normalizeBoardAnchorFields({ anchor, usualTimeMinute: row.usualTimeMinute as number | null,
+    requiredInStack: row.requiredInStack as boolean });
+  if (!normalized.ok || ['anchorRelation', 'anchorKind', 'anchorBoardId', 'anchorPreset', 'anchorText'].some(key =>
+    row[key] !== normalized.value[key as keyof typeof normalized.value]) || row.anchorBoardId === row[idKey]) return null;
+  return { sourceId: row[idKey] as string, kind: row.kind as ExportBoardV2['kind'],
+    anchorRelation: normalized.value.anchorRelation!, anchorKind: normalized.value.anchorKind!,
+    anchorBoardId: normalized.value.anchorBoardId!, anchorPreset: normalized.value.anchorPreset!, anchorText: normalized.value.anchorText!,
+    usualTimeMinute: normalized.value.usualTimeMinute!, requiredInStack: row.requiredInStack as boolean,
+    earnsCoins: row.earnsCoins as boolean, coinCapPerDay: row.coinCapPerDay as number,
+    title: title.value, symbol: symbol.value, accentHex: accent.value, usesTintedBackground: row.usesTintedBackground as boolean,
+    tracksAmount: row.tracksAmount as boolean, amountUnit: unit.value, quickAmount: quick.value,
+    tracksTime: row.tracksTime as boolean, startOfDayMinute: start.value, metricsEnabled: row.metricsEnabled as boolean,
+    orderKey: row.orderKey, createdAtUtc: row.createdAtUtc, archivedAtUtc: row.archivedAtUtc as number | null, periods };
+}
+
+function checkV2(value: unknown, idKey: string, parentKey: string): ImportCheckInV2Draft | null {
+  const row = fields(value, [idKey, parentKey, 'logicalDate', 'occurredAtUtc', 'timeZoneId', 'offsetMinutes', 'amount', 'note', 'source', 'createdAtUtc']);
+  if (row === null || typeof row[idKey] !== 'string' || !isUuidV4(row[idKey] as string) || typeof row[parentKey] !== 'string' ||
+    !isUuidV4(row[parentKey] as string) || typeof row.logicalDate !== 'string' || !isValidLogicalDate(row.logicalDate) ||
+    (row.amount !== null && typeof row.amount !== 'number') || (row.note !== null && typeof row.note !== 'string') ||
+    typeof row.source !== 'string' || !CHECK_SOURCES.has(row.source) || !timestamp(row.createdAtUtc)) return null;
+  const note = validateNote(row.note); const amount = row.amount === null ? ok(null) : validateAmount(row.amount);
+  if (!note.ok || !amount.ok) return null;
+  if (!(row.occurredAtUtc === null && row.timeZoneId === null && row.offsetMinutes === null)) {
+    if (!timestamp(row.occurredAtUtc) || typeof row.timeZoneId !== 'string' || typeof row.offsetMinutes !== 'number' ||
+      !Number.isFinite(row.offsetMinutes) || Math.abs(row.offsetMinutes) > 1440) return null;
+    try { new Intl.DateTimeFormat('en', { timeZone: row.timeZoneId }).format(row.occurredAtUtc); }
+    catch { return null; }
+  }
+  return { sourceId: row[idKey] as string, sourceBoardId: row[parentKey] as string, logicalDate: row.logicalDate,
+    occurredAtUtc: row.occurredAtUtc as number | null, timeZoneId: row.timeZoneId as string | null,
+    offsetMinutes: row.offsetMinutes as number | null, amount: amount.value, note: note.value,
+    source: row.source as ExportCheckInV2['source'], createdAtUtc: row.createdAtUtc };
+}
+
+function reminderV2(value: unknown, idKey: string, parentKey: string): ImportReminderV2Draft | null {
+  const row = fields(value, [idKey, parentKey, 'weekdaysMask', 'minuteOfDay', 'message', 'enabled', 'createdAtUtc']);
+  if (row === null || typeof row[idKey] !== 'string' || !isUuidV4(row[idKey] as string) || typeof row[parentKey] !== 'string' ||
+    !isUuidV4(row[parentKey] as string) || typeof row.weekdaysMask !== 'number' || typeof row.minuteOfDay !== 'number' ||
+    (row.message !== null && typeof row.message !== 'string') || typeof row.enabled !== 'boolean' || !timestamp(row.createdAtUtc)) return null;
+  const mask = validateWeekdaysMask(row.weekdaysMask); const minute = validateMinuteOfDay(row.minuteOfDay);
+  const message = validateReminderMessage(row.message);
+  return mask.ok && minute.ok && message.ok ? { sourceId: row[idKey] as string, sourceBoardId: row[parentKey] as string,
+    weekdaysMask: mask.value, minuteOfDay: minute.value, message: message.value, enabled: row.enabled, createdAtUtc: row.createdAtUtc } : null;
+}
+
+function rewardV2(value: unknown, idKey: string): ImportRewardDraft | null {
+  const row = fields(value, [idKey, 'title', 'costCoins', 'symbol', 'accentHex', 'orderKey', 'createdAtUtc', 'archivedAtUtc']);
+  if (row === null || typeof row[idKey] !== 'string' || !isUuidV4(row[idKey] as string) || typeof row.title !== 'string' ||
+    typeof row.costCoins !== 'number' || typeof row.symbol !== 'string' || typeof row.accentHex !== 'string' ||
+    typeof row.orderKey !== 'string' || !ORDER_KEY.test(row.orderKey) || !rewardTimestamp(row.createdAtUtc) ||
+    (row.archivedAtUtc !== null && !rewardTimestamp(row.archivedAtUtc))) return null;
+  const result = validateRewardFields({ title: row.title, costCoins: row.costCoins, symbol: row.symbol, accentHex: row.accentHex });
+  return result.ok ? { sourceId: row[idKey] as string, title: result.value.title, costCoins: result.value.costCoins,
+    symbol: result.value.symbol, accentHex: result.value.accentHex, orderKey: row.orderKey,
+    createdAtUtc: row.createdAtUtc as number, archivedAtUtc: row.archivedAtUtc as number | null } : null;
+}
+
+function settingsV2(value: unknown): ImportSettingsDraftResult {
+  const row = fields(value, ['metricsEducationDismissed', 'wakeMinute', 'lunchMinute', 'dinnerMinute', 'sleepMinute']);
+  if (row === null || !Array.isArray(row.metricsEducationDismissed)) return { kind: 'invalid' };
+  const dismissed = array(row.metricsEducationDismissed);
+  if (dismissed.some(id => typeof id !== 'string' || !isUuidV4(id)) ||
+    ['wakeMinute', 'lunchMinute', 'dinnerMinute', 'sleepMinute'].some(key =>
+      typeof row[key] !== 'number' || !normalizeBoardAnchorFields({ usualTimeMinute: row[key] as number }).ok)) return { kind: 'invalid' };
+  return { kind: 'valid', value: { metricsEducationDismissed: [...new Set(dismissed as string[])],
+    wakeMinute: row.wakeMinute as number, lunchMinute: row.lunchMinute as number,
+    dinnerMinute: row.dinnerMinute as number, sleepMinute: row.sleepMinute as number } };
+}
+
+function mutableV2(data: { boards: unknown[]; checkIns: unknown[]; reminders: unknown[]; rewards: unknown[] },
+  representation: 'file' | 'draft', skipped: ImportSkippedCounts) {
+  const id = representation === 'file' ? 'id' : 'sourceId';
+  const parent = representation === 'file' ? 'boardId' : 'sourceBoardId';
+  function decode<Value>(name: keyof ImportSkippedCounts, entries: unknown[], leaf: (value: unknown) => Value | null): Value[] {
+    const result: Value[] = [];
+    for (const entry of entries) {
+      const decoded = leaf(entry);
+      if (decoded === null) skipped[name] = safeCount(skipped[name] + 1);
+      else result.push(decoded);
+    }
+    return result;
+  }
+  return { boards: decode('boards', data.boards, value => boardV2(value, id)),
+    checkIns: decode('checkIns', data.checkIns, value => checkV2(value, id, parent)),
+    reminders: decode('reminders', data.reminders, value => reminderV2(value, id, parent)),
+    rewards: decode('rewards', data.rewards, value => rewardV2(value, id)) };
+}
+
+function safeCount(value: unknown): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0 || Object.is(value, -0)) throw new Error('Invalid import count.');
+  return value as number;
+}
+
+function parseOwnV2(data: Record<string, unknown>, sourceJson: string): DomainResult<OwnV2ImportDraft> {
+  try {
+    const collections = v2Collections(data); evidenceCandidates(collections);
+    const skipped: ImportSkippedCounts = { boards: 0, checkIns: 0, reminders: 0, rewards: 0 };
+    const mutable = mutableV2(collections, 'file', skipped);
+    return ok({ source: 'own', exportVersion: 2, ...mutable, skipped, evidence: { sourceJson },
+      settings: Object.hasOwn(data, 'settings') ? settingsV2(data.settings) : { kind: 'absent' } });
+  } catch { return err('validation', 'This file has invalid version 2 data.'); }
+}
+
+// shared with synchronous command/ui capture; no stored admission authority is inferred.
+export function captureOwnV2ImportDraft(value: OwnV2ImportDraft): OwnV2ImportDraft {
+  const data = fields(value, ['source', 'exportVersion', 'boards', 'checkIns', 'reminders', 'rewards', 'skipped', 'settings', 'evidence']);
+  if (data === null || data.source !== 'own' || data.exportVersion !== 2) throw new Error('Invalid import draft.');
+  const counts = fields(data.skipped, ['boards', 'checkIns', 'reminders', 'rewards']);
+  const evidence = fields(data.evidence, ['sourceJson']);
+  if (counts === null || evidence === null || typeof evidence.sourceJson !== 'string') throw new Error('Invalid import draft.');
+  const decoded = readOwnV2Evidence(evidence.sourceJson);
+  if (!decoded.ok) throw new Error('Invalid import evidence.');
+  const skipped = { boards: safeCount(counts.boards), checkIns: safeCount(counts.checkIns),
+    reminders: safeCount(counts.reminders), rewards: safeCount(counts.rewards) };
+  const mutable = mutableV2({ boards: array(data.boards), checkIns: array(data.checkIns),
+    reminders: array(data.reminders), rewards: array(data.rewards) }, 'draft', skipped);
+  const setting = fields(data.settings, ['kind']);
+  if (setting === null || !['valid', 'absent', 'invalid'].includes(setting.kind as string)) throw new Error('Invalid import settings.');
+  const settings = setting.kind === 'valid' ? settingsV2(fields(data.settings, ['value'])?.value)
+    : { kind: setting.kind as 'absent' | 'invalid' };
+  return { source: 'own', exportVersion: 2, ...mutable, skipped, settings, evidence: { sourceJson: evidence.sourceJson } };
+}
+
+export function getImportPreview(draft: ImportDraft): DomainResult<ImportPreview> {
+  try {
+    if (draft.exportVersion !== 2) return ok({ boards: draft.boards.length, checkIns: draft.checkIns.length,
+      reminders: draft.reminders.length, rewards: 0, habitActions: 0, coinLedger: 0 });
+    const evidence = readOwnV2Evidence(draft.evidence.sourceJson);
+    if (!evidence.ok) return evidence;
+    return ok({ boards: safeCount(draft.boards.length + safeCount(draft.skipped.boards)),
+      checkIns: safeCount(draft.checkIns.length + safeCount(draft.skipped.checkIns)),
+      reminders: safeCount(draft.reminders.length + safeCount(draft.skipped.reminders)),
+      rewards: safeCount(draft.rewards.length + safeCount(draft.skipped.rewards)),
+      habitActions: evidence.value.filter(row => row.factType === 'habit_action').length,
+      coinLedger: evidence.value.filter(row => row.factType === 'ledger_entry').length });
+  } catch { return err('validation', 'This import preview is invalid.'); }
 }

@@ -25,6 +25,14 @@ export type CommandContext = {
   observeStamp(stamp: string): void;
 };
 
+async function readCommandReceipt<Value>(db: SqlExecutor, commandId: CommandId): Promise<DomainResult<Value> | null> {
+  const receipt = await getReceipt(db, commandId);
+  if (receipt === null) return null;
+  const replayed = JSON.parse(receipt) as { ok: boolean; value?: Value };
+  if (replayed.ok && !('value' in replayed)) replayed.value = undefined;
+  return replayed as DomainResult<Value>;
+}
+
 // preflight users can replay before calling platform services; commands
 // recheck inside their transaction so concurrent retries stay idempotent.
 export async function replayCommand<Value>(
@@ -35,13 +43,7 @@ export async function replayCommand<Value>(
     return err('validation', 'Command ids must be uuids.', { field: 'commandId' });
   }
   try {
-    const receipt = await getReceipt(db, commandId);
-    if (receipt === null) return null;
-    const replayed = JSON.parse(receipt) as { ok: boolean; value?: Value };
-    if (replayed.ok && !('value' in replayed)) {
-      replayed.value = undefined;
-    }
-    return replayed as DomainResult<Value>;
+    return await readCommandReceipt<Value>(db, commandId);
   } catch (cause) {
     return err('database', `The command could not be completed: ${describe(cause)}`, {
       retryable: true,
@@ -56,13 +58,18 @@ export async function runCommand<Value>(
   deps: CommandDeps,
   commandId: CommandId,
   work: (context: CommandContext) => Promise<DomainResult<Value>>,
+  mapFailure?: (cause: unknown) => DomainResult<never>,
 ): Promise<DomainResult<Value>> {
   if (!isUuidV4(commandId)) {
     return err('validation', 'Command ids must be uuids.', { field: 'commandId' });
   }
   try {
     return await deps.db.withExclusiveTransactionAsync(async (tx) => {
-      const replayed = await replayCommand<Value>(tx, commandId);
+      // mapped commands must let read failures escape before applying their
+      // outer failure policy. ordinary preflight callers retain their contract.
+      const replayed = await (mapFailure
+        ? readCommandReceipt<Value>(tx, commandId)
+        : replayCommand<Value>(tx, commandId));
       if (replayed !== null) return replayed;
       const now = deps.clock.nowUtcMs();
       const timeZoneId = deps.clock.timeZoneId();
@@ -88,6 +95,7 @@ export async function runCommand<Value>(
       return result;
     });
   } catch (cause) {
+    if (mapFailure) return mapFailure(cause);
     if (cause instanceof Error && cause.name === 'ReminderSchedulerError') {
       return err('platform', 'Notifications could not be updated. Try again.', {
         retryable: true,

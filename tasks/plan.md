@@ -2,7 +2,7 @@
 
 Spec: `SPEC-habit-system.md` (approved 2026-09-08, amended by Rami's pre-T2 decisions). Inherited specs: `SPEC-native-foundation.md`, `SPEC-ripples-product.md`.
 
-Status: approved for implementation. T1 through T18 and Checkpoint B are complete. T19 local implementation is complete with actual two-target service acceptance still open; T20 import/export work is in progress. Rami approved excluding the stored archive date from stack requirements, with same-day restore requiring the habit again. Rami authorized updating and pushing the planning documents, then completing T2 through T24. Stacks combine checks on one stored logical date only; consecutive dates never combine into one stack run.
+Status: approved for implementation. T1 through T18, T20 and Checkpoint B are complete. T19 local implementation is complete with actual two-target service acceptance and Checkpoint C still open. T21 is next. Rami approved excluding the stored archive date from stack requirements, with same-day restore requiring the habit again. Rami authorized updating and pushing the planning documents, then completing T2 through T24. Stacks combine checks on one stored logical date only; consecutive dates never combine into one stack run.
 
 The original plan was authored by Fable 5.1. Ripples planning artifacts remain archived under `tasks/ripples/`; the incorporated review is `tasks/plan-review.md`.
 
@@ -97,6 +97,7 @@ Checkpoint B: user-entered habits derive the expected topology, while evening ch
 - T18: schema 10, reward commands, confirmed claims with title snapshots, forms, and history surviving reward deletion.
 - T19: schema 11 for bounded immutable admission and effective visibility, explicit legacy baseline initialization, coordinated sync schema 2 across TS/native, old-record defaults, minimum peer policy, deterministic daily conflict resolution, immutable ledger union, and compensation convergence. The shared boundary is `docs/remote-fact-admission.md`; a separate persistent scope-work queue is unnecessary when admission and settlement are atomic.
 - T20: export 2 including effective-live payloads and complete note-free action/ledger evidence, version 1/2 and CSV import, two-pass anchor restore, repeated restore safety, historical ledger references to omitted deleted parents, and complete round-trip coverage. Legacy imports never create fresh earnings but may atomically correct existing entitlements, as approved by Rami on 2026-09-08.
+  - Completed: 2,490 tests, all 101 core files at 100 percent, 9 plugin/169 Swift checks and independent review. Two fresh signed simulator stores prove actual export/native share, exact-byte restore, interrupted-response retry, edited settings preservation and cold history. The destination uses a disclosed picker-return substitute; no live CloudKit acceptance is inferred.
 
 Checkpoint C: two signed devices/simulators converge after duplicate checks, check/uncheck races, cap races, duplicate bonuses/reversals, a run completed only by merged checks, and offline double claims. Repeated/out-of-order delivery remains stable. Export/import round-trips, native fixtures, all automated gates, and independent review pass before real multi-device use.
 
