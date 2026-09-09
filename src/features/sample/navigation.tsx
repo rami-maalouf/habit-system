@@ -1,7 +1,8 @@
 import { useFocusEffect, useNavigation, usePathname, useRouter, type Href } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 
-import { useProduct, type ProductScope } from '@/features/product-store';
+import { useProduct, type ProductScope } from '../product-store/context';
+import { useProductActivity } from '../product-store/use-product-activity';
 
 export function productHref(kind: ProductScope['kind'], href: Href): Href {
   if (kind === 'real') return href;
@@ -21,9 +22,10 @@ export function useProductRouter() {
   const navigation = useNavigation();
   const pathname = usePathname();
   const { scope, closeSample } = useProduct();
+  const activity = useProductActivity(scope);
   return useMemo(() => {
     const go = (method: 'push' | 'navigate' | 'replace' | 'dismissTo', target: Href) => {
-      if (scope.isCurrent() && navigation.isFocused()) router[method](productHref(scope.kind, target));
+      if (activity.active) router[method](productHref(scope.kind, target));
     };
     return {
       href: (target: Href) => productHref(scope.kind, target),
@@ -32,14 +34,14 @@ export function useProductRouter() {
       replace: (target: Href) => go('replace', target),
       dismissTo: (target: Href) => go('dismissTo', target),
       back: () => {
-        if (!scope.isCurrent() || !navigation.isFocused()) return;
+        if (!activity.active) return;
         if (scope.kind === 'sample' && (navigation.getState()?.index ?? 0) === 0) {
           if (pathname === '/sample' || pathname === '/sample/') void closeSample?.().catch(() => {});
           else router.replace('/sample');
         } else router.back();
       },
     };
-  }, [router, navigation, pathname, scope, closeSample]);
+  }, [router, navigation, pathname, scope, closeSample, activity]);
 }
 
 export function ProductRedirect({ href }: { href: Href }) {

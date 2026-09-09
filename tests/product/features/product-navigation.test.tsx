@@ -126,4 +126,23 @@ describe('product navigation scope', () => {
     expect(screen).toHavePathname('/sample/boards/current');
     expect(close).not.toHaveBeenCalled();
   });
+
+  it.each(['push', 'navigate', 'replace', 'dismissTo', 'back'] as const)(
+    'never revives a captured %s after same-scope cover and return', async method => {
+      renderRouter(routes, { initialUrl: '/sample' }); await settle();
+      const originalScope = owner.getScope();
+      const stale = captured;
+      act(() => captured.push('/boards/cover')); await settle();
+      act(() => captured.back()); await settle();
+      expect(owner.getScope()).toBe(originalScope);
+      expect(screen).toHavePathname('/sample');
+      act(() => { if (method === 'back') stale.back(); else stale[method]('/boards/old'); });
+      await settle();
+      expect(screen).toHavePathname('/sample');
+      expect(close).not.toHaveBeenCalled();
+      act(() => captured.push('/boards/fresh')); await settle();
+      expect(screen).toHavePathname('/sample/boards/fresh');
+    },
+  );
+
 });

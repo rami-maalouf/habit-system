@@ -3350,3 +3350,14 @@ T19/Checkpoint C external gates remain open.
     all five complete files, verified their frozen hashes and independently
     reran the thirteen directed cases. This caller acceptance does not claim
     production route activation or native presentation acceptance.
+16. Shared product navigation now captures one immutable focus lifetime.
+    Leaving and returning to the same route cannot revive an old push,
+    replace, dismiss or Back callback; blur also publishes inactivity so
+    dependent effects clean up. Five actual router regressions reproduce
+    first, and seventeen focused cases pass under ordinary and StrictMode
+    lifecycles. The composed run passes sixty-six cases across seven suites,
+    with owned lint/typecheck clean. Root reviewed all four files, verified
+    final hashes and independently reran the seventeen cases. An earlier
+    concurrent form-composition failure is retained with successful unchanged
+    reproductions; its exact cause is unproven. Four form-test act warnings
+    are assigned to the pending form slice, not suppressed or called clean.
