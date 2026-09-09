@@ -1,0 +1,299 @@
+[
+  {
+    "schemaVersion": 2,
+    "entityType": "board",
+    "entityId": "00000000-0000-4000-8000-000000000064",
+    "mutationStamp": "01787572800000-00000-fixture-device",
+    "deleted": false,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "title": "Read",
+      "symbol": "book.fill",
+      "accent_hex": "#80D88B",
+      "uses_tinted_background": 1,
+      "tracks_amount": 1,
+      "amount_unit": "pages",
+      "quick_amount": 10,
+      "tracks_time": 1,
+      "start_of_day_minute": 240,
+      "metrics_enabled": 1,
+      "order_key": "a0",
+      "archived_at": null,
+      "created_at": 1787572800000,
+      "updated_at": 1787572800000,
+      "deleted_at": null,
+      "kind": "count",
+      "anchor_relation": "after",
+      "anchor_kind": "preset",
+      "anchor_board_id": null,
+      "anchor_preset": "wake",
+      "anchor_text": null,
+      "usual_time_minute": 0,
+      "required_in_stack": 1,
+      "earns_coins": 1,
+      "coin_cap_per_day": 10
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "board",
+    "entityId": "00000000-0000-4000-8000-000000000064",
+    "mutationStamp": "01787572800001-00001-fixture-device",
+    "deleted": true,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "title": "",
+      "symbol": "",
+      "accent_hex": "",
+      "uses_tinted_background": 0,
+      "tracks_amount": 0,
+      "amount_unit": null,
+      "quick_amount": 0,
+      "tracks_time": 0,
+      "start_of_day_minute": 0,
+      "metrics_enabled": 0,
+      "order_key": "a0",
+      "archived_at": null,
+      "created_at": 1787572800000,
+      "updated_at": 1787572800001,
+      "deleted_at": 1787572800001,
+      "kind": "count",
+      "anchor_relation": null,
+      "anchor_kind": null,
+      "anchor_board_id": null,
+      "anchor_preset": null,
+      "anchor_text": null,
+      "usual_time_minute": null,
+      "required_in_stack": 0,
+      "earns_coins": 0,
+      "coin_cap_per_day": 1
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "check_in",
+    "entityId": "00000000-0000-4000-8000-0000000007d1",
+    "mutationStamp": "01787572800000-00000-fixture-device",
+    "deleted": false,
+    "fields": {
+      "id": "00000000-0000-4000-8000-0000000007d1",
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "logical_date": "2026-08-24",
+      "occurred_at_utc": 1787572800000,
+      "time_zone_id": "America/Toronto",
+      "offset_minutes": -240,
+      "amount": 12.5,
+      "note": "A synthetic fixture note.",
+      "source": "app",
+      "idempotency_key": "00000000-0000-4000-8000-0000000003e9",
+      "created_at": 1787572800000,
+      "updated_at": 1787572800000,
+      "deleted_at": null
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "check_in",
+    "entityId": "00000000-0000-4000-8000-0000000007d1",
+    "mutationStamp": "01787572800001-00001-fixture-device",
+    "deleted": true,
+    "fields": {
+      "id": "00000000-0000-4000-8000-0000000007d1",
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "logical_date": "",
+      "occurred_at_utc": null,
+      "time_zone_id": null,
+      "offset_minutes": null,
+      "amount": null,
+      "note": null,
+      "source": "sync",
+      "idempotency_key": "00000000-0000-4000-8000-0000000007d1",
+      "created_at": 1787572800000,
+      "updated_at": 1787572800001,
+      "deleted_at": 1787572800001
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "reminder",
+    "entityId": "00000000-0000-4000-8000-000000000003",
+    "mutationStamp": "01787572800000-00000-fixture-device",
+    "deleted": false,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "weekdays_mask": 127,
+      "minute_of_day": 1080,
+      "message": "Synthetic reminder",
+      "enabled": 1,
+      "created_at": 1787572800000,
+      "updated_at": 1787572800000,
+      "deleted_at": null
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "reminder",
+    "entityId": "00000000-0000-4000-8000-000000000003",
+    "mutationStamp": "01787572800001-00001-fixture-device",
+    "deleted": true,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "weekdays_mask": 0,
+      "minute_of_day": 0,
+      "message": null,
+      "enabled": 0,
+      "created_at": 1787572800000,
+      "updated_at": 1787572800001,
+      "deleted_at": 1787572800001
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "activity_period",
+    "entityId": "00000000-0000-4000-8000-000000000064|2026-08-01",
+    "mutationStamp": "01787572800000-00000-fixture-device",
+    "deleted": false,
+    "fields": {
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-24",
+      "deleted_at": null
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "activity_period",
+    "entityId": "00000000-0000-4000-8000-000000000064|2026-08-01",
+    "mutationStamp": "01787572800001-00001-fixture-device",
+    "deleted": true,
+    "fields": {
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "start_date": "2026-08-01",
+      "end_date": null,
+      "deleted_at": 1787572800001
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "settings",
+    "entityId": "app-settings",
+    "mutationStamp": "01787572800000-00000-fixture-device",
+    "deleted": false,
+    "fields": {
+      "metrics_education_dismissed": "[\"00000000-0000-4000-8000-000000000064\"]",
+      "wake_minute": 0,
+      "lunch_minute": 720,
+      "dinner_minute": 1080,
+      "sleep_minute": 1425
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "reward",
+    "entityId": "00000000-0000-4000-8000-000000000bb8",
+    "mutationStamp": "01788825600000-00001-fixture",
+    "deleted": false,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000bb8",
+      "title": "Café",
+      "cost_coins": 2,
+      "symbol": "star.fill",
+      "accent_hex": "#70A7FF",
+      "order_key": "m0",
+      "archived_at": null,
+      "created_at": 1788825600000,
+      "updated_at": 1788825600001,
+      "deleted_at": null
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "reward",
+    "entityId": "00000000-0000-4000-8000-000000000bb8",
+    "mutationStamp": "01788825600000-00002-fixture",
+    "deleted": true,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000bb8",
+      "title": "",
+      "cost_coins": 1,
+      "symbol": "",
+      "accent_hex": "",
+      "order_key": "m0",
+      "archived_at": null,
+      "created_at": 1788825600000,
+      "updated_at": 1788825600002,
+      "deleted_at": 1788825600002
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "habit_action",
+    "entityId": "00000000-0000-4000-8000-000000000001",
+    "mutationStamp": "01788825600000-00001-fixture",
+    "deleted": false,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "command_id": "00000000-0000-4000-8000-0000000003e9",
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "logical_date": "2026-09-08",
+      "check_in_id": "00000000-0000-4000-8000-0000000007d1",
+      "kind": "check",
+      "created_at": 1788825600001,
+      "policy_json": "{\"version\":1,\"boardKind\":\"count\",\"earnsCoins\":true,\"coinCapPerDay\":1,\"checkClosesAtUtc\":1788926400000,\"rootId\":null,\"requiredBoardIds\":[],\"bonusClosesAtUtc\":null,\"bonusEnabled\":false}"
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "ledger_entry",
+    "entityId": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+    "mutationStamp": "01788825600000-00001-fixture",
+    "deleted": false,
+    "fields": {
+      "id": "e2bb2b57-9bd2-56b4-95f6-5ad2643ba5ae",
+      "kind": "check",
+      "delta": 1,
+      "board_id": "00000000-0000-4000-8000-000000000064",
+      "check_in_id": "00000000-0000-4000-8000-0000000007d1",
+      "run_key": null,
+      "reward_id": null,
+      "reward_title_snapshot": null,
+      "reverses_id": null,
+      "scope_key": "check:00000000-0000-4000-8000-000000000064:2026-09-08",
+      "source_action_id": "00000000-0000-4000-8000-000000000001",
+      "reconciliation_key": null,
+      "adjusts_id": null,
+      "provenance_json": null,
+      "logical_date": "2026-09-08",
+      "created_at": 1788825600001,
+      "deleted_at": null
+    }
+  },
+  {
+    "schemaVersion": 2,
+    "entityType": "ledger_entry",
+    "entityId": "00000000-0000-4000-8000-000000000bb9",
+    "mutationStamp": "01788825600000-00003-fixture",
+    "deleted": false,
+    "fields": {
+      "id": "00000000-0000-4000-8000-000000000bb9",
+      "kind": "claim",
+      "delta": -2,
+      "board_id": null,
+      "check_in_id": null,
+      "run_key": null,
+      "reward_id": "00000000-0000-4000-8000-000000000bb8",
+      "reward_title_snapshot": "Café",
+      "reverses_id": null,
+      "scope_key": null,
+      "source_action_id": null,
+      "reconciliation_key": null,
+      "adjusts_id": null,
+      "provenance_json": null,
+      "logical_date": "2026-09-08",
+      "created_at": 1788825600003,
+      "deleted_at": null
+    }
+  }
+]

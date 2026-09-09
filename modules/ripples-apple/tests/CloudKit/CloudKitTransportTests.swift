@@ -22,6 +22,9 @@ private actor FakeCloudKitClient: CloudKitClient {
   enum SaveMode: Sendable {
     case normal
     case conflict(CKRecord)
+    case unknownRace(CKRecord)
+    case limitAfterSaveOnce
+    case successDifferent(CKRecord)
     case alwaysConflict
     case offlineOnce(String)
     case loseResponseOnce
@@ -43,6 +46,7 @@ private actor FakeCloudKitClient: CloudKitClient {
     self.mode = mode
     self.limit = limit
   }
+  func seed(_ record: CKRecord, as id: CKRecord.ID? = nil) { store[id ?? record.recordID] = record }
   func setPage(_ page: CloudKitChangedRecords, expireFirst: Bool = false) {
     self.page = page
     expireFirstPage = expireFirst
@@ -70,6 +74,19 @@ private actor FakeCloudKitClient: CloudKitClient {
       store[winner.recordID] = winner
       mode = .normal
       return Dictionary(uniqueKeysWithValues: records.map { ($0.recordID, .failure(CKError(.serverRecordChanged))) })
+    }
+    if case .unknownRace(let winner) = mode {
+      store[winner.recordID] = winner; mode = .normal
+      return Dictionary(uniqueKeysWithValues: records.map { ($0.recordID, .failure(CKError(.unknownItem))) })
+    }
+    if case .successDifferent(let winner) = mode {
+      store[winner.recordID] = winner
+      return Dictionary(uniqueKeysWithValues: records.map { ($0.recordID, .success(winner)) })
+    }
+    if case .limitAfterSaveOnce = mode {
+      mode = .normal
+      let first = records[0]; store[first.recordID] = first.copy() as? CKRecord; savedNames.append(first.recordID.recordName)
+      throw CKError(.limitExceeded)
     }
     if case .alwaysConflict = mode {
       return Dictionary(uniqueKeysWithValues: records.map { ($0.recordID, .failure(CKError(.serverRecordChanged))) })
@@ -114,6 +131,50 @@ private func renamed(_ record: CloudKitWireRecord, _ id: String) -> CloudKitWire
 }
 
 final class CloudKitTransportTests: XCTestCase {
+  func testReturnedCloudIdentityMustMatchTheRequestedRecordAndZoneBeforeAcknowledgement() async throws {
+    let values = try schemaTwoFixtures()
+    for value in [values[0], values.last!] {
+      let original = try CloudKitRecordMapping.toRecord(value, zoneID: testZone)
+      for differentName in [false, true] {
+        let otherZone = CKRecordZone.ID(zoneName: "not-the-requested-zone", ownerName: CKCurrentUserDefaultName)
+        let wrongId = CKRecord.ID(recordName: differentName ? "00000000-0000-4000-8000-000000000999" : value.entityId,
+          zoneID: differentName ? testZone : otherZone)
+        let wrong = CKRecord(recordType: value.entityType, recordID: wrongId)
+        for key in original.allKeys() { wrong[key] = original[key] }
+        wrong["id"] = wrongId.recordName as NSString
+        let client = FakeCloudKitClient(); await client.seed(wrong, as: original.recordID)
+        do { try await transport(client).upload([value]); XCTFail("expected physical identity failure") }
+        catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+        let saves = await client.savedNames; XCTAssertTrue(saves.isEmpty)
+      }
+    }
+    let value = values.last!
+    let wrongZone = CKRecordZone.ID(zoneName: "not-the-requested-zone", ownerName: CKCurrentUserDefaultName)
+    let wrongAck = try CloudKitRecordMapping.toRecord(value, zoneID: wrongZone)
+    let client = FakeCloudKitClient(); await client.configure(mode: .successDifferent(wrongAck))
+    do { try await transport(client).upload([value]); XCTFail("expected physical acknowledgement failure") }
+    catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+  }
+
+  func testMalformedVersionTwoServerRowsCannotAcknowledgeANewerMutableValue() async throws {
+    let original = try schemaTwoFixtures()[0]
+    for defect in 0..<3 {
+      let client = FakeCloudKitClient()
+      let server = try CloudKitRecordMapping.toRecord(original, zoneID: testZone)
+      server["mutation_stamp"] = "99999999999999-zzzzz-remote" as NSString
+      switch defect {
+      case 0: server["mutation_stamp"] = "zz-invalid" as NSString
+      case 1: server["deleted"] = NSNumber(value: true)
+      default: server["created_at"] = "wrong type" as NSString
+      }
+      await client.seed(server)
+      do { try await transport(client).upload([original]); XCTFail("expected malformed mutable acknowledgement failure") }
+      catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+      let saves = await client.savedNames
+      XCTAssertTrue(saves.isEmpty)
+    }
+  }
+
   func testAccountSwitchRefusesZoneUploadAndFetchBeforeCloudOperations() async throws {
     let client = FakeCloudKitClient()
     try await transport(client).upload([])
@@ -320,6 +381,106 @@ final class CloudKitTransportTests: XCTestCase {
         _ = try await transport(client).fetchChanges(nil)
         XCTFail("expected unsafe page rejection")
       } catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+    }
+  }
+}
+
+final class CloudKitImmutableUploadTests: XCTestCase {
+  func testImmutableInputGroupsRejectUnequalBytesBeforeAnyCloudCall() async throws {
+    let original = try schemaTwoFixtures().last!
+    for stamp in ["00000000000000-00000-old", original.mutationStamp, "99999999999999-zzzzz-new"] {
+      let client = FakeCloudKitClient()
+      var fields = original.fields; fields["reward_title_snapshot"] = .string("Café")
+      let different = CloudKitWireRecord(schemaVersion: 2, entityType: original.entityType, entityId: original.entityId,
+        mutationStamp: stamp, deleted: false, fields: fields)
+      XCTAssertFalse(CloudKitRecordMapping.sameBytes(original.fields["reward_title_snapshot"]!.string!, "Café"))
+      do { try await transport(client).upload([original, different]); XCTFail("expected immutable conflict") }
+      catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+      let fetches = await client.fetchBatchSizes; let saves = await client.savedNames
+      XCTAssertTrue(fetches.isEmpty); XCTAssertTrue(saves.isEmpty)
+    }
+  }
+
+  func testEveryServerReadRejectsImmutableUnicodeDifferencesRegardlessOfStamp() async throws {
+    let original = try schemaTwoFixtures().last!
+    for mode in 0..<3 {
+      for stamp in ["00000000000000-00000-old", original.mutationStamp, "99999999999999-zzzzz-new"] {
+        let client = FakeCloudKitClient()
+        var fields = original.fields; fields["reward_title_snapshot"] = .string("Café")
+        let different = CloudKitWireRecord(schemaVersion: 2, entityType: original.entityType, entityId: original.entityId,
+          mutationStamp: stamp, deleted: false, fields: fields)
+        let stored = try CloudKitRecordMapping.toRecord(different, zoneID: testZone)
+        if mode == 0 { await client.seed(stored) }
+        else { await client.configure(mode: mode == 1 ? .conflict(stored) : .unknownRace(stored)) }
+        do { try await transport(client).upload([original]); XCTFail("expected immutable conflict") }
+        catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+        let final = await client.store[stored.recordID]
+        XCTAssertTrue(CloudKitRecordMapping.sameImmutable(try CloudKitRecordMapping.fromRecord(XCTUnwrap(final)), different))
+        let saves = await client.savedNames; XCTAssertTrue(saves.isEmpty)
+      }
+    }
+  }
+
+  func testSuccessfulSaveMustAcknowledgeTheExactImmutableBytes() async throws {
+    let original = try schemaTwoFixtures().last!
+    let changed = try CloudKitRecordMapping.toRecord(original, zoneID: testZone)
+    changed["reward_title_snapshot"] = "Café" as NSString
+    let client = FakeCloudKitClient(); await client.configure(mode: .successDifferent(changed))
+    do { try await transport(client).upload([original]); XCTFail("expected unequal acknowledgement failure") }
+    catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+  }
+
+  func testStoredPolicyJsonIsComparedAsBytesWithoutReserializing() async throws {
+    let original = try XCTUnwrap(schemaTwoFixtures().first { $0.entityType == "habit_action" })
+    let changed = try CloudKitRecordMapping.toRecord(original, zoneID: testZone)
+    changed["policy_json"] = (original.fields["policy_json"]!.string! + " ") as NSString
+    let client = FakeCloudKitClient(); await client.seed(changed)
+    do { try await transport(client).upload([original]); XCTFail("expected policy byte conflict") }
+    catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+    let saved = await client.savedNames; XCTAssertTrue(saved.isEmpty)
+  }
+
+  func testFetchedPagePreservesTrustedImmutableDefectsAndRejectsUnretainablePageBounds() async throws {
+    let values = try schemaTwoFixtures().filter { $0.entityType == "ledger_entry" }
+    let good = try CloudKitRecordMapping.toRecord(values[0], zoneID: testZone)
+    let malformed = try CloudKitRecordMapping.toRecord(values[1], zoneID: testZone)
+    malformed["id"] = "bad-inner-id" as NSString; malformed["deleted"] = NSNumber(value: true)
+    malformed["extra"] = "retain" as NSString; malformed["mutation_stamp"] = "invalid-stamp" as NSString
+    let client = FakeCloudKitClient()
+    await client.setPage(CloudKitChangedRecords(records: [good, malformed], token: nil, more: false, hardDeletedRecordCount: 0))
+    let page = try await transport(client).fetchChanges(nil)
+    XCTAssertEqual(page.records.count, 2); XCTAssertEqual(page.records[1].fields["extra"], .string("retain"))
+    XCTAssertEqual(page.records[1].mutationStamp, "invalid-stamp"); XCTAssertTrue(page.records[1].deleted)
+    await client.setPage(CloudKitChangedRecords(records: Array(repeating: good, count: 201), token: nil, more: false, hardDeletedRecordCount: 0))
+    do { _ = try await transport(client).fetchChanges(nil); XCTFail("expected oversized page failure") }
+    catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+    malformed["extra"] = Data([1, 2, 3]) as NSData
+    await client.setPage(CloudKitChangedRecords(records: [good, malformed], token: nil, more: false, hardDeletedRecordCount: 0))
+    do { _ = try await transport(client).fetchChanges(nil); XCTFail("expected unretainable scalar failure") }
+    catch { XCTAssertEqual(CloudKitFailure.map(error), .failure) }
+  }
+
+  func testExactImmutableBytesRecoverFromConflictLostResponsePartialFailureAndSplit() async throws {
+    let records = try schemaTwoFixtures().filter { $0.entityType == "ledger_entry" }
+    for scenario in 0..<5 {
+      let client = FakeCloudKitClient()
+      switch scenario {
+      case 0: await client.configure(mode: .conflict(try CloudKitRecordMapping.toRecord(records[0], zoneID: testZone)))
+      case 1: await client.configure(mode: .loseResponseOnce)
+      case 2: await client.configure(mode: .offlineOnce(records[1].entityId))
+      case 3: await client.configure(limit: 1)
+      default: await client.configure(mode: .limitAfterSaveOnce)
+      }
+      do { try await transport(client).upload(records + [records[0]]) }
+      catch { XCTAssertTrue(scenario == 1 || scenario == 2) }
+      try await transport(client).upload(records)
+      let stored = await client.store
+      for value in records {
+        let record = try XCTUnwrap(stored[CKRecord.ID(recordName: value.entityId, zoneID: testZone)])
+        XCTAssertTrue(CloudKitRecordMapping.sameImmutable(try CloudKitRecordMapping.fromRecord(record), value))
+      }
+      let names = await client.savedNames
+      XCTAssertEqual(Set(names).count, names.count)
     }
   }
 }

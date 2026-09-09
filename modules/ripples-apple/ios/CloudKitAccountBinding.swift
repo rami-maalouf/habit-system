@@ -27,11 +27,11 @@ struct CloudKitAccountBinding: CloudKitAccountBindingChecking {
     var handle: OpaquePointer?
     guard exsqlite3_open_v2(databasePath, &handle, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK,
       let database = handle else {
-      if let handle { exsqlite3_close(handle) }
+      if let handle { _ = exsqlite3_close(handle) }
       throw CloudKitFailure.unavailable
     }
-    defer { exsqlite3_close(database) }
-    exsqlite3_busy_timeout(database, 5000)
+    defer { _ = exsqlite3_close(database) }
+    _ = exsqlite3_busy_timeout(database, 5000)
     guard exsqlite3_exec(database, "BEGIN EXCLUSIVE", nil, nil, nil) == SQLITE_OK else {
       throw CloudKitFailure.unavailable
     }
@@ -46,7 +46,7 @@ struct CloudKitAccountBinding: CloudKitAccountBindingChecking {
         throw CloudKitFailure.unavailable
       }
     } catch {
-      exsqlite3_exec(database, "ROLLBACK", nil, nil, nil)
+      _ = exsqlite3_exec(database, "ROLLBACK", nil, nil, nil)
       throw CloudKitFailure.unavailable
     }
   }
@@ -54,13 +54,13 @@ struct CloudKitAccountBinding: CloudKitAccountBindingChecking {
   private func statement(_ database: OpaquePointer, _ sql: String, _ values: [String]) throws -> OpaquePointer {
     var statement: OpaquePointer?
     guard exsqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK, let statement else {
-      if let statement { exsqlite3_finalize(statement) }
+      if let statement { _ = exsqlite3_finalize(statement) }
       throw CloudKitFailure.unavailable
     }
     let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     for (index, value) in values.enumerated() {
       guard exsqlite3_bind_text(statement, Int32(index + 1), value, Int32(value.utf8.count), transient) == SQLITE_OK else {
-        exsqlite3_finalize(statement)
+        _ = exsqlite3_finalize(statement)
         throw CloudKitFailure.unavailable
       }
     }
@@ -69,7 +69,7 @@ struct CloudKitAccountBinding: CloudKitAccountBindingChecking {
 
   private func read(_ database: OpaquePointer, provider: String) throws -> String? {
     let query = try statement(database, "SELECT account_digest FROM sync_account_bindings WHERE provider = ?", [provider])
-    defer { exsqlite3_finalize(query) }
+    defer { _ = exsqlite3_finalize(query) }
     let status = exsqlite3_step(query)
     if status == SQLITE_DONE { return nil }
     guard status == SQLITE_ROW, exsqlite3_column_type(query, 0) == SQLITE_TEXT,
@@ -82,7 +82,7 @@ struct CloudKitAccountBinding: CloudKitAccountBindingChecking {
   private func insert(_ database: OpaquePointer, provider: String, accountDigest: String) throws {
     let query = try statement(database,
       "INSERT INTO sync_account_bindings (provider, account_digest) VALUES (?, ?)", [provider, accountDigest])
-    defer { exsqlite3_finalize(query) }
+    defer { _ = exsqlite3_finalize(query) }
     guard exsqlite3_step(query) == SQLITE_DONE else { throw CloudKitFailure.unavailable }
   }
 }

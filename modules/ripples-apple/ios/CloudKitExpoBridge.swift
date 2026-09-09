@@ -32,7 +32,7 @@ enum CloudKitExpoBridge {
   static func upload(_ recordsJSON: String, promise: Promise) {
     Task {
       do {
-        let records = try JSONDecoder().decode([CloudKitWireRecord].self, from: Data(recordsJSON.utf8))
+        let records = try CloudKitWireCodec.decodeUpload(recordsJSON)
         try await transport().upload(records)
         promise.resolve()
       } catch { promise.reject(CloudKitTransportException(CloudKitFailure.map(error))) }
@@ -43,8 +43,7 @@ enum CloudKitExpoBridge {
     Task {
       do {
         let page = try await transport().fetchChanges(token)
-        let data = try JSONEncoder().encode(page)
-        guard let json = String(data: data, encoding: .utf8) else { throw CloudKitFailure.failure }
+        let json = try CloudKitWireCodec.encodePage(page)
         promise.resolve(json)
       } catch { promise.reject(CloudKitTransportException(CloudKitFailure.map(error))) }
     }

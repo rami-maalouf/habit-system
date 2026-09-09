@@ -1,5 +1,7 @@
 import { isValidLogicalDate } from '../calendar/logical-date';
+import { normalizeBoardAnchorFields, type BoardAnchorInput, type BoardAnchorOptions } from '../domain/board-anchor';
 import type { BoardId } from '../domain/ids';
+import { validateRewardFields, type RewardFields } from '../domain/reward-validation';
 import { isUuidV4 } from '../domain/ids';
 import {
   validateAccentHex,
@@ -16,7 +18,8 @@ import {
 import type { SqlExecutor } from '../persistence/database';
 import { boardIdExists } from '../persistence/repositories/boards';
 import { getCheckInByIdempotencyKey } from '../persistence/repositories/check-ins';
-import { SETTINGS_ENTITY_ID, SYNC_SCHEMA_VERSION, parsePeriodEntityId } from './records';
+import { SETTINGS_ENTITY_ID, SYNC_SCHEMA_VERSION, parsePeriodEntityId, specFor } from './records';
+import { schema2SpecFor, type Schema2SyncRecord } from './schema-2-records';
 import type { SyncEntityType, SyncRecord } from './transport';
 
 const ENTITY_TYPES = new Set<SyncEntityType>([
@@ -33,10 +36,10 @@ const MAX_DATE_MS = 8_640_000_000_000_000;
 
 type IdentifiedRecord = SyncRecord & { entityType: SyncEntityType };
 
-export type InboundValidation =
-  | { kind: 'valid'; record: SyncRecord }
-  | { kind: 'deferred'; record: SyncRecord }
-  | { kind: 'invalid'; record: SyncRecord }
+export type InboundValidation<Record = SyncRecord> =
+  | { kind: 'valid'; record: Record }
+  | { kind: 'deferred'; record: Record }
+  | { kind: 'invalid'; record: Record }
   | { kind: 'unidentifiable' };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -425,4 +428,105 @@ export async function validateInboundRecord(
   return normalized === null
     ? { kind: 'invalid', record }
     : { kind: 'valid', record: normalized };
+}
+
+
+export type Schema2MutableRecord = Schema2SyncRecord & { entityType: SyncEntityType | 'reward' };
+
+const LEGACY_BOARD_DEFAULTS = {
+  kind: 'count', anchor_relation: null, anchor_kind: null, anchor_board_id: null,
+  anchor_preset: null, anchor_text: null, usual_time_minute: null,
+  required_in_stack: 1, earns_coins: 0, coin_cap_per_day: 1,
+};
+const LEGACY_PRESET_DEFAULTS = { wake_minute: 420, lunch_minute: 720, dinner_minute: 1080, sleep_minute: 1380 };
+const ANCHOR_FIELDS = {
+  anchor_relation: 'anchorRelation', anchor_kind: 'anchorKind', anchor_board_id: 'anchorBoardId',
+  anchor_preset: 'anchorPreset', anchor_text: 'anchorText', usual_time_minute: 'usualTimeMinute',
+} as const;
+
+function captureInbound(value: unknown): unknown {
+  if (!isObject(value)) return value;
+  const fields = value.fields;
+  return { ...value, fields: isObject(fields) ? { ...fields } : fields };
+}
+
+// only the future applied-v1 boundary may establish legacy evidence; this returns data only.
+export async function validateLegacyRecordForSchema2(tx: SqlExecutor, value: unknown): Promise<InboundValidation> {
+  const result = await validateInboundRecord(tx, captureInbound(value));
+  if (result.kind !== 'valid') return result;
+  const record = result.record;
+  const defaults = record.entityType === 'board'
+    ? { ...LEGACY_BOARD_DEFAULTS, required_in_stack: record.deleted ? 0 : 1 }
+    : record.entityType === 'settings' ? LEGACY_PRESET_DEFAULTS : {};
+  return { kind: 'valid', record: { ...record, fields: { ...record.fields, ...defaults } } };
+}
+
+function validBoardExtensions(fields: SyncRecord['fields']): boolean {
+  if (!['count', 'daily'].includes(fields.kind as string) || !isFlag(fields.required_in_stack) ||
+    !isFlag(fields.earns_coins) || !Number.isInteger(fields.coin_cap_per_day) ||
+    (fields.coin_cap_per_day as number) < 1 || (fields.coin_cap_per_day as number) > 10 ||
+    (fields.kind === 'daily' && (fields.tracks_amount !== 0 || fields.tracks_time !== 0))) return false;
+  const target = fields.anchor_kind === 'board' ? { boardId: fields.anchor_board_id }
+    : fields.anchor_kind === 'preset' ? { preset: fields.anchor_preset } : { text: fields.anchor_text };
+  const anchor = fields.anchor_kind === null ? null
+    : { kind: fields.anchor_kind, relation: fields.anchor_relation, ...target } as BoardAnchorInput;
+  const normalized = normalizeBoardAnchorFields({ anchor,
+    usualTimeMinute: fields.usual_time_minute as BoardAnchorOptions['usualTimeMinute'],
+    requiredInStack: fields.required_in_stack === 1 });
+  return normalized.ok && Object.entries(ANCHOR_FIELDS).every(([wire, domain]) => fields[wire] === normalized.value[domain]);
+}
+
+function normalizeReward(record: Schema2MutableRecord): Schema2MutableRecord | null {
+  const fields = record.fields;
+  const timestamp = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0;
+  if (fields.id !== record.entityId || typeof fields.order_key !== 'string' || !ORDER_KEY_SHAPE.test(fields.order_key) ||
+    !timestamp(fields.created_at) || !timestamp(fields.updated_at) ||
+    (fields.deleted_at !== null && !timestamp(fields.deleted_at))) return null;
+  if (record.deleted) return { ...record, fields: { ...fields, ...schema2SpecFor('reward').userContent } };
+  if (fields.archived_at !== null && !timestamp(fields.archived_at)) return null;
+  const normalized = validateRewardFields({ title: fields.title, costCoins: fields.cost_coins,
+    symbol: fields.symbol, accentHex: fields.accent_hex } as RewardFields);
+  return normalized.ok ? { ...record, fields: { ...fields, title: normalized.value.title,
+    symbol: normalized.value.symbol, accent_hex: normalized.value.accentHex } } : null;
+}
+
+// schema 2 reuses legacy field checks without transferring its marker or baseline authority.
+export async function validateSchema2MutableRecord(
+  tx: SqlExecutor, value: unknown,
+): Promise<InboundValidation<Schema2MutableRecord>> {
+  const captured = captureInbound(value);
+  if (!isObject(captured) || identityOf({ ...captured,
+    entityType: captured.entityType === 'reward' ? 'board' : captured.entityType }) === null) return { kind: 'unidentifiable' };
+  const record = captured as Schema2MutableRecord;
+  const invalid = { kind: 'invalid' as const, record };
+  const keys = ['schemaVersion', 'entityType', 'entityId', 'mutationStamp', 'deleted', 'fields'];
+  if (record.schemaVersion !== 2 || typeof record.deleted !== 'boolean' || !isObject(record.fields) ||
+    Object.keys(record).length !== keys.length || !keys.every(key => Object.hasOwn(record, key))) return invalid;
+  const columns = schema2SpecFor(record.entityType).columns;
+  const entries = Object.entries(record.fields);
+  if (entries.length !== columns.length || !columns.every(key => Object.hasOwn(record.fields, key)) ||
+    entries.some(([, field]) => field !== null && typeof field !== 'string' &&
+      (typeof field !== 'number' || !Number.isFinite(field)))) return invalid;
+  if (record.entityType !== 'settings' && record.deleted !== (record.fields.deleted_at !== null)) return invalid;
+  if (record.entityType === 'reward') {
+    const normalized = normalizeReward(record);
+    return normalized === null ? invalid : { kind: 'valid', record: normalized };
+  }
+  if (record.entityType === 'board' && !record.deleted && !validBoardExtensions(record.fields)) return invalid;
+  if (record.entityType === 'settings' && Object.keys(LEGACY_PRESET_DEFAULTS).some(key => {
+    const minute = record.fields[key];
+    return typeof minute !== 'number' || !normalizeBoardAnchorFields({ usualTimeMinute: minute }).ok;
+  })) return invalid;
+  const fields = Object.fromEntries(specFor(record.entityType).columns.map(key => [key, record.fields[key]]));
+  // identity and entity type have already been checked above and are unchanged here.
+  const base = await validateInboundRecord(tx, { ...record, schemaVersion: 1, fields }) as Exclude<InboundValidation, { kind: 'unidentifiable' }>;
+  if (base.kind !== 'valid') return { ...base, record };
+  const normalized: Schema2MutableRecord = { ...record, fields: { ...record.fields, ...base.record.fields } };
+  if (record.entityType === 'board') {
+    if (record.deleted) Object.assign(normalized.fields, LEGACY_BOARD_DEFAULTS, { required_in_stack: 0 });
+    else if (record.fields.anchor_kind === 'board' && !(await parentBoardExists(tx, record.fields.anchor_board_id as string))) {
+      return { kind: 'deferred', record: normalized };
+    }
+  }
+  return { kind: 'valid', record: normalized };
 }

@@ -56,9 +56,13 @@ struct CloudKitTransport: Sendable {
     // entries that represent successive mutations of the same entity.
     var latest: [String: CloudKitWireRecord] = [:]
     for input in records {
-      let record = try CloudKitRecordMapping.normalized(input)
+      let record = try CloudKitRecordMapping.normalizedOutbound(input)
       if let previous = latest[record.entityId] {
         guard previous.entityType == record.entityType else { throw CloudKitFailure.failure }
+        if CloudKitRecordMapping.immutable(record.entityType) {
+          guard CloudKitRecordMapping.sameImmutable(previous, record) else { throw CloudKitFailure.failure }
+          continue
+        }
         if previous.mutationStamp >= record.mutationStamp { continue }
       }
       latest[record.entityId] = record
@@ -99,8 +103,13 @@ struct CloudKitTransport: Sendable {
       let existing: CKRecord?
       switch result {
       case .success(let server):
+        guard server.recordID == id, server.recordType == input.entityType else { throw CloudKitFailure.failure }
         let remote = try CloudKitRecordMapping.fromRecord(server)
-        guard remote.entityType == input.entityType else { throw CloudKitFailure.failure }
+        if CloudKitRecordMapping.immutable(input.entityType) {
+          guard CloudKitRecordMapping.sameImmutable(remote, input) else { throw CloudKitFailure.failure }
+          continue
+        }
+        _ = try CloudKitRecordMapping.normalizedOutbound(remote)
         // equal stamps are already acknowledged. newer remote values win,
         // including tombstones, so an old offline mutation cannot overwrite them.
         if remote.mutationStamp >= input.mutationStamp { continue }
@@ -120,7 +129,11 @@ struct CloudKitTransport: Sendable {
     for (input, record) in candidates {
       guard let result = results[record.recordID] else { throw CloudKitFailure.failure }
       switch result {
-      case .success: break
+      case .success(let saved):
+        guard saved.recordID == record.recordID, saved.recordType == input.entityType else { throw CloudKitFailure.failure }
+        if CloudKitRecordMapping.immutable(input.entityType) {
+          guard CloudKitRecordMapping.sameImmutable(try CloudKitRecordMapping.fromRecord(saved), input) else { throw CloudKitFailure.failure }
+        }
       case .failure(let error):
         if cloudKitErrorHasCode(error, .serverRecordChanged) || cloudKitErrorHasCode(error, .unknownItem) {
           retry.append(input)
@@ -146,7 +159,7 @@ struct CloudKitTransport: Sendable {
     try await requireAccount()
     // all product deletes are stamped tombstone records. a hard deletion lacks
     // the stamp and linkage needed for a safe mutation, so do not advance.
-    guard page.hardDeletedRecordCount == 0, !page.more || page.token != nil else { throw CloudKitFailure.failure }
+    guard page.records.count <= CloudKitWireCodec.recordCount, page.hardDeletedRecordCount == 0, !page.more || page.token != nil else { throw CloudKitFailure.failure }
     let records = try page.records.map(CloudKitRecordMapping.fromRecord)
     return CloudKitWirePage(records: records, nextToken: try tokens.encode(page.token), more: page.more)
   }

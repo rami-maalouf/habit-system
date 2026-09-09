@@ -26,6 +26,18 @@ final class CloudKitMappingTests: XCTestCase {
     }
   }
 
+  func testVersionOneKeepsItsReleasedFiniteScalarBoundaryForSemanticValidation() throws {
+    var value = try cloudKitFixtures()[0]
+    value.fields["created_at"] = .string("semantic validator rejects this")
+    value.fields["title"] = .null
+    XCTAssertEqual(try CloudKitRecordMapping.fromRecord(CloudKitRecordMapping.toRecord(value, zoneID: testZone)), value)
+    let record = try CloudKitRecordMapping.toRecord(cloudKitFixtures()[0], zoneID: testZone)
+    record["uses_tinted_background"] = NSNumber(value: true)
+    XCTAssertEqual(try CloudKitRecordMapping.fromRecord(record).fields["uses_tinted_background"], .number(1))
+    value.fields["quick_amount"] = .number(.infinity)
+    XCTAssertThrowsError(try CloudKitRecordMapping.toRecord(value, zoneID: testZone))
+  }
+
   func testTombstoneClearsPreviouslyStoredContentAndUnknownKeys() throws {
     let fixtures = try cloudKitFixtures()
     let live = try CloudKitRecordMapping.toRecord(fixtures[2], zoneID: testZone)
@@ -67,7 +79,7 @@ final class CloudKitMappingTests: XCTestCase {
 
   func testMalformedServerRecordsDoNotBecomePages() throws {
     let record = try CloudKitRecordMapping.toRecord(cloudKitFixtures()[0], zoneID: testZone)
-    record["schema_version"] = NSNumber(value: 2)
+    record["schema_version"] = NSNumber(value: 3)
     XCTAssertThrowsError(try CloudKitRecordMapping.fromRecord(record))
     record["schema_version"] = NSNumber(value: 1)
     record["mutation_stamp"] = "not-a-stamp" as NSString
@@ -151,4 +163,106 @@ final class CloudKitErrorTests: XCTestCase {
     XCTAssertTrue(cloudKitErrorHasCode(error, .networkFailure))
     XCTAssertFalse(cloudKitErrorHasCode(error, .limitExceeded))
   }
+}
+
+func schemaTwoFixtures() throws -> [CloudKitWireRecord] {
+  let url = try XCTUnwrap(Bundle.module.url(forResource: "sync-records-v2", withExtension: "json"))
+  return try JSONDecoder().decode([CloudKitWireRecord].self, from: Data(contentsOf: url))
+}
+
+final class CloudKitSchemaTwoMappingTests: XCTestCase {
+  func testVersionTwoDeletionMismatchIsRetainedInboundAndRejectedOutbound() throws {
+    for value in try schemaTwoFixtures().filter({ !CloudKitRecordMapping.immutable($0.entityType) && $0.entityType != "settings" }) {
+      var mismatch = value
+      mismatch.fields["deleted_at"] = value.deleted ? .null : .number(1788825600999)
+      XCTAssertThrowsError(try CloudKitRecordMapping.toRecord(mismatch, zoneID: testZone))
+      let server = try CloudKitRecordMapping.toRecord(value, zoneID: testZone)
+      server["deleted_at"] = value.deleted ? nil : NSNumber(value: 1788825600999)
+      XCTAssertEqual(try CloudKitRecordMapping.fromRecord(server), mismatch)
+    }
+    // the released v1 tombstone behavior is deliberately unchanged.
+    for value in try cloudKitFixtures().filter({ $0.entityType != "settings" }) {
+      var mismatch = value
+      mismatch.fields["deleted_at"] = value.deleted ? .null : .number(1788825600999)
+      XCTAssertEqual(try CloudKitRecordMapping.fromRecord(CloudKitRecordMapping.toRecord(mismatch, zoneID: testZone)), mismatch)
+    }
+  }
+
+  func testBoundedVersionTwoMutableDefectsReachTheSemanticValidatorUnchanged() throws {
+    for value in try schemaTwoFixtures().filter({ !CloudKitRecordMapping.immutable($0.entityType) && !$0.deleted }) {
+      let server = try CloudKitRecordMapping.toRecord(value, zoneID: testZone)
+      server["unexpected"] = "retain this invalid field" as NSString
+      let scalarKey = value.entityType == "settings" ? "wake_minute" : value.entityType == "activity_period" ? "end_date" : "created_at"
+      server[scalarKey] = "wrong scalar type" as NSString
+      let decoded = try CloudKitRecordMapping.fromRecord(server)
+      XCTAssertEqual(decoded.fields["unexpected"], .string("retain this invalid field"))
+      XCTAssertEqual(decoded.fields[scalarKey], .string("wrong scalar type"))
+      XCTAssertThrowsError(try CloudKitRecordMapping.toRecord(decoded, zoneID: testZone))
+    }
+  }
+
+  func testEightVersionTwoTypesRoundTripWithoutRelabelingVersionOne() throws {
+    let values = try schemaTwoFixtures()
+    XCTAssertEqual(Set(values.map(\.entityType)).count, 8)
+    for value in values {
+      XCTAssertEqual(try CloudKitRecordMapping.fromRecord(CloudKitRecordMapping.toRecord(value, zoneID: testZone)), value)
+    }
+    for value in try cloudKitFixtures() {
+      XCTAssertEqual(try CloudKitRecordMapping.fromRecord(CloudKitRecordMapping.toRecord(value, zoneID: testZone)), value)
+    }
+  }
+
+  func testTrustedImmutableDefectsSurviveDownloadButCannotUpload() throws {
+    for value in try schemaTwoFixtures().filter({ ["habit_action", "ledger_entry"].contains($0.entityType) }) {
+      let source = try CloudKitRecordMapping.toRecord(value, zoneID: testZone)
+      for defect in 0..<7 {
+        let server = source.copy() as! CKRecord
+        switch defect {
+        case 0: server["id"] = "wrong-inner-id" as NSString
+        case 1: server["unexpected"] = "keep exact diagnostic bytes" as NSString
+        case 2: server["kind"] = nil
+        case 3: server["deleted"] = NSNumber(value: true)
+        case 4: server["mutation_stamp"] = "not-a-stamp" as NSString
+        case 5: server["created_at"] = "not-numeric" as NSString
+        default: server["created_at"] = NSNumber(value: 9_007_199_254_740_992.0)
+        }
+        let decoded = try CloudKitRecordMapping.fromRecord(server)
+        XCTAssertEqual(decoded.entityId, value.entityId)
+        XCTAssertEqual(decoded.fields["id"]?.string, defect == 0 ? "wrong-inner-id" : value.entityId)
+        if defect == 1 { XCTAssertEqual(decoded.fields["unexpected"], .string("keep exact diagnostic bytes")) }
+        if defect == 2 { XCTAssertEqual(decoded.fields["kind"], .null) }
+        if defect == 3 { XCTAssertTrue(decoded.deleted) }
+        if defect == 4 { XCTAssertEqual(decoded.mutationStamp, "not-a-stamp") }
+        XCTAssertThrowsError(try CloudKitRecordMapping.toRecord(decoded, zoneID: testZone))
+      }
+    }
+  }
+  func testNewTypesNeverAcquireVersionOneAuthorityAndUnknownVersionsAbort() throws {
+    for value in try schemaTwoFixtures() {
+      let record = try CloudKitRecordMapping.toRecord(value, zoneID: testZone)
+      record["schema_version"] = NSNumber(value: 3)
+      XCTAssertThrowsError(try CloudKitRecordMapping.fromRecord(record))
+      if ["reward", "habit_action", "ledger_entry"].contains(value.entityType) {
+        record["schema_version"] = NSNumber(value: 1)
+        XCTAssertThrowsError(try CloudKitRecordMapping.fromRecord(record))
+      }
+    }
+  }
+
+  func testMutableTombstonesEraseAllNewContentOverExistingCloudRecords() throws {
+    let values = try schemaTwoFixtures()
+    for type in ["board", "reward", "check_in"] {
+      let live = values.first { $0.entityType == type && !$0.deleted }!
+      let tombstone = values.first { $0.entityType == type && $0.deleted }!
+      let old = try CloudKitRecordMapping.toRecord(live, zoneID: testZone)
+      old["old_private_key"] = "must disappear" as NSString
+      let deleted = try CloudKitRecordMapping.toRecord(tombstone, zoneID: testZone, existing: old)
+      XCTAssertNil(deleted["old_private_key"])
+      let roundtrip = try CloudKitRecordMapping.fromRecord(deleted)
+      XCTAssertEqual(roundtrip, tombstone)
+      if type == "board" { XCTAssertEqual(roundtrip.fields["earns_coins"], .number(0)); XCTAssertEqual(roundtrip.fields["anchor_preset"], .null) }
+      if type == "reward" { XCTAssertEqual(roundtrip.fields["title"], .string("")); XCTAssertEqual(roundtrip.fields["cost_coins"], .number(1)) }
+    }
+  }
+
 }

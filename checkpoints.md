@@ -2672,3 +2672,36 @@ admission, schema-2 mapping and actual convergence remain subsequent T19 increme
     files are unchanged, and source/native hashes stay exact. Existing framework/
     dev-client diagnostics are retained without suppression; neither QA run proves
     live CloudKit convergence. Supplemental evidence is under `error-qa/`.
+
+48. Paired schema-2 prerequisites now define all eight entity mappings in
+    TypeScript and Swift. Mutable semantic validation keeps explicit v1 defaults
+    and final-version authority; immutable capture preserves conflicting and
+    malformed bounded diagnostics for admission rather than granting economic
+    authority. Outgoing tombstones use the reviewed privacy allowlists. The
+    original v1 fixture and its strict unsupported-version behavior stay exact.
+49. Native immutable upload paths require exact identity/content through grouped
+    input, fetch, conflict retry, split batches and save acknowledgment. The new
+    codec and iOS adapter bound indexed record capture, encoded rows and tokens;
+    custom array iterators cannot bypass the record limit. The additive schema-2
+    adapter is present, while the production default remains paired with the
+    current v1 engine until the separate engine activation increment.
+50. Independent reviews and the exact combined candidate pass 146 suites / 2,316
+    tests, all 95 core files at 100 percent, global coverage 97.84/96.54/96.55/98.30,
+    plus 9 plugin / 166 Swift checks. Fresh generated-native compilation includes
+    both the new codec and Expo bridge for arm64 and x86_64. The development-signed
+    copy verifies all 20 executable targets and preserves code and entitlements.
+    Full build diagnostics remain recorded, including existing dependency and
+    ExpoDevLauncher warnings. This is build/signing evidence, not live CloudKit
+    or physical-device acceptance.
+51. Wire evidence is retained in `.artifacts/t19/wire-prerequisite/`. The build
+    package preserves its historical source manifest; the later JS-only
+    coordinator error-refresh change and its routed test are documented as the
+    reviewed overlay, with identical native source. Stable activity-period
+    identity, anchor-cycle policy and final engine/service acceptance remain
+    pending, so T19 and Checkpoint C are still incomplete.
+52. Read-only device readiness was refreshed on September 9. Both known physical
+    targets are currently unavailable and no two approved same-account sessions
+    are verified. Simulator Mach-O entitlement sections declare the fork CloudKit
+    container despite empty signature entitlement dictionaries; runtime container
+    access remains untested. No account, device or sync operation was performed.
+    Evidence is in `.artifacts/t19/cloudkit-readiness-2026-09-09/`.
