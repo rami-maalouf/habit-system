@@ -1,6 +1,9 @@
 import { transformFileSync } from '@babel/core';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { execFile } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
 import { createContext, runInContext } from 'node:vm';
 
 import type { RipplesWidgetProps, WidgetRowProps } from '@/features/widgets/widget-props';
@@ -32,8 +35,29 @@ const moduleContext = createContext({
 });
 runInContext(compiled, moduleContext);
 const runtime = createContext({});
-runInContext(readFileSync(resolve('node_modules/expo-widgets/bundle/build/ExpoWidgets.bundle'), 'utf8'), runtime);
-runInContext(`globalThis.__expoWidgetLayout = (${moduleContext.exports.default})`, runtime);
+const bundleDirectory = mkdtempSync(join(tmpdir(), 'habit-widget-runtime-'));
+
+beforeAll(async () => {
+  const widgetPackage = resolve('node_modules/expo-widgets');
+  const bundlePath = join(bundleDirectory, 'ExpoWidgets.bundle');
+  const cacheDirectory = join(bundleDirectory, 'cache');
+  mkdirSync(cacheDirectory);
+  // the published package builds this runtime during native compilation; a
+  // clean test install uses that same producer without writing to dependencies.
+  await promisify(execFile)(process.execPath, [
+    require.resolve('expo/bin/cli'), 'export:embed', '--platform', 'ios',
+    '--bundle-output', bundlePath, '--entry-file', join(widgetPackage, 'bundle/index.ts'),
+    '--dev', 'false', '--skip-server', '--max-workers', '2',
+  ], {
+    cwd: process.cwd(),
+    env: { ...process.env, TMPDIR: cacheDirectory, EXPO_OVERRIDE_METRO_CONFIG: join(widgetPackage, 'metro.config.js') },
+    timeout: 25000,
+  });
+  runInContext(readFileSync(bundlePath, 'utf8'), runtime);
+  runInContext(`globalThis.__expoWidgetLayout = (${moduleContext.exports.default})`, runtime);
+}, 30000);
+
+afterAll(() => { rmSync(bundleDirectory, { recursive: true, force: true }); });
 
 const row: WidgetRowProps = {
   boardId: 'a', kind: 'daily', title: 'Reading', symbol: 'star.fill', accentHex: '#70A7FF',

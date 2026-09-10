@@ -25,11 +25,11 @@ struct IntentFailure: Error, Codable, LocalizedError, CustomLocalizedStringResou
   var errorDescription: String? { message }
   var localizedStringResource: LocalizedStringResource { "\(message)" }
 
-  static let unavailable = IntentFailure(code: "unavailable", message: "Open Ripples once to prepare your boards, then try again.", retryable: true)
-  static let database = IntentFailure(code: "database", message: "Your boards could not be accessed. Try again after opening Ripples.", retryable: true)
-  static let migration = IntentFailure(code: "migration", message: "Open the latest version of Ripples to update your database, then try again.", retryable: true)
-  static let notFound = IntentFailure(code: "not_found", message: "That board is not available. Choose an active board in Ripples.")
-  static let archived = IntentFailure(code: "archived", message: "That board is archived. Restore it in Ripples before changing check-ins.")
+  static let unavailable = IntentFailure(code: "unavailable", message: "Open Habit System once to prepare your boards, then try again.", retryable: true)
+  static let database = IntentFailure(code: "database", message: "Your boards could not be accessed. Try again after opening Habit System.", retryable: true)
+  static let migration = IntentFailure(code: "migration", message: "Open the latest version of Habit System to update your database, then try again.", retryable: true)
+  static let notFound = IntentFailure(code: "not_found", message: "That board is not available. Choose an active board in Habit System.")
+  static let archived = IntentFailure(code: "archived", message: "That board is archived. Restore it in Habit System before changing check-ins.")
   static let noCheckIn = IntentFailure(code: "not_found", message: "There is no check-in to remove for that day.")
 }
 

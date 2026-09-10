@@ -87,8 +87,8 @@ export function SettingsScreen() {
             testID="settings-feedback"
           />
           <SettingsRow
-            title="Rate Ripples In App Store"
-            onPress={() => openLink('appStoreReview', 'Rate Ripples In App Store')}
+            title="Rate Habit System In App Store"
+            onPress={() => openLink('appStoreReview', 'Rate Habit System In App Store')}
             external
             testID="settings-rate"
           />

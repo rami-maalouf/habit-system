@@ -13,6 +13,7 @@ export function SampleSessionProvider({ children, sessionOverride }: {
 }) {
   const [session] = useState(() => sessionOverride ?? new SampleSession(() => {
     // load the native memory factory only after real work has been joined.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- defer the native database import until sample entry
     const { openSampleCore } = require('@/platform/database/sample-core') as typeof import('@/platform/database/sample-core');
     return openSampleCore();
   }));

@@ -80,6 +80,11 @@ describe('settings sheet', () => {
     expect(rendered.indexOf('settings-link-notice')).toBeLessThan(
       rendered.indexOf('settings-notifications'),
     );
+    expect(screen.getByTestId('settings-rate')).toHaveTextContent(/Rate Habit System In App Store/);
+    await press('settings-rate');
+    expect(screen.getByTestId('settings-link-notice')).toHaveTextContent(
+      'Missing release link for Rate Habit System In App Store.',
+    );
   });
 
   it('exports a shareable snapshot from the export destination', async () => {
@@ -115,7 +120,8 @@ describe('settings sheet', () => {
     expect(await screen.findByTestId('export-shared')).toBeOnTheScreen();
     expect(dataTransferMock.sharedFiles).toHaveLength(1);
     const shared = dataTransferMock.sharedFiles[0];
-    expect(shared.fileName).toMatch(/^ripples-export-.*Z\.json$/);
+    expect(shared.fileName).toMatch(/^habit-system-export-.*Z\.json$/);
+    expect(JSON.parse(shared.contents)).toMatchObject({ format: 'ripples.export', exportVersion: 2 });
     // the shared bytes are a valid own-format export
     const parsed = parseOwnExport(shared.contents);
     if (!parsed.ok) {

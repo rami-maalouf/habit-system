@@ -45,9 +45,8 @@ function relocateLegacyDatabase(containerUri: string): void {
   }
 }
 
-// wraps expo-sqlite behind the SqlDatabase port; this is the only typescript
-// location that imports expo-sqlite. writes run on a dedicated second
-// connection where foreign keys are enabled at connection level and a mutex
+// wraps expo-sqlite behind the shared app database port. writes run on a
+// dedicated second connection where foreign keys are enabled and a mutex
 // keeps exclusive transactions from interleaving with other statements;
 // reads use the primary connection with deferred transactions.
 export async function openProductSqlDatabase(): Promise<SqlDatabase> {

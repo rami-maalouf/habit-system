@@ -236,11 +236,11 @@ export function serializeExport(snapshot: ExportSnapshotV1 | ExportSnapshotV2): 
   return JSON.stringify(snapshot, null, 2);
 }
 
-// ripples-export-YYYY-MM-DDTHH-mm-ssZ.json per the spec's naming rule
+// a readable utc timestamp without filename colons or fractional seconds
 export function exportFileName(exportedAtUtc: number): string {
   const stamp = new Date(exportedAtUtc)
     .toISOString()
     .replace(/\.\d{3}Z$/, 'Z')
     .replace(/:/g, '-');
-  return `ripples-export-${stamp}.json`;
+  return `habit-system-export-${stamp}.json`;
 }

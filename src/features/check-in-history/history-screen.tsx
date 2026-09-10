@@ -45,7 +45,7 @@ export function CheckInHistoryScreen({ boardId }: { boardId: BoardId }) {
   const { core, scope, invalidate, nextCommandId } = useProduct();
   // callbacks retain the focus owner and product generation that created them.
   const activeScene = useRef<object | null>(null);
-  const scene = useMemo(() => ({}), [scope, focused, boardId]);
+  const scene = useMemo(() => ({ scope, focused, boardId }), [scope, focused, boardId]);
   useEffect(() => {
     activeScene.current = scene;
     return () => { if (activeScene.current === scene) activeScene.current = null; };

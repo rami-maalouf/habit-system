@@ -20,7 +20,7 @@ export function ArchivedBoardsScreen() {
   const { scope } = useProduct();
   // callbacks retain the focus owner and product generation that created them.
   const activeScene = useRef<object | null>(null);
-  const scene = useMemo(() => ({}), [scope, focused]);
+  const scene = useMemo(() => ({ scope, focused }), [scope, focused]);
   useEffect(() => {
     activeScene.current = scene;
     return () => { if (activeScene.current === scene) activeScene.current = null; };

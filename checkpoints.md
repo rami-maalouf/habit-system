@@ -3437,3 +3437,72 @@ gates remain open.
     under `.artifacts/t23/native-partial/` and
     `.artifacts/t23/crash-discriminator/`. Final dependency/native composition
     and its acceptance remain required.
+
+### T24 - cosmetic rename and final closure (in progress)
+
+Status: cosmetic source and final regression corrections are implemented and
+independently reviewed. Automated gates pass in isolation and in the main
+checkout; production exports also pass. The fresh signed simulator build passes
+its artifact checks and its native walkthrough continues. The physical Release
+compiles, but its development-network plist cleanup fails package verification.
+That correction, the requested iPhone installation and actual two-target CloudKit
+convergence remain open. T24 and Checkpoints C/D are not complete.
+
+1. README and remaining public Settings/native display names identify Habit
+   System while preserving fork attribution and allowed internal identifiers.
+   New backup filenames use habit-system-export; cleanup also recognizes the
+   legacy prefix. The ripples.export payload marker, v1/v2/CSV compatibility,
+   command/storage schemas and service identities remain unchanged. The scoped
+   filename override is recorded in section 4.12 of the Habit System spec.
+2. An independent clean dependency install exposed a widget test's reliance on
+   an old generated bundle. The test now invokes the installed bundle producer
+   into temporary output and preserves all eight runtime/render assertions.
+   Four scene identity memos retain their original dependencies and callback
+   checks; one line-level lint exception preserves the lazy native factory.
+   Independent review and directed tests approve these corrections without
+   weakening lint configuration or coverage thresholds.
+3. Doctor's original dependency mismatch prompted five recommended SDK 57
+   patches in the isolated dependency tree. Doctor then passes 21 checks; the
+   paired package gate passes 10 plugin and 195 Swift tests, and iOS/Android
+   production exports pass. Canonical validation exits 0 with 207 suites /
+   3,067 tests, all 105 core files at 100 percent on all four metrics, non-core
+   branches at 90.25 percent and no lint/test diagnostics. Root verifies the
+   exact 143-path candidate; mapped exports match all 62 current routes and
+   contain no foreign checkout context. Evidence is retained under
+   `.artifacts/t24/automated-143/`. These package/export checks do not build or
+   validate the updated native app. The later two-file build-script correction
+   passes 12 plugin tests and independent review. Two real native generations
+   preserve its script, order and dependencies while explicitly marking the
+   intended main-app phase to run every build. The fresh signed Debug simulator
+   build passes 297 artifact checks, including all embedded library contexts;
+   its existing development connectivity is retained. The physical Release
+   build compiles and its embedded bundle matches 297 authored sources and all
+   62 routes, but actual package verification fails: the cleanup phase runs
+   before ProcessInfoPlistFile and leaves Expo's default network keys. The
+   earlier scheduling-only correction therefore remains insufficient for
+   Release packaging; its failure and minimal ordering fix are tracked separately.
+   Main-checkout validation also exits 0 with the same 207 suites / 3,067 tests,
+   105 fully covered core files, 90.25 percent non-core branches and no diagnostics.
+4. Diagnostic evidence remains specific. The native animation-listener producer
+   family is identified but its exact emitting node/interleaving is unresolved;
+   the observer-free stable Home control records two further warnings. The
+   current ordinary Create Board control selects Daily, changes to Count,
+   reopens with Count selected and cancels correctly. A later native remount
+   trace observes a non-null selection prop while Expo's local SwiftUI state
+   is initially nil, followed by the warning pair and a correct daily state.
+   Independent review finds no demonstrated app-owned mismatch. The LLDB
+   expression interruption restores evaluator state and the same app process
+   continues; it is not an observed application crash. No warning suppression
+   or SDK picker patch is applied. The dependency patches do not change
+   ExpoFabricView's fatal guard, AppContext or DevLauncher code, so no native
+   crash cure is claimed. Final runtime results remain required before closure.
+5. Exact Apple reads find both fork bundle IDs unregistered and the target
+   iPhone registered/enabled. App Group and iCloud capability links remain
+   unverified. The existing EAS Admin API key works for its supported reads,
+   while the cached Apple user session returns expired-session code 1100.
+   A separate read-only Xcode check finds no persisted Apple account and no
+   matching team. Signing in to Xcode can enable the supported local provisioning
+   path; exact app/widget profiles and capability assignments still require
+   proof. The unsigned physical Release compile is not an installable build.
+   No iPhone install/launch, live two-target CloudKit convergence or Checkpoint
+   C/D completion is asserted.
