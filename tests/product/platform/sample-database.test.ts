@@ -86,13 +86,22 @@ function observe<Value>(promise: Promise<Value>) {
 class NativeMemory {
   readonly raw = new DatabaseSync(':memory:');
   readonly events: string[] = [];
+  asyncCalls = 0;
   before: (event: string) => Promise<void> = async () => {};
   failure: (event: string) => Error | undefined = () => undefined;
   closed = false;
 
   private async execute<Value>(event: string, work: () => Value): Promise<Value> {
     this.events.push(event);
+    this.asyncCalls += 1;
     await this.before(event);
+    const failure = this.failure(event);
+    if (failure) throw failure;
+    return work();
+  }
+
+  private executeSync<Value>(event: string, work: () => Value): Value {
+    this.events.push(event);
     const failure = this.failure(event);
     if (failure) throw failure;
     return work();
@@ -115,6 +124,21 @@ class NativeMemory {
 
   getFirstAsync<Row>(sql: string, params: SqlParams = []): Promise<Row | null> {
     return this.execute(`first:${sql}`, () => (this.raw.prepare(sql).get(...params) as Row | undefined) ?? null);
+  }
+
+  runSync(sql: string, params: SqlParams = []) {
+    return this.executeSync(`run:${sql}`, () => {
+      const result = this.raw.prepare(sql).run(...params);
+      return { changes: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
+    });
+  }
+
+  getAllSync<Row>(sql: string, params: SqlParams = []): Row[] {
+    return this.executeSync(`all:${sql}`, () => this.raw.prepare(sql).all(...params) as Row[]);
+  }
+
+  getFirstSync<Row>(sql: string, params: SqlParams = []): Row | null {
+    return this.executeSync(`first:${sql}`, () => (this.raw.prepare(sql).get(...params) as Row | undefined) ?? null);
   }
 
   closeAsync = jest.fn(() => this.execute('close', () => {
@@ -287,6 +311,11 @@ describe('sample core factory ownership', () => {
     const original = await canonicalState(cores[0].db);
     expect(original).toEqual(sampleRecipe.canonicalTables);
     expect(await canonicalState(cores[1].db)).toEqual(original);
+    // bound native scheduling overhead for the complete recipe without a flaky wall-clock limit.
+    for (const native of handles) {
+      const { count } = native.raw.prepare('SELECT COUNT(*) AS count FROM command_receipts').get() as { count: number };
+      expect(native.asyncCalls).toBeLessThanOrEqual(count * 5);
+    }
     for (const core of cores) {
       expect(core.clock.nowUtcMs()).toBe(Date.UTC(2026, 8, 9, 16));
       expect(core.clock.timeZoneId()).toBe('America/Toronto');
@@ -353,12 +382,12 @@ describe('sample memory connection ownership', () => {
     const entered = deferred();
     const release = deferred();
     native.before = async (event) => {
-      if (event === 'run:INSERT INTO seed VALUES (1)') {
+      if (event === 'exec:INSERT INTO seed VALUES (1)') {
         entered.resolve();
         await release.promise;
       }
     };
-    const outside = db.runAsync('INSERT INTO seed VALUES (1)');
+    const outside = db.execAsync('INSERT INTO seed VALUES (1)');
     await entered.promise;
     const transaction = db.withExclusiveTransactionAsync(async (tx) => {
       await tx.runAsync('INSERT INTO seed VALUES (2)');

@@ -26,14 +26,15 @@ export async function openMemorySqlDatabase(): Promise<SqlDatabase> {
     return result;
   }
 
-  // transaction callbacks use this direct executor on the same native handle.
+  // short queries on this private memory handle avoid per-statement scheduling.
+  // begin/commit remain async so each command yields to the native event loop.
   const executor: SqlExecutor = {
     runAsync: async (sql, params = []) => {
-      const result = await native.runAsync(sql, params);
+      const result = native.runSync(sql, params);
       return { changes: result.changes };
     },
-    getAllAsync: (sql, params = []) => native.getAllAsync(sql, params),
-    getFirstAsync: (sql, params = []) => native.getFirstAsync(sql, params),
+    getAllAsync: async (sql, params = []) => native.getAllSync(sql, params),
+    getFirstAsync: async (sql, params = []) => native.getFirstSync(sql, params),
   };
 
   function transaction<Value>(

@@ -3643,3 +3643,67 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
     two-target CloudKit convergence remains a separate required acceptance gate;
     local tests and simulator signing do not satisfy it. The two declined sync
     proposals remain excluded. T19/Checkpoint C and T24/Checkpoint D stay open.
+11. The sample startup follow-up reproduces 51.434 seconds on the owned signed
+    simulator. The unchanged recipe executes 6,065 public commands and spends
+    44.444 seconds inside 271,098 SQLite convenience/transaction calls. The
+    memory-only adapter now uses synchronous short queries behind its existing
+    Promise queue; native BEGIN/COMMIT/ROLLBACK remain asynchronous. No schema,
+    generator, real database adapter, sync or persistence format changes. The
+    complete-recipe scheduling-budget test first fails at 271,118 asynchronous
+    calls against a 30,325 limit, then the full 14-test sample suite passes.
+    Independent source review approves the exact two-file implementation/test
+    delta. Full validation passes 207 suites / 3,069 tests in 122.087 seconds,
+    with every metric at 100 percent for all 105 core files and non-core branch
+    coverage at 90.31 percent. Both updated production Hermes exports pass:
+    298 authored iOS sources, 296 Android sources and all 62 routes match main.
+    The 77-file export archive matches its producer. Native sources and build
+    dependencies are unchanged; the existing 14 plugin / 195 Swift gate and
+    signed Debug artifact remain applicable.
+12. Actual candidate factories take 21.842 seconds with detailed profiling and
+    20.115 seconds with only whole-factory timing, heartbeat and isolation
+    observers. All three runs match the 19 canonical table hashes and 6,014-coin
+    recipe. The candidate reduces asynchronous SQLite convenience calls to
+    12,162 while preserving the total query count. Timer/rAF callbacks continue
+    during generation; the minimal run's largest wholly internal gap is 23.05
+    milliseconds. A 216.65-millisecond gap straddles completion and ready UI;
+    twenty seconds remains a visible delay, not an instant-start claim or a
+    statistical/device benchmark. Actual cap-2 edit, check and five-coin claim
+    end at 6,009 coins; reopening restores cap 3, 6,014 coins and the complete
+    pristine fixture. Each memory core closes once, all observers restore
+    before real resumption, and all five suspended App Group file hashes match.
+    Only five normal updated:0 receipts are added to the real QA store across
+    baseline and candidate runs; all other tables remain exact. Four inherited
+    Picker warnings and the documented QA instrumentation/assertion mistakes
+    remain visible in the evidence. Owned services stop; the protected B47
+    simulator's external shutdown is recorded without reversing it. Root runs
+    the relocated native verifier successfully: 189 checks under
+    `.artifacts/t24/sample-performance/native/`. Independent final review checks
+    all 298 retained evidence hashes, recomputes timings and the identical SQL
+    workload, and separately compares the stopped SQLite stores without finding
+    a source or evidence defect. Final stopped backup:
+    `bed0381fb82409e939629a7687cfd73989bc3d702ae86a079bf2ff541cf2f5f9`.
+13. The requested phone continuation separates two actual failures: the first
+    exact-device build stops because the phone is locked, before authentication;
+    the generic iOS API-key attempt then reaches provisioning and fails Apple
+    authentication. A secure input check confirms correctly formatted P-256
+    key material and an HTTP 200 read-only App Store Connect request from those
+    same bytes. It does not explain or repair Xcode's separate authentication
+    failure. Temporary key files are removed, and no unsupported retry or
+    wildcard-profile install is attempted. After Rami reconnects/unlocks the
+    phone, supported developer-image mounting succeeds. Direct Xcode UI confirms
+    no Apple account and is left at its sign-in dialog for Rami. Current physical
+    source includes the reviewed memory change in a 151-path manifest, but no
+    installable signed artifact or physical launch is claimed. The remaining
+    signing prerequisite is Xcode Apple-account authentication.
+14. Two fresh owned iPhone 17 Pro / iOS 26.5 simulators are prepared with the
+    reviewed signed Debug app: `7CE21806-6D26-41C1-B2D6-8C33E3EAF964` and
+    `98BA5084-9663-44F3-A28B-1BC6F94BAA3C`. Each installed 78-file package and
+    deep-strict signature match; neither app has launched or created a product
+    database, and both simulators are shut down. Live CloudKit still needs a
+    shared test iCloud account, verified explicit fork App ID/container capability
+    association, and qualified scoped network loss for the true-offline cases.
+    Physical profiles are not required for simulator testing, but declared
+    simulator entitlements do not establish working server capabilities.
+    Read-only installed simulator CLI discovery exposes no network-condition
+    control; no host networking is altered. T19/Checkpoint C and T24/Checkpoint D
+    remain open. The two declined sync designs remain excluded.
