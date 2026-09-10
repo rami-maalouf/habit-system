@@ -3528,3 +3528,30 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
    checks pass 14 plugin and 195 Swift tests. No production script, dependency,
    lockfile, assertion or coverage threshold is weakened. The precise Bun cause
    remains unproven. Evidence is under `.artifacts/t24/native-test-runner/`.
+7. Actual largest-text dark-mode testing reproduced three check-in form defects:
+   an offscreen Save action, overlapping/clipped Date controls, and an unusable
+   manually reduced half-height sheet. The form now stacks its header and fields
+   at large text sizes, measures native pickers without fixed dimensions, and
+   offers a full-height sheet at those sizes. Normal text keeps both existing
+   sheet positions. Independent source review approves the bounded correction;
+   date/zone conversion, commands and dirty guards are unchanged. Existing Save
+   and history-reopen cases now cover normal and largest font scales on both
+   platforms. Native full-height scrolling and exact single Save pass; the final
+   detent check also preserves a dirty amount through dragging and Keep editing,
+   then saves exactly one check/action/award/receipt. The complete sample matrix
+   remains separate work. Earlier field and half-height failures are preserved
+   under `.artifacts/t24/native-followup-149/` and
+   `.artifacts/t24/native-fields-150/`.
+   Canonical validation on the final detent source exits 0: 207 suites / 3,069
+   tests, all 105 core files at 100 percent on all four metrics, 3,151/3,489
+   non-core branches (90.31 percent), and clean lint/typechecking. Evidence is
+   under `.artifacts/t24/final-detent/`. Both current mapped production exports
+   pass with actual Hermes bytecode, exact 62-route contexts and no foreign
+   checkout origins. Their source maps match 297 authored src files plus one
+   local-module file on iOS, and 296 src files with no local-module entry on
+   Android. Android resolves the generic platform adapters. All 1,010 recorded
+   export inputs were unchanged throughout both exports and verification. Two color-environment warnings per platform
+   remain disclosed; no export/source errors occurred. These exports do not
+   establish final native packaging or physical installation. The 78-file
+   export evidence package is independently hash-verified under
+   `.artifacts/t24/production-exports/`.

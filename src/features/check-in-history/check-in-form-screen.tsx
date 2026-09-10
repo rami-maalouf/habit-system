@@ -7,7 +7,7 @@ import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { Alert, Platform, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, TextInput, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
 import {
@@ -126,6 +126,7 @@ function instantFor(
 export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckInFormScreenProps) {
   const router = useProductRouter();
   const scheme = useScheme();
+  const { fontScale } = useWindowDimensions();
   const { core, scope } = useProduct();
   const activity = useProductActivity(scope);
   const navigation = useNavigation();
@@ -253,7 +254,7 @@ export function CheckInFormScreen({ boardId, checkInId, source = 'app' }: CheckI
   return (
     <BottomSheet
       ref={sheetRef}
-      snapPoints={['50%', '100%']}
+      snapPoints={fontScale > 1.3 ? ['100%'] : ['50%', '100%']}
       enablePanDownToClose
       onClose={closeFromSheet}
       backgroundStyle={{ backgroundColor: semanticColor('groupedBackground', scheme) as string }}
@@ -293,6 +294,11 @@ function CheckInFormBody({
   const router = useProductRouter();
   const navigation = useNavigation();
   const scheme = useScheme();
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
+  const fieldRowStyle: ViewStyle = largeText
+    ? { gap: spacing.sm }
+    : { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' };
   const { core, scope, invalidate, nextCommandId } = useProduct();
   const activity = useProductActivity(scope);
   const productZone = core.clock.timeZoneId();
@@ -482,26 +488,49 @@ function CheckInFormBody({
       {/* the sheet has no navigator header, so the bar lives in content */}
       <View
         style={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.lg,
+          gap: largeText ? spacing.sm : 0,
+        }}
+      >
+        {largeText ? (
+          <AppText variant="headline" accessibilityRole="header" selectable={false}>
+            {record ? 'Edit Check-in' : 'Add Check-in'}
+          </AppText>
+        ) : null}
+        <View style={{
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingHorizontal: spacing.lg,
-          paddingTop: spacing.lg,
-        }}
-      >
-        <ProductPressable onPress={() => router.back()} label="Cancel" testID="check-in-cancel">
-          <AppText selectable={false}>Cancel</AppText>
-        </ProductPressable>
-        <AppText variant="headline" accessibilityRole="header" selectable={false}>
-          {record ? 'Edit Check-in' : 'Add Check-in'}
-        </AppText>
-        <ProductPressable onPress={save} label="Save check-in" testID="check-in-save">
-          <AppText variant="headline" selectable={false}>
-            Save
-          </AppText>
-        </ProductPressable>
+          gap: largeText ? spacing.md : 0,
+        }}>
+          <ProductPressable
+            onPress={() => router.back()}
+            label="Cancel"
+            testID="check-in-cancel"
+            style={largeText ? { flexShrink: 1 } : undefined}
+          >
+            <AppText selectable={false}>Cancel</AppText>
+          </ProductPressable>
+          {!largeText ? (
+            <AppText variant="headline" accessibilityRole="header" selectable={false}>
+              {record ? 'Edit Check-in' : 'Add Check-in'}
+            </AppText>
+          ) : null}
+          <ProductPressable
+            onPress={save}
+            label="Save check-in"
+            testID="check-in-save"
+            style={largeText ? { flexShrink: 1 } : undefined}
+          >
+            <AppText variant="headline" selectable={false}>
+              Save
+            </AppText>
+          </ProductPressable>
+        </View>
       </View>
       <ScrollView
+        style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
         keyboardShouldPersistTaps="handled"
@@ -533,7 +562,7 @@ function CheckInFormBody({
             gap: spacing.md,
           }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={fieldRowStyle}>
             <AppText>Date</AppText>
             <DateTimePicker
               value={dateFromLogical(logicalDate, productZone)}
@@ -545,19 +574,19 @@ function CheckInFormBody({
               maximumDate={dateCeiling(today, productZone)}
               accentColor={colors.accent}
               onValueChange={(_event, date) => changeDate(date)}
-              style={{ width: 150, height: 36 }}
+              style={largeText ? { alignSelf: 'stretch' } : { width: 150, height: 36 }}
               testID="check-in-date"
             />
           </View>
           {board.tracksTime ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={fieldRowStyle}>
               <AppText>Time</AppText>
               <DateTimePicker
                 value={timePickerValue}
                 timeZoneName={timeZone}
                 mode="time"
                 display="compact"
-                style={{ width: 110, height: 36 }}
+                style={largeText ? { alignSelf: 'stretch' } : { width: 110, height: 36 }}
                 accentColor={colors.accent}
                 onValueChange={(_event, date) => {
                   if (!activity.active || !navigation.isFocused() || busyRef.current || attemptRef.current || completedRef.current) return;
@@ -578,7 +607,7 @@ function CheckInFormBody({
             </View>
           ) : null}
           {board.tracksAmount ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={fieldRowStyle}>
               <AppText>{board.amountUnit ? `Amount (${board.amountUnit})` : 'Amount'}</AppText>
               <TextInput
                 accessibilityLabel="Amount"

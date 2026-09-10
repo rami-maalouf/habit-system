@@ -1,6 +1,6 @@
 import { cleanup } from '@testing-library/react-native';
 import { getMockContext } from 'expo-router/testing-library';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 
 import { createBoard } from '@/core/domain/commands';
 import { getGroupedCheckInHistory } from '@/core/domain/queries';
@@ -102,7 +102,9 @@ describe.each(['ios', 'android'] as const)('%s picker civil time in a Toronto co
   });
   afterEach(() => { cleanup(); jest.restoreAllMocks(); });
 
-  it('preserves untouched Toronto noon through Save and actual history reopen', async () => {
+  it.each([1, 3.57])('preserves untouched Toronto noon through Save and actual history reopen at font scale %s', async (fontScale) => {
+    const window = Dimensions.get('window');
+    jest.spyOn(Dimensions, 'get').mockReturnValue({ ...window, fontScale });
     const context = await seed();
     expect(screen.getByTestId('check-in-time')).toHaveTextContent('12:00', { exact: true });
     await saveAndReopen(context, '2026-09-09', '2026-09-09T16:00:00Z', '12:00');
