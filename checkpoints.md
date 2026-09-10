@@ -3472,14 +3472,12 @@ reopening have retained evidence. T19/Checkpoint C external gates remain open.
 
 ### T24 - cosmetic rename and final closure (in progress)
 
-Status: cosmetic source and final regression corrections are implemented and
-independently reviewed. Automated gates pass in isolation and in the main
-checkout; production exports also pass. The fresh signed simulator build passes
-its artifact checks and the completed sample walkthrough passes. The final
-unsigned physical Release contains the latest UI and complete
-Shortcuts assets and passes package verification. The final Debug check, requested
-iPhone installation and actual two-target CloudKit convergence remain open.
-T24 and Checkpoints C/D are not complete.
+Status: local implementation, independent review, automated gates, production
+exports and native build/package checks pass. The complete sample walkthrough
+passes, and the final signed Debug app launches from the correct Metro project.
+The final unsigned physical Release contains the latest UI and complete Shortcuts
+assets. Requested iPhone signing/installation and actual two-target CloudKit
+convergence remain open. T24 and Checkpoints C/D are not complete.
 
 1. README and remaining public Settings/native display names identify Habit
    System while preserving fork attribution and allowed internal identifiers.
@@ -3609,3 +3607,39 @@ T24 and Checkpoints C/D are not complete.
    is under `.artifacts/t24/final-physical-preparation/`. Compiler Release does
    not choose the CloudKit environment, and unsigned entitlement inputs do not
    establish authorized Apple capabilities.
+9. The final Debug build exits 0 in 331.506 seconds after explicit non-clean
+   generation and ordinary Pods installation. The built plist retains both
+   development network keys, with main plist processing before the cleanup
+   phase and no cycle or named scheduling warning. All eight images across
+   sixteen architecture pairs pass package/linkage checks, and packaged
+   Shortcuts training assets are present. A signing-only copy uses the existing
+   Apple Development identity; all eight code targets carry the expected team,
+   deep-strict signature verification passes, and executable/entitlement
+   sections match the new unsigned build. Compared with the previous artifact,
+   the widget's arm64 code section differs; the other fifteen pairs match.
+   Root archives the package and runs the relocated verifier successfully under
+   `.artifacts/t24/debug-final/`.
+   The signed copy installs in place on the owned simulator and preserves the
+   database triplet byte-for-byte before launch. Its first normal launch shows
+   real Home with the original boards and zero coins. Read-only runtime evidence
+   reports a server-loaded bundle on port 8082 and the exact Cosmetic project
+   root. Installed Debug plist keys and all eight signed images match the
+   artifact. No sample factory or prototype observers run. Normal housekeeping
+   adds one updated:0 receipt; all other real tables and existing receipts stay
+   exact. The App Group preferences plist changes during normal launch; its
+   retained final bytes contain widget layout/timeline data, while only the
+   prior hash/size was captured. No key-level before/after claim is made.
+   The Home-only native log has zero Picker, animation-listener, fatal
+   or deallocated-AppContext events. This does not replace the fourteen Picker
+   warnings retained from the separate form/picker matrix. Owned services stop
+   and protected resources remain unchanged after verification. Root runs the
+   relocated 56-check verifier under `.artifacts/t24/debug-connectivity/`.
+10. The final safe readiness check at 2026-09-10 06:02:58 UTC still finds no
+    persisted Xcode Apple account or matching team and reports the paired iPhone
+    disconnected. Current lock state and a live authenticated Apple session are
+    not established. No physical signing, provisioning, installation or launch
+    has occurred. Existing authorization permits ordinary exact-identity signing
+    and an in-place install once the account and phone are accessible. Actual
+    two-target CloudKit convergence remains a separate required acceptance gate;
+    local tests and simulator signing do not satisfy it. The two declined sync
+    proposals remain excluded. T19/Checkpoint C and T24/Checkpoint D stay open.
