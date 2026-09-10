@@ -1,6 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { IOSConfig, withAppDelegate, withDangerousMod, withEntitlementsPlist, withInfoPlist, withPodfileProperties, withXcodeProject } = require('expo/config-plugins');
+const { IOSConfig, withAppDelegate, withDangerousMod, withEntitlementsPlist, withFinalizedMod, withInfoPlist, withPodfileProperties, withXcodeProject } = require('expo/config-plugins');
 const { generateImageAsync } = require('@expo/image-utils');
 
 const alternateIcons = ['midnight', 'paper'];
@@ -117,6 +117,28 @@ function withRipplesApple(config) {
     });
     return mod;
   });
+  config = withFinalizedMod(config, ['ios', async (mod) => {
+    // widget xcode mods can append embedding phases after the local xcode mod.
+    const project = IOSConfig.XcodeUtils.getPbxproj(mod.modRequest.projectRoot);
+    const projectName = mod.modRequest.projectName;
+    const { target } = IOSConfig.XcodeUtils.getApplicationNativeTarget({ project, projectName });
+    const devLauncherPhaseName = '"[Expo Dev Launcher] Strip Local Network Keys for Release"';
+    const shellPhases = project.hash.project.objects.PBXShellScriptBuildPhase;
+    const devLauncherPhases = target.buildPhases
+      .filter((reference) => shellPhases?.[reference.value]?.name === devLauncherPhaseName);
+    if (devLauncherPhases.length !== 1) {
+      throw new Error('ripples-apple requires exactly one dev launcher network-key phase on the application target');
+    }
+    const devLauncherReference = devLauncherPhases[0];
+    const devLauncherPhase = shellPhases[devLauncherReference.value];
+    // the processed plist depends on embedded extensions, so strip only after embedding.
+    target.buildPhases = target.buildPhases.filter((reference) => reference !== devLauncherReference);
+    target.buildPhases.push(devLauncherReference);
+    devLauncherPhase.inputPaths = ['"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)"'];
+    devLauncherPhase.alwaysOutOfDate = 1;
+    await fs.writeFile(project.filepath, project.writeSync());
+    return mod;
+  }]);
   return config;
 }
 

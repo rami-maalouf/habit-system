@@ -3443,9 +3443,9 @@ gates remain open.
 Status: cosmetic source and final regression corrections are implemented and
 independently reviewed. Automated gates pass in isolation and in the main
 checkout; production exports also pass. The fresh signed simulator build passes
-its artifact checks and its native walkthrough continues. The physical Release
-compiles, but its development-network plist cleanup fails package verification.
-That correction, the requested iPhone installation and actual two-target CloudKit
+its artifact checks and its native walkthrough continues. The corrected physical
+Release build passes its development-network plist cleanup check. Packaging the
+latest UI with complete Shortcuts assets, the requested iPhone installation and actual two-target CloudKit
 convergence remain open. T24 and Checkpoints C/D are not complete.
 
 1. README and remaining public Settings/native display names identify Habit
@@ -3506,3 +3506,25 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
    proof. The unsigned physical Release compile is not an installable build.
    No iPhone install/launch, live two-target CloudKit convergence or Checkpoint
    C/D completion is asserted.
+6. The actual Release failure is corrected in the local config plugin. Its
+   finalized mod moves the unchanged DevLauncher cleanup after widget embedding
+   and declares the processed app plist as its input. Directed tests reproduce
+   both the missing dependency and later widget-plugin ordering before passing
+   the correction; actual CNG/Pods composition is repeatable. The corrected
+   unsigned build exits 0 and orders widget copy, main plist processing, then
+   cleanup. Final default Expo network keys are absent, with no build cycle or
+   named script ambiguity warning. Source plist bytes and all six native images
+   are unchanged. Evidence is under `.artifacts/t24/release-phase-correction/`
+   and `.artifacts/t24/physical-ordering/`. This package predates the latest UI.
+   Its three generated Shortcuts training assets are missing despite retained
+   action/shortcut definitions; the final package must restore and verify them
+   through the supported build. The original unsigned inputs were Development;
+   this corrected ordering probe explicitly used Production. The final phone
+   build follows the existing preview Development configuration.
+   The template-based plugin suite exposed a context-dependent Bun 1.3.14
+   subprocess failure. The existing node:test suite now runs with Node through
+   `bun run test:native`; two plist assertions normalize only the parsed root
+   prototype while retaining complete key/value equality. Canonical main native
+   checks pass 14 plugin and 195 Swift tests. No production script, dependency,
+   lockfile, assertion or coverage threshold is weakened. The precise Bun cause
+   remains unproven. Evidence is under `.artifacts/t24/native-test-runner/`.

@@ -3,6 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const xcode = require('xcode');
+const plist = require('@expo/plist').default;
+const withDevLauncher = require('expo-dev-launcher/plugin/build/withDevLauncher').default;
 const { getPngInfo } = require('@expo/image-utils');
 const { configureEntitlements, configureInfoPlist, writeAlternateIcons } = require('../../plugin');
 const withRipplesApple = require('../../plugin');
@@ -33,6 +37,168 @@ async function applyAppDelegateMod(contents, language = 'swift') {
     modResults: { path: '/fixture/AppDelegate.swift', language, contents },
   });
 }
+
+const devLauncherPhaseName = '[Expo Dev Launcher] Strip Local Network Keys for Release';
+
+async function withTemplateProject(action) {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ripples-project-config-'));
+  try {
+    const projectPath = path.join(directory, 'ios/HelloWorld.xcodeproj/project.pbxproj');
+    await fs.mkdir(path.dirname(projectPath), { recursive: true });
+    const template = execFileSync('tar', ['-xOf', require.resolve('expo/template.tgz'),
+      'package/ios/HelloWorld.xcodeproj/project.pbxproj']);
+    await fs.writeFile(projectPath, template);
+    await action(xcode.project(projectPath).parseSync());
+  } finally {
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function applyProjectMod(project, includeDevLauncher = true, afterXcode = () => {}) {
+  let config = withRipplesApple({ ios: { bundleIdentifier: 'studio.orbitlabs.habitsystem' } });
+  if (includeDevLauncher) config = withDevLauncher(config);
+  await config.mods.ios.xcodeproj({
+    ...config,
+    modRequest: { platform: 'ios', modName: 'xcodeproj', projectName: 'HelloWorld' },
+    modResults: project,
+  });
+  afterXcode(project);
+  await fs.writeFile(project.filepath, project.writeSync());
+  if (config.mods.ios.finalized) {
+    await config.mods.ios.finalized({ ...config,
+      modRequest: { platform: 'ios', modName: 'finalized', projectName: 'HelloWorld',
+        projectRoot: path.resolve(project.filepath, '../../..') }, modResults: {} });
+  }
+  project.parseSync();
+}
+
+test('dev launcher reads the processed plist after embedding without changing its script or other targets', async () => {
+  await withTemplateProject(async (project) => {
+    let target = project.getFirstTarget();
+    const otherTarget = project.generateUuid();
+    project.pbxNativeTargetSection()[otherTarget] = {
+      ...structuredClone(target.firstTarget), name: 'Widget',
+      productType: '"com.apple.product-type.app-extension"', buildPhases: [],
+    };
+    project.addBuildPhase([], 'PBXShellScriptBuildPhase', devLauncherPhaseName, otherTarget,
+      { shellPath: '/bin/sh', shellScript: 'echo widget' });
+    project.addBuildPhase([], 'PBXShellScriptBuildPhase', `${devLauncherPhaseName} Extra`, target.uuid,
+      { shellPath: '/bin/sh', shellScript: 'echo unrelated' });
+    project.addBuildPhase([], 'PBXCopyFilesBuildPhase', 'Embed Foundation Extensions', target.uuid,
+      'app_extension');
+    project.addBuildPhase([], 'PBXShellScriptBuildPhase', '[CP] Embed Pods Frameworks', target.uuid,
+      { shellPath: '/bin/sh', shellScript: 'echo frameworks' });
+    await applyProjectMod(project);
+    target = project.getFirstTarget();
+    const phases = project.hash.project.objects.PBXShellScriptBuildPhase;
+    const selected = target.firstTarget.buildPhases.filter((reference) =>
+      phases[reference.value]?.name === `"${devLauncherPhaseName}"`);
+    assert.equal(selected.length, 1);
+    const phase = phases[selected[0].value];
+    assert.equal(phase.alwaysOutOfDate, 1);
+    assert.deepEqual(phase.inputPaths, ['"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)"']);
+    assert.deepEqual(phase.outputPaths, []);
+    assert.equal(target.firstTarget.buildPhases.at(-1).value, selected[0].value);
+    assert.equal(target.firstTarget.buildPhases.at(-2).comment, '[CP] Embed Pods Frameworks');
+    const [reference] = target.firstTarget.buildPhases.splice(-1, 1);
+    const widgetIndex = target.firstTarget.buildPhases.findIndex((item) => item.comment === 'Embed Foundation Extensions');
+    target.firstTarget.buildPhases.splice(widgetIndex, 0, reference);
+    phase.inputPaths = [];
+    delete phase.alwaysOutOfDate;
+    const before = structuredClone(project.hash);
+    const expected = structuredClone(before);
+    expected.project.objects.PBXShellScriptBuildPhase[selected[0].value].alwaysOutOfDate = 1;
+    expected.project.objects.PBXShellScriptBuildPhase[selected[0].value].inputPaths = ['"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)"'];
+    const expectedPhases = expected.project.objects.PBXNativeTarget[target.uuid].buildPhases;
+    const [expectedReference] = expectedPhases.splice(widgetIndex, 1);
+    expectedPhases.push(expectedReference);
+    await applyProjectMod(project);
+    assert.deepEqual(structuredClone(project.hash), expected);
+    await applyProjectMod(project);
+    assert.deepEqual(structuredClone(project.hash), expected);
+  });
+});
+
+test('dev launcher ordering is finalized after a later widget xcode mod appends its embedding phase', async () => {
+  await withTemplateProject(async (project) => {
+    await applyProjectMod(project, true, (current) => {
+      current.addBuildPhase([], 'PBXCopyFilesBuildPhase', 'Embed Foundation Extensions',
+        current.getFirstTarget().uuid, 'app_extension');
+    });
+    const references = project.getFirstTarget().firstTarget.buildPhases;
+    assert.equal(references.at(-1).comment, devLauncherPhaseName);
+    assert.equal(references.at(-2).comment, 'Embed Foundation Extensions');
+  });
+});
+
+test('unchanged dev launcher script strips only its release values and preserves debug and custom plist entries', async () => {
+  await withTemplateProject(async (project) => {
+    const config = withDevLauncher({});
+    await config.mods.ios.xcodeproj({
+      ...config,
+      modRequest: { platform: 'ios', modName: 'xcodeproj', projectName: 'HelloWorld' },
+      modResults: project,
+    });
+    const phases = project.hash.project.objects.PBXShellScriptBuildPhase;
+    const reference = project.getFirstTarget().firstTarget.buildPhases.find((item) =>
+      phases[item.value]?.name === `"${devLauncherPhaseName}"`);
+    await fs.writeFile(project.filepath, project.writeSync());
+    const upstream = JSON.parse(execFileSync('/usr/bin/plutil',
+      ['-convert', 'json', '-o', '-', project.filepath], { encoding: 'utf8' }));
+    const upstreamScript = upstream.objects[reference.value].shellScript;
+    await applyProjectMod(project);
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ripples-release-plist-'));
+    try {
+      const plistPath = path.join(directory, 'App With Spaces.app/Info.plist');
+      await fs.mkdir(path.dirname(plistPath), { recursive: true });
+      const scriptPath = path.join(directory, 'strip.sh');
+      await fs.writeFile(project.filepath, project.writeSync());
+      const serialized = JSON.parse(execFileSync('/usr/bin/plutil',
+        ['-convert', 'json', '-o', '-', project.filepath], { encoding: 'utf8' }));
+      assert.equal(serialized.objects[reference.value].shellScript, upstreamScript);
+      await fs.writeFile(scriptPath, serialized.objects[reference.value].shellScript);
+      const defaultDescription = 'Expo Dev Launcher uses the local network to discover and connect to development servers running on your computer.';
+      for (const configuration of ['Debug', 'Release']) {
+        for (const custom of [false, true]) {
+          const original = {
+            CFBundleIdentifier: 'studio.orbitlabs.habitsystem',
+            NSBonjourServices: custom ? ['_custom._tcp', '_expo._tcp', '_other._udp'] : ['_expo._tcp'],
+            NSLocalNetworkUsageDescription: custom ? 'Find my household devices.' : defaultDescription,
+          };
+          const originalBytes = plist.build(original);
+          await fs.writeFile(plistPath, originalBytes);
+          execFileSync('/bin/sh', [scriptPath], { env: { ...process.env,
+            CONFIGURATION: configuration, TARGET_BUILD_DIR: directory,
+            INFOPLIST_PATH: 'App With Spaces.app/Info.plist' } });
+          const actualBytes = await fs.readFile(plistPath, 'utf8');
+          const expected = configuration === 'Debug' ? original : {
+            CFBundleIdentifier: 'studio.orbitlabs.habitsystem',
+            ...(custom ? { NSBonjourServices: ['_custom._tcp', '_other._udp'],
+              NSLocalNetworkUsageDescription: 'Find my household devices.' } : {}),
+          };
+          assert.deepEqual({ ...plist.parse(actualBytes) }, expected);
+          if (configuration === 'Debug') assert.equal(actualBytes, originalBytes);
+          execFileSync('/bin/sh', [scriptPath], { env: { ...process.env,
+            CONFIGURATION: configuration, TARGET_BUILD_DIR: directory,
+            INFOPLIST_PATH: 'App With Spaces.app/Info.plist' } });
+          assert.deepEqual({ ...plist.parse(await fs.readFile(plistPath, 'utf8')) }, expected);
+        }
+      }
+    } finally {
+      await fs.rm(directory, { recursive: true, force: true });
+    }
+  });
+});
+
+test('dev launcher phase configuration fails clearly when the application phase is missing or duplicated', async () => {
+  await withTemplateProject(async (project) => {
+    await assert.rejects(applyProjectMod(project, false), /exactly one.*dev launcher.*application/i);
+    await applyProjectMod(project);
+    project.addBuildPhase([], 'PBXShellScriptBuildPhase', devLauncherPhaseName, project.getFirstTarget().uuid,
+      { shellPath: '/bin/sh', shellScript: 'echo duplicate' });
+    await assert.rejects(applyProjectMod(project), /exactly one.*dev launcher.*application/i);
+  });
+});
 
 test('native generation keeps react and expo modules in the same source build mode', async () => {
   const apply = async (properties) => {
