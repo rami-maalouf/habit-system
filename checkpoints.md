@@ -3707,3 +3707,29 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
     Read-only installed simulator CLI discovery exposes no network-condition
     control; no host networking is altered. T19/Checkpoint C and T24/Checkpoint D
     remain open. The two declined sync designs remain excluded.
+15. Rami completes Xcode sign-in. Direct UI shows the developer team with Admin
+    and Certificates, Identifiers, & Profiles access; normal account-based
+    automatic signing succeeds in 91.05 seconds. The exact main/widget profiles
+    include this iPhone, cover the actual signer, and authorize team `3V2UU7RRK9`.
+    Signed entitlements carry the exact App Group and, for the main app, the
+    exact CloudKit container with Development environment and development push.
+    Both profiles expire on 2027-09-10. All six arm64 device images pass strict
+    signatures and recursive linkage, the app passes deep-strict verification,
+    and complete Shortcuts training assets remain present. All 151 frozen paths
+    match, including memory adapter `4ff1e95b...`. The new 3,565,828-byte Hermes
+    bundle maps to the current 297 source files, native bridge and all 62 routes.
+    Widget copying precedes plist processing and Release cleanup; default
+    development network keys are absent, with no named phase ambiguity/cycle.
+    CoreDevice successfully installs Habit System 1.0.0 (1) on the exact iPhone.
+    The fork was absent before installation; no existing fork database upgrade
+    or migration is claimed, and no other app is uninstalled. Launch is refused
+    with `FBSOpenApplicationErrorDomain` 7 because the phone has relocked. A
+    bounded 120-second watcher observes twelve locked states, performs no extra
+    launch or reinstall, then stops. Installation and capability proof pass;
+    physical launch/visual acceptance remain unconfirmed. Root runs the final
+    installation verifier successfully under `.artifacts/t24/phone-installation/`.
+    The safe archive covers 24 evidence files; the separately retained signed
+    app has 195 verified files. No credentials or raw profile bodies are copied
+    into the repository archive. All owned signing/readiness processes and
+    temporary credential files are gone. This supersedes the signing blocker
+    above; live service acceptance still requires the separate test setup.
