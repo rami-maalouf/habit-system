@@ -3178,9 +3178,10 @@ remain open.
 
 ### T23 - isolated sample navigation and effects (in progress)
 
-Status: implementation is proceeding in reviewed increments. No complete
-sample UI, native navigation or real-provider suspension acceptance is claimed.
-T19/Checkpoint C external gates remain open.
+Status: route/runtime implementation and independent automated review are
+complete. Actual native sample acceptance remains open, including cold entry,
+native sheets and final real-store/effect isolation. T19/Checkpoint C external
+gates remain open.
 
 1. The first increment separates import-safe context/hooks and introduces
    a stable operation owner. A captured scope never becomes current again
@@ -3392,3 +3393,47 @@ T19/Checkpoint C external gates remain open.
     without diagnostics. Root independently reviewed all four files, verified
     final hashes and reran forty-four cases across two suites. Owned lint
     passes; production routes and actual native geometry remain later gates.
+
+20. Settings > Utilities now exposes sample entry. Accepted external links use
+    captured effects; sample Settings explains their unavailability. The symbol
+    and anchor native-host trees include banner/Close inside their presentation
+    and accessibility boundaries. Fourteen directed picker regressions reject
+    old local callbacks after same-scope cover/return while preserving drafts
+    and fresh saves; the final focused run passes seventy tests across five
+    suites. Source and routed reviews are complete; native sheet geometry is a
+    separate acceptance requirement.
+21. The actual route graph now separates an inert root from the real product
+    navigator and a full-screen sample navigator. Cold sample entry does not
+    initialize the real runtime. Covered real forms retain their core and drafts;
+    nested sample routes, hardware Back, external replacement and accepted work
+    use the same Close/disposal contract. Development routes remain real-only.
+    Export-cache cleanup moved from the root to one guarded real-runtime mount,
+    with no repeat on pause/resume or StrictMode replay and no cold sample call.
+    Actual Router/SQLite controls and independent composition review pass.
+22. Generated-route typechecking exposed synthetic test URLs that an ungenerated
+    worktree had missed. Narrow Href annotations preserve those test literals;
+    no production route typing was weakened. The actual current route declaration
+    also passes typechecking. A warm unknown sample path initially created a
+    duplicate presentation; dismiss-to recovery now retains one sample host and
+    closes to the original real Settings route. Twenty-three actual-tree cases
+    and the two original independent composition probes pass.
+23. Two inherited form assertions now verify the retained exact-attempt editor
+    and definitive archived read-only result through real commands and complete
+    SQL-row checks. The initial full-run failures remain recorded. Meaningful
+    Coins/reward controls then close the non-core coverage gap without changing
+    thresholds. The T23 candidate passes 206 suites / 3,066 tests, with all 105
+    core files fully covered. That passing run still contained five lint warnings;
+    the earlier warning-free summary was incorrect. Their reviewed correction
+    and the final composed gate belong to T24.
+24. Actual T23 native acceptance remains open. The retained older native binary
+    reproduced ExpoFabricView's lost-context fatal during the explicit cold
+    launch/development-client/sample sequence, including a second run without
+    prototype observers. A fresh stable Home > Settings > Try a sample run
+    reached the generated sample and returned to Settings without that fatal.
+    The controls distinguish those paths but do not prove the underlying native
+    context lifetime fixed or complete the sheet, isolation and disposal matrix.
+    Root independently reviews the ready screenshot and reruns the relocated
+    verifiers: 66 partial checks and 75 discriminator checks pass. Evidence is
+    under `.artifacts/t23/native-partial/` and
+    `.artifacts/t23/crash-discriminator/`. Final dependency/native composition
+    and its acceptance remain required.

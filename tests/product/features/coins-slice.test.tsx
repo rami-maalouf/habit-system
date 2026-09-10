@@ -1,5 +1,6 @@
 import { act, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
+import { Dimensions } from 'react-native';
 
 import { createBoard, createCheckIn, toggleDailyCheckIn } from '@/core/domain/commands';
 import type { BoardId, LedgerEntryId, LogicalDate, RewardId } from '@/core/domain/ids';
@@ -25,9 +26,12 @@ async function seed(title: string, root?: BoardId) {
   return result.value.boardId;
 }
 async function press(id: string) { fireEvent.press(screen.getByTestId(id)); await settle(); }
+const originalWindow = Dimensions.get('window');
+const originalScreen = Dimensions.get('screen');
 
 describe('Coins routes', () => {
   beforeEach(() => { jest.restoreAllMocks(); resetProductCoreForTests(); mockClock.utcMs = Date.UTC(2026, 8, 8, 16); });
+  afterEach(() => { act(() => Dimensions.set({ window: originalWindow, screen: originalScreen })); });
 
   it('opens Coins from the balance pill, shows truthful empty states, and navigates through history and back', async () => {
     renderRouter('src/app', { initialUrl: '/' });
@@ -64,7 +68,8 @@ describe('Coins routes', () => {
     expect(screen.getByTestId('coins-spent')).toHaveTextContent('1');
   });
 
-  it('shows the original awards, reversals and fresh completion in one exact-date history group', async () => {
+  it.each([1, 2.8])('shows the original awards, reversals and fresh completion in one exact-date history group at font scale %s', async fontScale => {
+    act(() => Dimensions.set({ window: { ...originalWindow, width: 393, fontScale }, screen: originalScreen }));
     const root = await seed('Read');
     const member = await seed('Reflect', root);
     for (const boardId of [root, member]) expect((await createCheckIn(await core(), { commandId: newCommandId(), boardId, source: 'app' })).ok).toBe(true);
@@ -75,8 +80,12 @@ describe('Coins routes', () => {
     expect(await screen.findByTestId('coins-balance')).toHaveTextContent('3');
     expect(screen.getByTestId('coins-earned')).toHaveTextContent('5');
     expect(screen.getByTestId('coins-spent')).toHaveTextContent('2');
+    fireEvent(screen.getByTestId('coins-screen'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: 700 } } });
+    await settle();
     await press('coins-history-link');
     await screen.findByTestId(`coin-history-row-${rows[0].id}`);
+    fireEvent(screen.getByTestId('coin-history-list'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: 700 } } });
+    await settle();
     const list = within(screen.getByTestId('coin-history-list'));
     expect(list.getAllByTestId(/^coin-history-row-/).map(row => row.props.testID)).toEqual(rows.map(row => `coin-history-row-${row.id}`));
     expect(list.getAllByTestId('coin-history-date-2026-09-08')).toHaveLength(1);
@@ -84,6 +93,9 @@ describe('Coins routes', () => {
     expect(list.getByText('Stack bonus reversed')).toBeOnTheScreen();
     expect(list.getByText('Check-in reward reversed')).toBeOnTheScreen();
     expect(list.getAllByText('Stack rooted at Read')).toHaveLength(3);
+    act(() => router.back()); await settle();
+    expect(screen).toHavePathname('/coins');
+    expect(screen.getByTestId('coins-balance')).toHaveTextContent('3');
   });
 
   it('shows a negative balance and immutable reward title even without a reward record', async () => {

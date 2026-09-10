@@ -1,13 +1,15 @@
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import * as WebBrowser from 'expo-web-browser';
-import { Linking, ScrollView, View } from 'react-native';
+import { Stack } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/foundation/app-text';
-import { getExportMeta } from '@/platform/data-transfer';
+import { getExportMeta } from '@/platform/app-metadata';
 import { semanticColor, spacing } from '@/theme';
 
 import { useScheme } from '../ui';
+import { useProduct } from '../product-store/context';
+import { useProductActivity } from '../product-store/use-product-activity';
+import { productHref, useProductRouter } from '../sample/navigation';
 import { releaseLink } from './release-links';
 import type { ReleaseLinkKey } from './release-links';
 import { SettingsGroup, SettingsRow } from './rows';
@@ -15,12 +17,20 @@ import { SettingsGroup, SettingsRow } from './rows';
 // the grouped settings sheet mirroring the reference: notifications first,
 // support and feedback, more products, data, utilities, app information
 export function SettingsScreen() {
-  const router = useRouter();
+  const router = useProductRouter();
+  const { scope } = useProduct();
+  const activity = useProductActivity(scope);
   const scheme = useScheme();
   const [linkNotice, setLinkNotice] = useState<string | null>(null);
+  const openingLink = useRef(false);
   const meta = getExportMeta();
 
   const openLink = useCallback((key: ReleaseLinkKey, title: string) => {
+    if (!activity.active || openingLink.current) return;
+    if (scope.kind === 'sample') {
+      setLinkNotice('External links are unavailable in sample mode.');
+      return;
+    }
     const url = releaseLink(key);
     if (url === null) {
       // development builds carry no release links; the state is explicit
@@ -31,11 +41,13 @@ export function SettingsScreen() {
     // support and legal destinations open in the in-app browser so the
     // person never loses their place; a store or mail scheme has to leave
     const inApp = url.startsWith('https://') && key !== 'appStoreReview';
-    const open = inApp ? WebBrowser.openBrowserAsync(url) : Linking.openURL(url);
-    void open.catch(() => {
-      setLinkNotice(`${title} could not be opened. Try again.`);
-    });
-  }, []);
+    openingLink.current = true;
+    void scope.run(async ({ effects }) => {
+      if (effects.kind === 'real') await effects.openReleaseLink(url, inApp);
+    }).catch(() => {
+      if (activity.active) setLinkNotice(`${title} could not be opened. Try again.`);
+    }).finally(() => { openingLink.current = false; });
+  }, [scope, activity]);
 
   return (
     <View style={{ flex: 1, backgroundColor: semanticColor('groupedBackground', scheme) }}>
@@ -110,6 +122,11 @@ export function SettingsScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Utilities">
+          {scope.kind === 'real' ? <SettingsRow
+            title="Try a sample"
+            onPress={() => router.push(productHref('sample', '/'))}
+            testID="settings-sample"
+          /> : null}
           <SettingsRow
             title="Export Data"
             onPress={() => router.push('/settings/export')}

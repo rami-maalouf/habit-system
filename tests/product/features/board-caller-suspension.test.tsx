@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router, useLocalSearchParams } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useState, useSyncExternalStore } from 'react';
 import { Alert, Text } from 'react-native';
 
@@ -26,7 +26,7 @@ function held<Args extends unknown[], Result>(actual: (...args: Args) => Promise
 }
 const effects: FeatureEffects = { kind: 'real', reminders: reminderScheduler, missAlerts: missAlertScheduler,
   cloudKitAvailable: jest.fn(), pickImportFile: jest.fn(), saveAndShareExport: jest.fn(),
-  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn() };
+  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(), openReleaseLink: jest.fn() };
 
 jest.mock('expo-haptics', () => ({ impactAsync: jest.fn(() => Promise.resolve()), ImpactFeedbackStyle: { Light: 'light' } }));
 
@@ -75,7 +75,7 @@ describe('board caller operation and navigation ownership', () => {
   async function resume() { act(() => owner.resume()); await settle(); }
   async function retire(mode: 'scope' | 'cover') {
     if (mode === 'scope') { await pause(); await resume(); }
-    else { act(() => router.push('/cover')); await settle(); act(() => router.back()); await settle(); }
+    else { act(() => router.push('/cover' as Href)); await settle(); act(() => router.back()); await settle(); }
   }
   async function joinHeld(wait: { entered: ReturnType<typeof gate>; response: ReturnType<typeof gate> }) {
     await wait.entered.promise;
@@ -189,7 +189,7 @@ describe('board caller operation and navigation ownership', () => {
     const list = screen.UNSAFE_getByType(HistoryList); act(() => list.props.onOpen(id)); await settle(); expect(screen).toHavePathname(`/sample/boards/${boardId}/check-ins/${id}`);
     act(() => router.back()); await settle(); await press('add-check-in'); expect(screen).toHavePathname(`/sample/boards/${boardId}/check-ins/new`);
     await commands.archiveBoard(h.deps, { commandId: h.ids.nextCommandId(), boardId });
-    act(() => router.replace('/sample/settings/archived')); await settle(); const old = callback(`archived-board-${boardId}`);
+    act(() => router.replace('/sample/settings/archived' as Href)); await settle(); const old = callback(`archived-board-${boardId}`);
     await retire('scope'); act(() => old()); await settle(); expect(screen).toHavePathname('/sample/settings/archived');
     await press(`archived-board-${boardId}`); expect(screen).toHavePathname(`/sample/boards/${boardId}`);
   });

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { archiveBoard, createBoard, deleteBoard, setAnchorPresetMinute, updateBoard } from '@/core/domain/commands';
+import * as commands from '@/core/domain/commands';
 import type { BoardId } from '@/core/domain/ids';
 import { getBoard, listActiveBoards } from '@/core/domain/queries';
 import * as queries from '@/core/domain/queries';
@@ -229,12 +230,18 @@ describe('board anchor configuration', () => {
     await picker();
     await press('anchor-preset-lunch');
     await press('anchor-picker-done');
+    const save = jest.spyOn(commands, 'updateBoard');
     const fail = jest.spyOn((await core()).db, 'runAsync').mockRejectedValueOnce(new Error('simulated disk failure'));
     await press('board-form-save');
     expect(screen.getByTestId('board-form-error')).toHaveTextContent(/simulated disk failure/);
-    expect(screen.getByTestId('anchor-summary')).toHaveTextContent('Current after Lunch');
+    expect(screen.queryByTestId('anchor-summary')).toBeNull();
+    expect(screen.getByTestId('board-form-retry')).toBeOnTheScreen();
+    const captured = save.mock.calls[0][1];
+    expect(captured.anchor).toEqual({ kind: 'preset', relation: 'after', preset: 'lunch' });
     fail.mockRestore();
-    await press('board-form-save');
+    await press('board-form-retry');
+    expect(save.mock.calls).toHaveLength(2);
+    expect(save.mock.calls[1][1]).toEqual(captured);
     expect(await stored(current)).toMatchObject({ anchorKind: 'preset', anchorPreset: 'lunch' });
   });
 

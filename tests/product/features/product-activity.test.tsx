@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { StrictMode, useEffect } from 'react';
 import { Text } from 'react-native';
 
@@ -39,7 +39,7 @@ describe('product per-focus authority', () => {
     const original = latest, originalScope = owner.getScope();
     expect(original.active).toBe(true); expect(Object.isFrozen(original)).toBe(true); expect(effects).toEqual(new Set([original]));
     const beforeCover = rendered.length;
-    act(() => router.push('/cover')); await settle();
+    act(() => router.push('/cover' as Href)); await settle();
     expect(owner.getScope()).toBe(originalScope); expect(original.active).toBe(false); expect(effects.size).toBe(0);
     expect(rendered.slice(beforeCover).some(activity => activity !== original && !activity.active)).toBe(true);
     act(() => router.back()); await settle();
@@ -51,7 +51,7 @@ describe('product per-focus authority', () => {
     act(() => owner.resume()); await settle();
     const resumed = latest;
     expect(resumed.active).toBe(true); expect(resumed).not.toBe(returned); expect(returned.active).toBe(false);
-    act(() => router.replace('/cover')); await settle();
+    act(() => router.replace('/cover' as Href)); await settle();
     expect(resumed.active).toBe(false); expect(effects.size).toBe(0);
   });
 });

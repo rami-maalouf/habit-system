@@ -1,14 +1,17 @@
 import { observeProductCore } from '@/testing/observe-product-core';
 import { act } from '@testing-library/react-native';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { useState } from 'react';
 import { Alert } from 'react-native';
 
 import { createBoard } from '@/core/domain/commands';
 import { listActiveBoards } from '@/core/domain/queries';
 import { BoardIconPicker } from '@/features/board-configuration/board-icon-picker';
+import { ProductProvider } from '@/features/product-store';
 import { getDraftState } from '@/features/board-configuration/draft-store';
 
 import { getProductCore, newCommandId, resetProductCoreForTests } from '../../../src/testing/product-core.mock';
-import { fireEvent, renderComponent, renderRouter, screen, settle } from '../../../src/testing/render';
+import { fireEvent, renderRouter, screen, settle } from '../../../src/testing/render';
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(() => Promise.resolve()),
@@ -29,6 +32,21 @@ async function savedBoards() {
   const result = await listActiveBoards(core.value);
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
+}
+
+async function renderPicker(onSelect: (symbol: string) => void, onDismiss: () => void) {
+  const result = await getProductCore();
+  if (!result.ok) throw Error(result.error.message);
+  const core = result.value;
+  let present!: (value: boolean) => void;
+  function Scene() {
+    const [isPresented, setPresented] = useState(true);
+    present = setPresented;
+    return <BoardIconPicker isPresented={isPresented} symbol="calendar" accent="#70A7FF" onSelect={onSelect} onDismiss={onDismiss} />;
+  }
+  function Root() { return <ThemeProvider value={DefaultTheme}><ProductProvider coreOverride={core}><Stack /></ProductProvider></ThemeProvider>; }
+  renderRouter({ _layout: Root, index: Scene }); await settle();
+  return (value: boolean) => { act(() => present(value)); };
 }
 
 describe('habit icon picker', () => {
@@ -95,9 +113,9 @@ describe('habit icon picker', () => {
     alert.mockRestore();
   });
 
-  it('filters by category and recovers from a search with no results', () => {
+  it('filters by category and recovers from a search with no results', async () => {
     const onSelect = jest.fn();
-    renderComponent(<BoardIconPicker isPresented symbol="calendar" accent="#70A7FF" onSelect={onSelect} onDismiss={jest.fn()} />);
+    await renderPicker(onSelect, jest.fn());
     fireEvent.press(screen.getByTestId('icon-category-health'));
     expect(screen.getByTestId('symbol-mouth.fill')).toBeOnTheScreen();
     expect(screen.queryByTestId('symbol-bicycle')).toBeNull();
@@ -108,17 +126,16 @@ describe('habit icon picker', () => {
     expect(onSelect).toHaveBeenCalledWith('bicycle');
   });
 
-  it('dismisses without changing the icon and starts the next opening with all icons', () => {
+  it('dismisses without changing the icon and starts the next opening with all icons', async () => {
     const onSelect = jest.fn();
     const onDismiss = jest.fn();
-    const picker = (isPresented: boolean) => <BoardIconPicker isPresented={isPresented} symbol="calendar" accent="#70A7FF" onSelect={onSelect} onDismiss={onDismiss} />;
-    const { rerender } = renderComponent(picker(true));
+    const present = await renderPicker(onSelect, onDismiss);
     fireEvent.changeText(screen.getByTestId('symbol-search'), 'meditation');
     fireEvent.press(screen.getByTestId('close-symbol-picker'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
-    rerender(picker(false));
-    rerender(picker(true));
+    present(false); await settle();
+    present(true); await settle();
     expect(screen.getByTestId('symbol-search')).toHaveProp('value', '');
     expect(screen.getByTestId('symbol-calendar')).toBeSelected();
     fireEvent(screen.getByTestId('symbol-picker'), 'accessibilityEscape');

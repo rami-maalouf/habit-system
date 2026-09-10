@@ -103,7 +103,7 @@ describe('explicit sample product provider', () => {
         schedule: jest.fn(), refreshPending: jest.fn(), cancel: jest.fn() },
       cloudKitAvailable: jest.fn(), pickImportFile: jest.fn(), saveAndShareExport: jest.fn(),
       supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(),
-      openSystemSettings: jest.fn(),
+      openSystemSettings: jest.fn(), openReleaseLink: jest.fn(),
     });
     const child = jest.fn(() => <Text>must not mount</Text>);
     const Child = child;

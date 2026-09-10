@@ -1,11 +1,11 @@
 import { observeProductCore } from '@/testing/observe-product-core';
 import { act, cleanup, within } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { getMockContext } from 'expo-router/testing-library';
 import { Alert, Text, View } from 'react-native';
 
-import OptionsRoute from '@/app/boards/[boardId]/options';
-import ReminderRoute from '@/app/boards/[boardId]/reminders/new';
+import OptionsRoute from '@/app/(product)/boards/[boardId]/options';
+import ReminderRoute from '@/app/(product)/boards/[boardId]/reminders/new';
 import { BoardFormScreen } from '@/features/board-configuration/board-form-screen';
 import { draftStoreFor, newBoardDraft } from '@/features/board-configuration/draft-store';
 import { ProductProvider } from '@/features/product-store';
@@ -91,7 +91,7 @@ it('retains a mounted real draft through another core form and saves only its ow
   }
   function RealForm() {
     return <View testID="real-draft-scene" style={{ flex: 1 }}>
-      <ProductPressable label="Cover with second core" testID="cover-draft" onPress={() => router.push('/scratch-sample')}><Text>Cover</Text></ProductPressable>
+      <ProductPressable label="Cover with second core" testID="cover-draft" onPress={() => router.push('/scratch-sample' as Href)}><Text>Cover</Text></ProductPressable>
       <BoardFormScreen boardId={null} />
     </View>;
   }

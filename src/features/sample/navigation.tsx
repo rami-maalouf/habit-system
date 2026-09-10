@@ -37,7 +37,7 @@ export function useProductRouter() {
         if (!activity.active) return;
         if (scope.kind === 'sample' && (navigation.getState()?.index ?? 0) === 0) {
           if (pathname === '/sample' || pathname === '/sample/') void closeSample?.().catch(() => {});
-          else router.replace('/sample');
+          else router.replace(productHref('sample', '/'));
         } else router.back();
       },
     };

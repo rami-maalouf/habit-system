@@ -1,6 +1,6 @@
 import { BottomSheet } from '@expo/ui/community/bottom-sheet';
 import { act, cleanup, within } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { useState, useSyncExternalStore } from 'react';
 import { Alert, Keyboard, Text, TextInput, Switch } from 'react-native';
 
@@ -31,7 +31,7 @@ function gate() {
 const effects: FeatureEffects = {
   kind: 'real', reminders: reminderScheduler, missAlerts: missAlertScheduler,
   cloudKitAvailable: jest.fn(), pickImportFile: jest.fn(), saveAndShareExport: jest.fn(),
-  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(),
+  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(), openReleaseLink: jest.fn(),
 };
 
 async function setup(kind: 'board' | 'check', mode: 'real' | 'sample' = 'real', edit = false, dirty = true, withReminder = false) {
@@ -70,7 +70,7 @@ async function setup(kind: 'board' | 'check', mode: 'real' | 'sample' = 'real', 
     form: () => kind === 'board' ? <BoardFormScreen boardId={edit ? created.value.boardId : null} />
       : <CheckInFormScreen boardId={created.value.boardId} checkInId={seeded?.ok ? seeded.value.checkInId : null} />,
   }, { initialUrl: '/' });
-  act(() => router.push('/form')); await settle();
+  act(() => router.push('/form' as Href)); await settle();
   const saveId = kind === 'board' ? 'board-form-save' : 'check-in-save';
   await screen.findByTestId(saveId);
   if (dirty && kind === 'board') fireEvent.changeText(await screen.findByTestId('board-title-input'), 'Created once');
@@ -158,7 +158,7 @@ describe.each(['board', 'check'] as const)('%s form accepted create ownership', 
       act(() => router.back()); await settle();
       const oldDiscard = alert.mock.calls.at(-1)![2]!.find(button => button.text === 'Discard')!.onPress!;
       if (movement === 'pause') await act(async () => { await owner.suspend(); });
-      else { act(() => router.push('/other')); await settle(); }
+      else { act(() => router.push('/other' as Href)); await settle(); }
       act(() => { if (movement === 'pause') owner.resume(); else router.back(); }); await settle();
       act(() => oldDiscard()); await settle();
       expect(screen).toHavePathname('/form');
@@ -378,7 +378,7 @@ it.each(destructiveActions.flatMap(action => (['pause', 'cover'] as const).map(m
     const receipts = await h.db.getAllAsync('SELECT * FROM command_receipts ORDER BY command_id');
     const ids = jest.spyOn(h.ids, 'uuid');
     if (action.movement === 'pause') await act(async () => { await owner.suspend(); });
-    else { act(() => router.push('/other')); await settle(); }
+    else { act(() => router.push('/other' as Href)); await settle(); }
     act(() => { if (action.movement === 'pause') owner.resume(); else router.back(); }); await settle();
     act(() => confirm()); await settle();
     expect(ids).not.toHaveBeenCalled();
@@ -447,7 +447,7 @@ it('ignores retained board picker and color callbacks after same-scope cover and
     const oldOpen = screen.UNSAFE_getAllByType(ProductPressable).find(node => node.props.testID === 'open-symbol-picker')!.props.onPress!;
     const oldColor = screen.UNSAFE_getAllByType(ProductPressable).find(node => node.props.testID === 'custom-color')!.props.onPress!;
     const oldPicker = screen.UNSAFE_getByType(BoardIconPicker).props;
-    act(() => router.push('/other')); await settle();
+    act(() => router.push('/other' as Href)); await settle();
     act(() => router.back()); await settle();
     act(() => { oldOpen(); oldColor(); }); await settle();
     expect(keyboard).not.toHaveBeenCalled();
@@ -470,7 +470,7 @@ it('does not let an old Keep editing alert reopen the native check sheet after r
     const sheet = screen.UNSAFE_getByType(BottomSheet);
     act(() => sheet.props.onClose());
     const keep = alert.mock.calls.at(-1)![2]!.find(button => button.text === 'Keep editing')!.onPress!;
-    act(() => router.push('/other')); await settle();
+    act(() => router.push('/other' as Href)); await settle();
     act(() => router.back()); await settle();
     const present = jest.spyOn(screen.UNSAFE_getByType(BottomSheet).props.ref.current, 'present');
     act(() => keep());

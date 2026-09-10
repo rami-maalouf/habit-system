@@ -23,7 +23,7 @@ import { addWidgetQuickActionListener, refreshWidgets } from '@/platform/widgets
 import { addSignificantTimeChangeListener } from '@/platform/time-change';
 import { spacing } from '@/theme';
 import { cloudKitAvailable, cloudKitTransport } from '@/platform/sync';
-import { pickImportFile, saveAndShareExport } from '@/platform/data-transfer';
+import { cleanupStaleExports, pickImportFile, saveAndShareExport } from '@/platform/data-transfer';
 import { supportsAlternateIcons, setAlternateIcon } from '@/platform/alternate-icons';
 
 import { INITIAL_SYNC, SyncCoordinator } from './sync-coordinator';
@@ -53,6 +53,13 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
     kind: 'real', reminders: reminderScheduler, missAlerts: missAlertSchedulerOverride ?? missAlertScheduler,
     cloudKitAvailable, pickImportFile, saveAndShareExport, supportsAlternateIcons, setAlternateIcon,
     openSystemSettings: Linking.openSettings,
+    openReleaseLink: async (url, inApp) => {
+      if (inApp) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- evaluate the browser only for an accepted real operation
+        const { openBrowserAsync } = require('expo-web-browser') as typeof import('expo-web-browser');
+        await openBrowserAsync(url);
+      } else await Linking.openURL(url);
+    },
   }));
   const ready = useCallback((core: ProductCore): Extract<ProviderState, { status: 'ready' }> => {
     const owner = createOperationOwner(core, effects);
@@ -75,6 +82,13 @@ export function RealProductProvider({ children, coreOverride, syncTransportOverr
     }
     return () => { current = false; unregister?.(); void host.suspend().catch(() => {}); };
   }, [host, session]);
+  const cleanedExports = useRef(false);
+  useEffect(() => {
+    if (cleanedExports.current || !host.isCurrent(revision)) return;
+    cleanedExports.current = true;
+    // cleanup is best effort, once per real mount; an async adapter still joins.
+    void host.track(async () => { await cleanupStaleExports(); }).catch(() => {});
+  }, [host, revision]);
   useEffect(() => {
     if (!host.isCurrent(revision)) return;
     return host.retain(installNotificationHandler());

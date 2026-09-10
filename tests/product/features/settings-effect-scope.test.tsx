@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, router, Stack, ThemeProvider, type Href } from 'expo-router';
 import { Alert, AppState, Linking, Text } from 'react-native';
 import type { ComponentType } from 'react';
 
@@ -63,7 +63,7 @@ describe('Settings effect scopes', () => {
     await mount(ExportScreen);
     const oldPress = retainedPress('export-start');
     const originalScope = product.scope;
-    act(() => router.replace('/other')); await settle();
+    act(() => router.replace('/other' as Href)); await settle();
     expect(screen.getByText('Other scene')).toBeOnTheScreen();
     expect(originalScope.isCurrent()).toBe(true);
     const reads = jest.spyOn(harness.db, 'getAllAsync');
@@ -88,7 +88,7 @@ describe('Settings effect scopes', () => {
     const id = stage === 'picker' ? 'import-ripples' : stage === 'confirm' || stage === 'retry' ? 'import-confirm' : 'import-again';
     const oldPress = retainedPress(id);
     const originalScope = product.scope;
-    act(() => router.push('/other')); await settle();
+    act(() => router.push('/other' as Href)); await settle();
     act(() => router.back()); await settle();
     expect(product.scope).toBe(originalScope);
     expect(originalScope.isCurrent()).toBe(true);
@@ -193,7 +193,7 @@ describe('Settings effect scopes', () => {
     act(() => oldPress()); await settle();
     expect(settings).toHaveBeenCalledTimes(1);
     const currentPress = retainedPress('notifications-open-settings');
-    act(() => router.replace('/other')); await settle();
+    act(() => router.replace('/other' as Href)); await settle();
     act(() => currentPress()); await settle();
     expect(settings).toHaveBeenCalledTimes(1);
   });
@@ -208,7 +208,7 @@ describe('Settings effect scopes', () => {
     const removed = subscriptions.map(subscription => jest.spyOn(subscription, 'remove'));
     const before = removed.map(remove => remove.mock.calls.length);
     const callbacks = add.mock.calls.map(call => call[1]);
-    act(() => router.push('/other')); await settle();
+    act(() => router.push('/other' as Href)); await settle();
     const retired = callbacks.filter((_, index) => removed[index].mock.calls.length > before[index]);
     expect(retired.length).toBeGreaterThan(0);
     act(() => { for (const callback of retired) callback('active'); }); await settle();
@@ -261,7 +261,7 @@ describe('Settings effect scopes', () => {
     const confirm = alert.mock.calls[0][2]!.find(button => button.text === 'Turn On')!.onPress!;
     if (retired === 'scope') await act(async () => { await session.enter(); await session.close(); });
     else {
-      act(() => router.push('/other')); await settle();
+      act(() => router.push('/other' as Href)); await settle();
       act(() => router.back()); await settle();
     }
     const ids = jest.spyOn(harness.ids, 'uuid');

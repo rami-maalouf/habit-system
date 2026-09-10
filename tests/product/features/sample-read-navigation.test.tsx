@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router, useLocalSearchParams } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, useLocalSearchParams, type Href } from 'expo-router';
 import { Text } from 'react-native';
 
 import { createBoard, createCheckIn } from '@/core/domain/commands';
@@ -155,7 +155,7 @@ describe('sample destinations in read screens', () => {
     await press(`stack-card-${rootId}`);
     expect(screen).toHavePathname(`/sample/stacks/${rootId}`);
     expect(screen.getByTestId('stack-detail')).toBeOnTheScreen();
-    act(() => router.push(`/sample/stacks/${missing}`)); await settle();
+    act(() => router.push(`/sample/stacks/${missing}` as Href)); await settle();
     expect(screen.getByTestId('stack-error')).toBeOnTheScreen();
     await pressLabel('Back to Stacks');
     expect(screen).toHavePathname('/sample/stacks');

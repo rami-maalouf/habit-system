@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { Text, Switch } from 'react-native';
 
 import { BoardOptionsScreen } from '@/features/board-configuration/board-options-screen';
@@ -23,12 +23,12 @@ it.each(['pause', 'cover'] as const)('keeps captured option edits and Back retir
       'sample/other': () => <Text>Other sample scene</Text>,
       'sample/options': () => <BoardOptionsScreen expectedBoardId={null} />,
     }, { initialUrl: '/sample' });
-    act(() => router.push('/sample/options')); await settle();
+    act(() => router.push('/sample/options' as Href)); await settle();
     const toggle = screen.UNSAFE_getAllByType(Switch).find(node => node.props.testID === 'metrics-toggle')!.props.onValueChange!;
     const back = screen.UNSAFE_getAllByType(ProductPressable).find(node => node.props.testID === 'options-back')!.props.onPress!;
     const before = store.getSnapshot();
     if (movement === 'pause') await act(async () => { await owner.suspend(); });
-    else { act(() => router.push('/sample/other')); await settle(); }
+    else { act(() => router.push('/sample/other' as Href)); await settle(); }
     act(() => toggle(false)); await settle();
     expect(store.getSnapshot()).toBe(before);
     act(() => { if (movement === 'pause') owner.resume(); else router.back(); }); await settle();

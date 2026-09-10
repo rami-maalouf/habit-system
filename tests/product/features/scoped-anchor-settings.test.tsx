@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { Text } from 'react-native';
 
 import * as commands from '@/core/domain/anchor-settings-commands';
@@ -39,7 +39,7 @@ describe('anchor settings operation ownership', () => {
     if (mode === 'scope') {
       await act(async () => { await owner.suspend(); }); act(() => owner.resume()); await settle();
     } else {
-      act(() => mode === 'cover' ? router.push('/cover') : router.replace('/cover')); await settle();
+      act(() => mode === 'cover' ? router.push('/cover' as Href) : router.replace('/cover' as Href)); await settle();
       if (mode === 'cover') { act(() => router.back()); await settle(); }
     }
   }

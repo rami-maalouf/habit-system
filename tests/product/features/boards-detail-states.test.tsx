@@ -378,7 +378,7 @@ describe('stale sheets against removed records', () => {
     alertSpy.mockClear();
   });
 
-  it('surfaces an archive failure on the edit sheet', async () => {
+  it('refreshes a stale edit sheet to the archived read-only surface when archive is already complete', async () => {
     const boardId = await seedSimpleBoard('contested');
     renderRouter('src/app', { initialUrl: `/boards/${boardId}/edit` });
     await screen.findByTestId('archive-board');
@@ -386,13 +386,20 @@ describe('stale sheets against removed records', () => {
     const deps = await core();
     const archived = await archiveBoard(deps, { commandId: newCommandId(), boardId });
     expect(archived.ok).toBe(true);
+    const before = await deps.db.getFirstAsync('SELECT * FROM boards WHERE id = ?', [boardId]);
 
     alertSpy.mockImplementationOnce((_title, _message, buttons) => {
       buttons?.find((button) => button.text === 'Archive')?.onPress?.();
     });
     await press('archive-board');
     await settle();
-    expect(await screen.findByTestId('board-form-error')).toBeOnTheScreen();
+    expect(await screen.findByTestId('edit-archived-board')).toBeOnTheScreen();
+    expect(screen.getByText('This board is archived.')).toBeOnTheScreen();
+    expect(screen.queryByTestId('board-title-input')).toBeNull();
+    expect(screen.queryByTestId('archive-board')).toBeNull();
+    expect(await deps.db.getFirstAsync('SELECT * FROM boards WHERE id = ?', [boardId])).toEqual(before);
+    fireEvent.press(screen.getByText('Back to Boards')); await settle();
+    expect(screen).toHavePathname('/');
   });
 
   it('surfaces a delete failure on the edit sheet for a deleted board', async () => {

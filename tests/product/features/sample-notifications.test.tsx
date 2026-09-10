@@ -3,7 +3,7 @@ import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { Text } from 'react-native';
 
-import NotificationsRoute from '@/app/settings/notifications';
+import NotificationsRoute from '@/app/(product)/settings/notifications';
 import * as queries from '@/core/domain/queries';
 import * as missAlerts from '@/core/domain/miss-alert-reconciliation';
 import { ProductProvider } from '@/features/product-store';

@@ -24,6 +24,7 @@ export type FeatureEffects = Readonly<
     supportsAlternateIcons: typeof supportsAlternateIcons;
     setAlternateIcon: typeof setAlternateIcon;
     openSystemSettings(): Promise<void>;
+    openReleaseLink(url: string, inApp: boolean): Promise<void>;
   }
 >;
 

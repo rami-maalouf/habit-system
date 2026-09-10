@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router, useLocalSearchParams } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useIsFocused } from 'expo-router/react-navigation';
 import { Text } from 'react-native';
 
@@ -40,13 +40,13 @@ describe('product navigation scope', () => {
   };
 
   it('prefixes internal paths once while preserving dynamic and query parameters', () => {
-    const target = { pathname: '/boards/[boardId]', params: { boardId: 'one', source: 'widget', date: '2026-09-08' } };
+    const target: Href = { pathname: '/boards/[boardId]', params: { boardId: 'one', source: 'widget', date: '2026-09-08' } };
     expect(productHref('real', target)).toBe(target);
     expect(productHref('real', '/')).toBe('/');
     expect(productHref('sample', '/')).toBe('/sample');
     expect(productHref('sample', '/?source=widget')).toBe('/sample?source=widget');
     expect(productHref('sample', '/boards/one?source=widget#history')).toBe('/sample/boards/one?source=widget#history');
-    expect(productHref('sample', '/sample/boards/one?source=widget')).toBe('/sample/boards/one?source=widget');
+    expect(productHref('sample', '/sample/boards/one?source=widget' as Href)).toBe('/sample/boards/one?source=widget');
     expect(productHref('sample', target)).toEqual({ ...target, pathname: '/sample/boards/[boardId]' });
     expect(() => productHref('sample', '../settings')).toThrow('absolute app path');
     expect(() => productHref('sample', '//outside.example')).toThrow('absolute app path');
@@ -67,7 +67,7 @@ describe('product navigation scope', () => {
 
   it('closes at the sample root without popping its real predecessor and backs within nested sample history', async () => {
     renderRouter(routes, { initialUrl: '/' });
-    act(() => router.push('/sample')); await settle();
+    act(() => router.push('/sample' as Href)); await settle();
     act(() => captured.push('/boards/one')); await settle();
     act(() => captured.back()); await settle();
     expect(screen).toHavePathname('/sample');

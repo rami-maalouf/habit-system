@@ -13,6 +13,9 @@ import {
   type BoardIconCategory,
 } from '../boards/board-icon-catalog';
 import { BoardSymbol } from '../boards/board-symbol';
+import { SampleChrome } from '../sample/chrome';
+import { useProduct } from '../product-store/context';
+import { useProductActivity } from '../product-store/use-product-activity';
 import { ProductPressable, useScheme } from '../ui';
 
 type BoardIconPickerProps = {
@@ -24,18 +27,21 @@ type BoardIconPickerProps = {
 };
 
 export function BoardIconPicker({ isPresented, symbol, accent, onSelect, onDismiss }: BoardIconPickerProps) {
+  const { scope } = useProduct();
+  const activity = useProductActivity(scope);
   const scheme = useScheme();
   return (
     <BottomSheet
       isPresented={isPresented}
-      onDismiss={onDismiss}
+      onDismiss={() => { if (activity.active && isPresented) onDismiss(); }}
       snapPoints={['half', 'full']}
       contentPadding={{ top: spacing.md }}
       containerColor={semanticColor('groupedBackground', scheme)}
       testID="symbol-picker"
     >
       <RNHostView>
-        <View style={{ flexGrow: 1, height: 0 }}>
+        <View style={{ flexGrow: 1, height: 0 }} accessibilityViewIsModal>
+          <SampleChrome />
           <IconPickerContent symbol={symbol} accent={accent} onSelect={onSelect} onDismiss={onDismiss} />
         </View>
       </RNHostView>
@@ -44,17 +50,19 @@ export function BoardIconPicker({ isPresented, symbol, accent, onSelect, onDismi
 }
 
 function IconPickerContent({ symbol, accent, onSelect, onDismiss }: Omit<BoardIconPickerProps, 'isPresented'>) {
+  const { scope } = useProduct();
+  const activity = useProductActivity(scope);
   const scheme = useScheme();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<BoardIconCategory | 'All'>('All');
   const icons = useMemo(() => filterBoardIcons(query, category), [query, category]);
 
   return (
-    <View style={{ flex: 1 }} accessibilityViewIsModal>
+    <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <AppText variant="title2" accessibilityRole="header">Choose an icon</AppText>
-          <ProductPressable onPress={onDismiss} label="Close icon picker" testID="close-symbol-picker">
+          <ProductPressable onPress={() => { if (activity.active) onDismiss(); }} label="Close icon picker" testID="close-symbol-picker">
             <Icon name="close" size={18} color={semanticFallbacks.secondaryLabel[scheme]} />
           </ProductPressable>
         </View>
@@ -63,7 +71,7 @@ function IconPickerContent({ symbol, accent, onSelect, onDismiss }: Omit<BoardIc
           placeholder="Search icons"
           placeholderTextColor={semanticColor('secondaryLabel', scheme) as string}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(value) => { if (activity.active) setQuery(value); }}
           autoCapitalize="none"
           autoCorrect={false}
           clearButtonMode="while-editing"
@@ -92,7 +100,7 @@ function IconPickerContent({ symbol, accent, onSelect, onDismiss }: Omit<BoardIc
             key={entry}
             label={`${entry} icons`}
             selected={category === entry}
-            onPress={() => setCategory(entry)}
+            onPress={() => { if (activity.active) setCategory(entry); }}
             testID={`icon-category-${entry.toLowerCase()}`}
             style={{ paddingHorizontal: spacing.md }}
           >
@@ -117,7 +125,7 @@ function IconPickerContent({ symbol, accent, onSelect, onDismiss }: Omit<BoardIc
                 key={entry.symbol}
                 label={`${entry.label} icon`}
                 selected={symbol === entry.symbol}
-                onPress={() => onSelect(entry.symbol)}
+                onPress={() => { if (activity.active) onSelect(entry.symbol); }}
                 testID={`symbol-${entry.symbol}`}
                 style={{
                   width: 64,

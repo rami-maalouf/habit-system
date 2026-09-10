@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { useState, useSyncExternalStore } from 'react';
 import { Alert, Text } from 'react-native';
 
@@ -18,7 +18,7 @@ import { createTestHarness } from '../helpers/test-db';
 const effects: FeatureEffects = {
   kind: 'real', reminders: reminderScheduler, missAlerts: missAlertScheduler,
   cloudKitAvailable: jest.fn(), pickImportFile: jest.fn(), saveAndShareExport: jest.fn(),
-  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(),
+  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(), openReleaseLink: jest.fn(),
 };
 const actual = { create: commands.createReminder, update: commands.updateReminder, delete: commands.deleteReminder };
 function gate() {
@@ -60,7 +60,7 @@ async function setup(mode: 'create' | 'update' | 'delete' | 'draft', sample = fa
     form: () => <ReminderFormScreen boardId={mode === 'draft' ? null : board.value.boardId}
       reminderId={seeded?.ok ? seeded.value.reminderId : null} draftIndex={null} />,
   }, { initialUrl: '/' });
-  act(() => router.push('/form')); await settle();
+  act(() => router.push('/form' as Href)); await settle();
   if (!sample) {
     await screen.findByTestId('reminder-save');
     if (dirty) fireEvent.changeText(screen.getByTestId('reminder-message'), 'Captured reminder');
@@ -134,7 +134,7 @@ it.each(['pause', 'cover'] as const)('rejects an old delete confirmation after %
     fireEvent.press(screen.getByTestId('delete-reminder'));
     const remove = alert.mock.calls.at(-1)![2]!.find(button => button.text === 'Delete Reminder')!.onPress!;
     if (movement === 'pause') await act(async () => { await owner.suspend(); });
-    else { act(() => router.push('/other')); await settle(); }
+    else { act(() => router.push('/other' as Href)); await settle(); }
     act(() => { if (movement === 'pause') owner.resume(); else router.back(); }); await settle();
     act(() => remove()); await settle();
     expect(await h.db.getAllAsync('SELECT * FROM reminders')).toEqual(rows);

@@ -1,5 +1,5 @@
 import { act, cleanup } from '@testing-library/react-native';
-import { DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, router, type Href } from 'expo-router';
 import { useState, useSyncExternalStore } from 'react';
 import { Alert, Text } from 'react-native';
 
@@ -23,7 +23,7 @@ function deferred() {
 }
 const effects: FeatureEffects = { kind: 'real', reminders: reminderScheduler, missAlerts: missAlertScheduler,
   cloudKitAvailable: jest.fn(), pickImportFile: jest.fn(), saveAndShareExport: jest.fn(),
-  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn() };
+  supportsAlternateIcons: jest.fn(), setAlternateIcon: jest.fn(), openSystemSettings: jest.fn(), openReleaseLink: jest.fn() };
 
 describe('widget action scope ownership', () => {
   let harness: TestHarness, owner: OperationOwner, boardId: BoardId;
@@ -50,7 +50,7 @@ describe('widget action scope ownership', () => {
     const view = renderRouter({ _layout: Root, index: () => <Text>Boards</Text>, widget: () => entry
       ? <WidgetCheckInEntryScreen boardId={boardId} /> : <DailyWidgetActionScreen boardId={boardId} />,
       'boards/[boardId]/quick-action': () => <Text>Redirected real action</Text> }, { initialUrl: '/' });
-    act(() => router.push('/widget'));
+    act(() => router.push('/widget' as Href));
     await settle();
     return view;
   }

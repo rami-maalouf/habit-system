@@ -11,7 +11,9 @@ import { getAnchorPickerOptions } from '@/core/domain/queries';
 import { minimumTouchTarget } from '@/foundation/accessibility';
 import { radius, radiusCurve, semanticColor, semanticFallbacks, spacing } from '@/theme';
 
-import { useProductQuery } from '../product-store';
+import { useProduct, useProductQuery } from '../product-store';
+import { useProductActivity } from '../product-store/use-product-activity';
+import { SampleChrome } from '../sample/chrome';
 import { formatMinuteOfDay } from '../reminders/weekdays';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { AnchorRelationPicker } from './anchor-relation-picker';
@@ -44,6 +46,8 @@ export function AnchorPicker({ boardId, anchor, onDone, onDismiss }: {
   onDismiss: () => void;
 }) {
   const scheme = useScheme();
+  const { scope } = useProduct();
+  const activity = useProductActivity(scope);
   const options = useProductQuery(getAnchorPickerOptions, []);
   const [selection, setSelection] = useState(anchor);
   const [relation, setRelation] = useState<AnchorRelation>(anchor?.relation ?? 'after');
@@ -51,11 +55,13 @@ export function AnchorPicker({ boardId, anchor, onDone, onDismiss }: {
   const [error, setError] = useState<string | null>(null);
 
   function choose(next: BoardAnchorInput | null) {
+    if (!activity.active) return;
     setSelection(next);
     setError(null);
   }
 
   function done() {
+    if (!activity.active || options.status !== 'ready') return;
     const selected = selection ? { ...selection, relation } : null;
     const normalized = normalizeBoardAnchorFields({ anchor: selected });
     if (!normalized.ok) {
@@ -66,17 +72,20 @@ export function AnchorPicker({ boardId, anchor, onDone, onDismiss }: {
     onDone(selected?.kind === 'text' ? { ...selected, text: selected.text.trim() } : selected);
   }
 
+  function dismiss() { if (activity.active) onDismiss(); }
+
   return (
-    <BottomSheet isPresented onDismiss={onDismiss} snapPoints={['full']} contentPadding={{ top: spacing.md }} containerColor={semanticColor('groupedBackground', scheme)} testID="anchor-picker-sheet">
+    <BottomSheet isPresented onDismiss={dismiss} snapPoints={['full']} contentPadding={{ top: spacing.md }} containerColor={semanticColor('groupedBackground', scheme)} testID="anchor-picker-sheet">
       <RNHostView>
         <View style={{ flexGrow: 1, height: 0 }} accessibilityViewIsModal>
+          <SampleChrome />
           <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm }}>
-              <ProductPressable label="Cancel anchor selection" onPress={onDismiss} testID="anchor-picker-cancel"><AppText>Cancel</AppText></ProductPressable>
+              <ProductPressable label="Cancel anchor selection" onPress={dismiss} testID="anchor-picker-cancel"><AppText>Cancel</AppText></ProductPressable>
               <AppText variant="headline" accessibilityRole="header">Anchor</AppText>
               <ProductPressable label="Done choosing anchor" onPress={done} disabled={options.status !== 'ready'} testID="anchor-picker-done"><AppText variant="headline">Done</AppText></ProductPressable>
             </View>
-            <AnchorRelationPicker relation={relation} onChange={setRelation} />
+            <AnchorRelationPicker relation={relation} onChange={(next) => { if (activity.active) setRelation(next); }} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg }} testID="anchor-picker-content">
             {options.status === 'ready' ? (
@@ -106,12 +115,12 @@ export function AnchorPicker({ boardId, anchor, onDone, onDismiss }: {
                 </View>
                 <View style={{ gap: spacing.sm }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}><AppText variant="headline" accessibilityRole="header">Text</AppText>{selection?.kind === 'text' ? <Icon name="checkmark" size={18} color={semanticFallbacks.label[scheme]} /> : null}</View>
-                  <TextInput accessibilityLabel="Text anchor" placeholder="For example, getting home" value={text} onFocus={() => choose({ kind: 'text', relation, text })} onChangeText={(value) => { setText(value); choose({ kind: 'text', relation, text: value }); }} multiline placeholderTextColor={semanticColor('secondaryLabel', scheme) as string} style={{ minHeight: minimumTouchTarget, padding: spacing.md, fontSize: 17, color: semanticColor('label', scheme) as string, backgroundColor: semanticColor('secondaryGroupedBackground', scheme), borderRadius: radius.md, borderCurve: radiusCurve }} testID="anchor-text-input" />
+                  <TextInput accessibilityLabel="Text anchor" placeholder="For example, getting home" value={text} onFocus={() => choose({ kind: 'text', relation, text })} onChangeText={(value) => { if (!activity.active) return; setText(value); choose({ kind: 'text', relation, text: value }); }} multiline placeholderTextColor={semanticColor('secondaryLabel', scheme) as string} style={{ minHeight: minimumTouchTarget, padding: spacing.md, fontSize: 17, color: semanticColor('label', scheme) as string, backgroundColor: semanticColor('secondaryGroupedBackground', scheme), borderRadius: radius.md, borderCurve: radiusCurve }} testID="anchor-text-input" />
                   <AppText variant="footnote">Describe your anchor in 1 to 80 characters.</AppText>
                 </View>
               </>
             ) : options.status === 'loading' ? <AppText>Loading anchors…</AppText> : (
-              <View style={{ gap: spacing.md }}><InlineError message="Anchors could not be loaded. Try again." testID="anchor-picker-load-error" /><PrimaryButton title="Retry" onPress={options.refresh} testID="anchor-picker-retry" /></View>
+              <View style={{ gap: spacing.md }}><InlineError message="Anchors could not be loaded. Try again." testID="anchor-picker-load-error" /><PrimaryButton title="Retry" onPress={() => { if (activity.active) options.refresh(); }} testID="anchor-picker-retry" /></View>
             )}
             {error ? <InlineError message={error} testID="anchor-picker-error" /> : null}
           </ScrollView>
