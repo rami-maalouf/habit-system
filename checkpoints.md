@@ -3176,12 +3176,12 @@ remain open.
     performance follow-up; no faster result or sample-screen acceptance
     is inferred from the host replay.
 
-### T23 - isolated sample navigation and effects (in progress)
+### T23 - isolated sample navigation and effects (2026-09-10)
 
-Status: route/runtime implementation and independent automated review are
-complete. Actual native sample acceptance remains open, including cold entry,
-native sheets and final real-store/effect isolation. T19/Checkpoint C external
-gates remain open.
+Status: route/runtime implementation, automated gates, independent review and
+the actual iOS sample matrix pass. Cold entry, accepted-work joining, preserved
+real drafts, native sheets, exact suspended-store isolation, disposal and fresh
+reopening have retained evidence. T19/Checkpoint C external gates remain open.
 
 1. The first increment separates import-safe context/hooks and introduces
    a stable operation owner. A captured scope never becomes current again
@@ -3425,7 +3425,7 @@ gates remain open.
     core files fully covered. That passing run still contained five lint warnings;
     the earlier warning-free summary was incorrect. Their reviewed correction
     and the final composed gate belong to T24.
-24. Actual T23 native acceptance remains open. The retained older native binary
+24. The earlier T23 native acceptance run remained incomplete. The retained older native binary
     reproduced ExpoFabricView's lost-context fatal during the explicit cold
     launch/development-client/sample sequence, including a second run without
     prototype observers. A fresh stable Home > Settings > Try a sample run
@@ -3438,15 +3438,48 @@ gates remain open.
     `.artifacts/t23/crash-discriminator/`. Final dependency/native composition
     and its acceptance remain required.
 
+25. Final native acceptance combines the preserved fresh SDK 57 runs. The cold
+    sample probe observed no real runtime initialization after its retained
+    sample URL entered the development launcher and the owned Metro was chosen.
+    This is an empirical cold-entry result, not a general launcher deep-link
+    guarantee or proof that every earlier native context-lifetime failure is
+    fixed. Warm navigation covers sample Home, Stacks, Coins, history, settings,
+    disabled effects and unknown-path recovery. Actual Toronto date/time picker
+    controls preserve their stored instants while the host process uses Tokyo.
+    The accepted Export/native share cancellation joins before the real runtime
+    suspends; the actual real core identity and full dirty draft survive entry
+    and exit. Evidence is under `.artifacts/t24/native-partial-148/` and
+    `.artifacts/t24/native-followup-149/`.
+    The final UI run proves large-text dragging, Keep editing and one exact Save,
+    sample board editing, a five-coin reward claim, and internal Close inside
+    actual symbol and anchor presentations. A second factory restores 6,014
+    coins, the original board title, all 18 recipe table counts and ledger kinds.
+    Both sessions preserve all five observed App Group file hashes from joined
+    suspension before factory execution through disposal before real resume.
+    Each memory handle closes once, all 38 observers restore by identity before
+    resume, the original real facade returns and observed real/native calls
+    remain zero in the suspended intervals. Outside those intervals, normal
+    real housekeeping adds three updated:0 receipts and advances two widget
+    strips by one day; every other real table and prior receipt stays exact.
+    Root views the native presentations and runs the relocated 104-check
+    verifier successfully under `.artifacts/t24/native-detent-final/`.
+    The final run retains 48.811/51.599-second factories and 14 SwiftUI Picker
+    warnings with correct selections, zero animation-listener/fatal/deallocated
+    AppContext events, and no suppression. Startup cost and the bounded upstream
+    diagnostics remain documented limitations. This runtime evidence uses the
+    verified signed native app with the final JS overlay; later Debug packaging,
+    physical installation and live CloudKit are separate T24/external gates.
+
 ### T24 - cosmetic rename and final closure (in progress)
 
 Status: cosmetic source and final regression corrections are implemented and
 independently reviewed. Automated gates pass in isolation and in the main
 checkout; production exports also pass. The fresh signed simulator build passes
-its artifact checks and its native walkthrough continues. The corrected physical
-Release build passes its development-network plist cleanup check. Packaging the
-latest UI with complete Shortcuts assets, the requested iPhone installation and actual two-target CloudKit
-convergence remain open. T24 and Checkpoints C/D are not complete.
+its artifact checks and the completed sample walkthrough passes. The final
+unsigned physical Release contains the latest UI and complete
+Shortcuts assets and passes package verification. The final Debug check, requested
+iPhone installation and actual two-target CloudKit convergence remain open.
+T24 and Checkpoints C/D are not complete.
 
 1. README and remaining public Settings/native display names identify Habit
    System while preserving fork attribution and allowed internal identifiers.
@@ -3538,8 +3571,8 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
    and history-reopen cases now cover normal and largest font scales on both
    platforms. Native full-height scrolling and exact single Save pass; the final
    detent check also preserves a dirty amount through dragging and Keep editing,
-   then saves exactly one check/action/award/receipt. The complete sample matrix
-   remains separate work. Earlier field and half-height failures are preserved
+   then saves exactly one check/action/award/receipt. The remaining sample matrix
+   was tracked separately. Earlier field and half-height failures are preserved
    under `.artifacts/t24/native-followup-149/` and
    `.artifacts/t24/native-fields-150/`.
    Canonical validation on the final detent source exits 0: 207 suites / 3,069
@@ -3555,3 +3588,24 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
    establish final native packaging or physical installation. The 78-file
    export evidence package is independently hash-verified under
    `.artifacts/t24/production-exports/`.
+8. The final unsigned iPhoneOS Release build exits 0 in 557.571 seconds with
+   the reviewed UI and explicit preview Development CloudKit inputs. All 150
+   frozen candidate paths matched before and after the physical build. Main plist
+   processing precedes cleanup after widget copying; final default network keys
+   are absent, with no cycle or named cleanup-phase ambiguity warning. All six
+   arm64 iPhoneOS images resolve their packaged dependencies, both widget bundle
+   copies match, and the actual production map matches 297 src files, the native
+   bridge module and all 62 routes. Main Shortcuts training runs and restores
+   the packaged SSU/NLU assets. The three automatic Shortcuts and six action
+   definitions retain their semantic values. No targeted clean, additional
+   build or manual generated-file repair was needed. The preserved 93-entry
+   unsigned app and 31-file evidence manifest pass the relocated verifier under
+   `.artifacts/t24/physical-final/`. The build retains 2,201 warning
+   occurrences, with zero authored native warnings or compiler errors; it is
+   not described as warning-free or installable.
+   Actual SDK 57 inspection corrects an earlier preparation assumption:
+   prebuild cleans by default. Explicit `--no-clean`, followed by ordinary Pods,
+   preserves the generated target IDs and existing native build caches. Evidence
+   is under `.artifacts/t24/final-physical-preparation/`. Compiler Release does
+   not choose the CloudKit environment, and unsigned entitlement inputs do not
+   establish authorized Apple capabilities.
