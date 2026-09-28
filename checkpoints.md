@@ -3733,3 +3733,14 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
     into the repository archive. All owned signing/readiness processes and
     temporary credential files are gone. This supersedes the signing blocker
     above; live service acceptance still requires the separate test setup.
+16. The SDK 57 widget layout now marks every rendered root with
+    `containerBackground(..., 'widget')`, replacing WidgetKit's "Please adopt
+    containerBackground API" fallback. Empty, standard and extra-large layouts
+    use explicit light/dark container colors. The installed Expo widget compiler
+    and runtime test covers all four configured families, the empty state and
+    both color schemes (15 focused cases); lint and typecheck pass. Independent
+    review found no production defect and its missing color-serialization test
+    was added. Full coverage remains blocked on an unrelated existing options
+    route test exceeding its five-second timeout on this Linux host. Native gates
+    are unavailable here because `/usr/bin/plutil` and Swift are not installed;
+    no simulator or physical-widget evidence is claimed for this follow-up.
