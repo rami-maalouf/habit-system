@@ -2,6 +2,36 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Board layout preferences (2026-09-29)
+
+1. Removed the Boards title and added a third top-left Layout action. Compact
+   rows, two-column history cards and full-width history cards apply uniformly
+   to Daily and Count habits. A floating glass selector previews the choice;
+   Done and the separate close control dismiss it. Long titles truncate without
+   choosing a different card shape. Accessibility text sizes use one readable
+   grid column while preserving the selected preference.
+2. Layout persists in device-local SQLite key-value storage, outside the product
+   schema and sync records. Sample sessions keep an isolated in-memory choice.
+   Failed saves roll back visibly and support retry. Existing check-in, Daily
+   toggle, reorder and Undo behavior is retained, including opening Layout during
+   the Undo window. Expanded cards use real dated check-in history.
+3. Argent validated all three layouts on a fresh iPhone 17 Pro / iOS 26.5
+   simulator with seven synthetic boards: close/Done, check-in/Undo, cold-start
+   persistence, long titles, the odd final grid card, scrolling, light/dark and
+   maximum Dynamic Type. Screenshots and command logs are under
+   `.artifacts/board-layouts/`. The earlier QA database with a migration checksum
+   mismatch was preserved. No Android device validation was performed.
+4. Independent review found and verified the fix for opening Layout clearing an
+   active Undo action. Regression tests cover real history cells, uniform card
+   shapes, persistence, sample isolation, failed writes, suspended sessions,
+   accessibility sizing and Undo preservation. No actionable findings remain.
+5. Final `bun run validate` exits 0: 209 suites / 3,077 tests, with all 105 core
+   files at 100 percent. Native validation passes 14 plugin and 195 Swift tests.
+   Final logs are `validate-shipping.log`, `native.log` and `simulator-final.log`
+   in the evidence directory. The independent review receipt is `review.json`,
+   run `20260929-board-layouts-7162ecc8`. Owned QA simulators and the port-8082
+   Metro server are stopped; simulator data is retained.
+
 ### T16 - same-day bonus settlement and restoration (2026-09-08)
 
 1. Pure TS and Swift replay award one net bonus for an exact structural-root/date

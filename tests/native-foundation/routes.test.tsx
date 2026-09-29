@@ -15,7 +15,8 @@ describe('root routes', () => {
     // mocks, so the title is asserted through the header config; the rendered
     // header itself is simulator evidence (argent), per the spec's split
     await screen.findByTestId('empty-create-board');
-    expect(screen.UNSAFE_getByProps({ title: 'Boards' })).toBeTruthy();
+    expect(screen.UNSAFE_getByProps({ title: '' })).toBeTruthy();
+    expect(screen.getByTestId('open-board-layout')).toBeOnTheScreen();
   });
 
   it('recovers from an unmatched route back to / through +not-found', async () => {

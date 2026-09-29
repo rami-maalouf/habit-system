@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { View } from 'react-native';
+
 import type { BoardKind } from '@/core/domain/entities';
 import type { HeatmapCell, HeatmapWeek } from '@/core/domain/queries';
 
@@ -30,8 +33,24 @@ function presentCell(cell: HeatmapCell, kind: BoardKind, colors: DerivedBoardCol
     opacity: cell.isFuture ? 0.25 : 1, marker };
 }
 
-export function HeatmapView({ kind, weeks, colors, testID }: {
-  kind: BoardKind; weeks: HeatmapWeek[]; colors: DerivedBoardColors; testID?: string;
+export function HeatmapView({ kind, weeks, colors, testID, preview = false }: {
+  kind: BoardKind; weeks: HeatmapWeek[]; colors: DerivedBoardColors; testID?: string; preview?: boolean;
 }) {
+  const [width, setWidth] = useState(0);
+  if (preview) {
+    const columns = Math.max(1, Math.min(20, Math.floor((width + 3) / 17)));
+    return <View testID={testID} onLayout={event => setWidth(event.nativeEvent.layout.width)}
+      style={{ height: 133, flexDirection: 'row', gap: 3 }}>
+      {width > 0 ? weeks.slice(-columns).map(week => <View key={week.days[0].date} style={{ flex: 1, gap: 3 }}>
+        {week.days.map(cell => {
+          const presented = presentCell(cell, kind, colors);
+          return <View key={cell.date} accessible accessibilityLabel={presented.label} style={{
+            height: 16, borderRadius: 3, opacity: presented.opacity, backgroundColor: presented.color,
+            borderWidth: cell.isToday ? 1.5 : 0, borderColor: colors.accent,
+          }} />;
+        })}
+      </View>) : null}
+    </View>;
+  }
   return <CalendarHeatmap weeks={weeks.map((week) => ({ days: week.days.map((cell) => presentCell(cell, kind, colors)) }))} testID={testID} />;
 }

@@ -3,21 +3,21 @@ import { View } from 'react-native';
 import { AppText } from '@/components/foundation/app-text';
 import { Icon } from '@/components/foundation/icon';
 import type { HomeBoardCard } from '@/core/domain/queries';
-import { minimumTouchTarget } from '@/foundation/accessibility';
-import { radius, radiusCurve, semanticColor, spacing } from '@/theme';
+import { radiusCurve, semanticColor, spacing } from '@/theme';
 
 import { deriveBoardColors } from './board-colors';
 import { BoardSymbol } from './board-symbol';
 import { ProductPressable, useScheme } from '../ui';
 import { SevenDayStrip } from './seven-day-strip';
-import { DailyStrip } from './daily-strip';
+import { BoardCardHistory } from './board-card-history';
+import type { BoardLayout } from './use-board-layout';
 
 type BoardCardProps = {
   card: HomeBoardCard;
+  layout?: BoardLayout;
   onOpen?: () => void;
   onQuickCheckIn?: () => void;
   quickPending?: boolean;
-  // edit-boards mode replaces the quick action with move controls
   editMode?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -26,166 +26,64 @@ type BoardCardProps = {
   testID?: string;
 };
 
-export function BoardCard({
-  card,
-  onOpen,
-  onQuickCheckIn,
-  quickPending,
-  editMode,
-  onMoveUp,
-  onMoveDown,
-  canMoveUp,
-  canMoveDown,
-  testID,
-}: BoardCardProps) {
+export function BoardCard({ card, layout = 'compact', onOpen, onQuickCheckIn, quickPending,
+  editMode, onMoveUp, onMoveDown, canMoveUp, canMoveDown, testID }: BoardCardProps) {
   const scheme = useScheme();
   const colors = deriveBoardColors(card.board.accentHex, scheme);
-  const background = card.board.usesTintedBackground
-    ? colors.tintedCardBackground
-    : semanticColor('secondaryGroupedBackground', scheme);
-
+  const compact = layout === 'compact';
+  const checked = card.daily?.checkedToday;
+  let summary = '';
   if (card.daily) {
-    const daily = card.daily;
-    return (
-      <View
-        testID={testID}
-        style={{ backgroundColor: background, borderWidth: 1, borderColor: colors.cardBorder,
-          borderRadius: radius.lg, borderCurve: radiusCurve, padding: spacing.lg, gap: spacing.md }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <ProductPressable onPress={onOpen} label={card.board.title} hint="Opens the board" disabled={!onOpen} stretch style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <BoardSymbol symbol={card.board.symbol} color={colors.accent} />
-              <AppText variant="headline" selectable={false} style={{ flex: 1 }}>{card.board.title}</AppText>
-            </View>
-          </ProductPressable>
-          {editMode ? (
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <ProductPressable onPress={onMoveUp} disabled={!canMoveUp} label={`Move ${card.board.title} up`} testID={`${testID}-move-up`}>
-                <Icon name="arrowUp" color={colors.accent} />
-              </ProductPressable>
-              <ProductPressable onPress={onMoveDown} disabled={!canMoveDown} label={`Move ${card.board.title} down`} testID={`${testID}-move-down`}>
-                <Icon name="arrowDown" color={colors.accent} />
-              </ProductPressable>
-            </View>
-          ) : (
-            <ProductPressable
-              onPress={onQuickCheckIn}
-              disabled={quickPending || !onQuickCheckIn}
-              role="checkbox"
-              checked={daily.checkedToday}
-              label={daily.checkedToday ? 'Checked, double tap to uncheck' : 'Not checked, double tap to check'}
-              hint={`${card.board.title}, ${card.today}`}
-              testID={`${testID}-quick`}
-            >
-              <View style={{ width: minimumTouchTarget, height: minimumTouchTarget,
-                borderRadius: radius.capsule, borderCurve: radiusCurve, borderWidth: 2,
-                borderColor: colors.accent, backgroundColor: daily.checkedToday ? colors.accent : 'transparent',
-                alignItems: 'center', justifyContent: 'center' }}>
-                {daily.checkedToday ? <Icon name="checkmark" size={23} color={colors.onAccent} /> : null}
-              </View>
-            </ProductPressable>
-          )}
-        </View>
-        <DailyStrip strip={card.strip} colors={colors} testID={testID} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.sm }}>
-          <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>{`${daily.completedThisWeek}/7 this week`}</AppText>
-          {daily.currentStreak !== null ? (
-            <AppText variant="footnote" style={{ color: semanticColor('secondaryLabel', scheme), fontVariant: ['tabular-nums'] }}>{`${daily.currentStreak} ${daily.currentStreak === 1 ? 'day' : 'days'} streak`}</AppText>
-          ) : null}
-        </View>
-      </View>
-    );
+    summary = `${card.daily.completedThisWeek}/7 this week`;
+    if (card.daily.currentStreak !== null) {
+      const unit = card.daily.currentStreak === 1 ? 'day' : 'days';
+      summary += `, ${card.daily.currentStreak} ${unit} streak`;
+    }
   }
 
   return (
-    <View
-      testID={testID}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: background,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        borderRadius: radius.capsule,
-        borderCurve: radiusCurve,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.lg,
-        gap: spacing.sm,
-        minHeight: 72,
-      }}
-    >
-      <ProductPressable
-        onPress={onOpen}
-        label={card.board.title}
-        hint="Opens the board"
-        disabled={!onOpen}
-        stretch
-        style={{ flex: 1 }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+    <View testID={testID} style={{
+      flexDirection: compact ? 'row' : 'column', alignItems: compact ? 'center' : 'stretch',
+      backgroundColor: card.board.usesTintedBackground ? colors.tintedCardBackground : semanticColor('secondaryGroupedBackground', scheme),
+      borderWidth: 3, borderColor: colors.cardBorder, borderRadius: compact ? 48 : 28,
+      borderCurve: radiusCurve, padding: compact ? spacing.md : spacing.sm,
+      paddingHorizontal: compact ? spacing.lg : spacing.sm, gap: compact ? spacing.sm : spacing.md,
+      minHeight: 76, flex: 1, minWidth: 0,
+    }}>
+      <ProductPressable onPress={onOpen} label={card.board.title} hint={`Opens the board${summary ? `. ${summary}` : ''}`}
+        disabled={!onOpen} stretch style={compact ? { flex: 1, minWidth: 0 } : { paddingHorizontal: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <BoardSymbol symbol={card.board.symbol} color={colors.accent} />
-          <AppText
-            variant="headline"
-            numberOfLines={1}
-            selectable={false}
-            style={{ flexShrink: 1 }}
-          >
+          <AppText variant="headline" numberOfLines={1} selectable={false} style={{ flex: 1, minWidth: 0 }}>
             {card.board.title}
           </AppText>
         </View>
       </ProductPressable>
+      {!compact ? <BoardCardHistory card={card} colors={colors} testID={testID} /> : null}
       {editMode ? (
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <ProductPressable
-            onPress={onMoveUp}
-            disabled={!canMoveUp}
-            label={`Move ${card.board.title} up`}
-            testID={`${testID}-move-up`}
-          >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+          <ProductPressable onPress={onMoveUp} disabled={!canMoveUp} label={`Move ${card.board.title} up`} testID={`${testID}-move-up`}>
             <Icon name="arrowUp" color={colors.accent} />
           </ProductPressable>
-          <ProductPressable
-            onPress={onMoveDown}
-            disabled={!canMoveDown}
-            label={`Move ${card.board.title} down`}
-            testID={`${testID}-move-down`}
-          >
+          <ProductPressable onPress={onMoveDown} disabled={!canMoveDown} label={`Move ${card.board.title} down`} testID={`${testID}-move-down`}>
             <Icon name="arrowDown" color={colors.accent} />
           </ProductPressable>
         </View>
       ) : (
         <>
-          <SevenDayStrip strip={card.strip} colors={colors} barWidth={4} barGap={3} />
-          <ProductPressable
-            onPress={onQuickCheckIn}
-            disabled={quickPending || !onQuickCheckIn}
-            label={`Check in to ${card.board.title}`}
-            hint="Records one check-in for today"
-            testID={`${testID}-quick`}
-          >
-            <View
-              style={{
-                width: minimumTouchTarget,
-                height: minimumTouchTarget,
-                borderRadius: radius.capsule,
-                borderCurve: radiusCurve,
-                backgroundColor: colors.accent,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <View
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: radius.capsule,
-                  borderCurve: radiusCurve,
-                  borderWidth: 3,
-                  borderColor: colors.onAccent,
-                }}
-              />
-            </View>
+          {compact ? <SevenDayStrip strip={card.strip.slice(-7)} colors={colors} barWidth={5} barGap={3} /> : null}
+          <ProductPressable onPress={onQuickCheckIn} disabled={quickPending || !onQuickCheckIn}
+            role={card.daily ? 'checkbox' : 'button'} checked={checked}
+            label={card.daily ? (checked ? 'Checked, double tap to uncheck' : 'Not checked, double tap to check') : `Check in to ${card.board.title}`}
+            hint={card.daily ? `${card.board.title}, ${card.today}. ${summary}` : 'Records one check-in for today'}
+            testID={`${testID}-quick`} style={{ paddingVertical: compact ? 0 : 8,
+              width: compact ? 44 : undefined, borderRadius: compact ? 24 : 16,
+              backgroundColor: colors.accent, flexDirection: 'row', gap: 6 }}>
+            {checked ? <Icon name="checkmark" size={20} color={colors.onAccent} />
+              : <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: colors.onAccent }} />}
+            {!compact ? <AppText variant="headline" selectable={false} style={{ color: colors.onAccent, flexShrink: 1 }}>
+              {checked ? 'Checked' : 'Check In'}
+            </AppText> : null}
           </ProductPressable>
         </>
       )}
