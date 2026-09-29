@@ -6,6 +6,14 @@
       "args": [
         "mcp"
       ]
+    },
+    "e2e": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "e2e",
+        "mcp"
+      ]
     }
   }
 }

@@ -35,10 +35,14 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^4.0.68",
+    "@e2e-dev/mobile": "^0.8.0-canary-20260928184528",
     "@testing-library/react-native": "^13",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
+    "ai": "^7.0.122",
     "ajv": "^6.14.0",
+    "e2e": "^0.15.0-canary-20260928184528",
     "eslint": "^9",
     "eslint-config-expo": "~57.0.2",
     "expo-mcp": "~0.2.1",
@@ -63,7 +67,8 @@
     "test:native:config": "node --test modules/ripples-apple/tests/plugin/config.test.cjs",
     "test:native:linkage": "sh modules/ripples-apple/tests/native/verify-sqlite-linkage.sh",
     "test:native": "bun run test:native:config && swift test --package-path modules/ripples-apple",
-    "validate": "bun run lint && bun run typecheck && bun run test:coverage"
+    "validate": "bun run lint && bun run typecheck && bun run test:coverage",
+    "test:e2e": "e2e run"
   },
   "private": true
 }

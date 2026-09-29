@@ -80,3 +80,14 @@ To keep context small and costs low, observe these rules during UI builds:
 5. **Delegate Exploration:** Use subagents to explore and dump files, returning only the conclusion to the main context.
 6. **Use the Cheapest Capable Subagent:** When the active client supports subagents, delegate bounded exploration, file inspection, and log analysis to the least expensive available model that can reliably complete the task. Use only model identifiers supported by the active client.
 7. **Keep Heavy Device Work Isolated:** When the active client supports subagents, delegate repeated Argent inspection loops to one bounded subagent and have it return a concise conclusion. Use the active client's own context-management features instead of assuming commands or tool parameters from another client.
+
+## End-to-end tests (e2e)
+
+End-to-end tests use e2e; read .agents/skills/e2e/SKILL.md before writing or running one.
+
+- Tests live in `tests/e2e/*.e2e.ts`, config in `e2e.config.ts`. Run locally with
+  `E2E_DEVICE="Habit System QA" bun run test:e2e`; deterministic tests need no model,
+  agent steps read `E2E_ANTHROPIC_API_KEY`.
+- Every pull request runs the suite on an EAS Simulator through
+  `.eas/workflows/e2e-pr.yml` and posts the summary plus the session replay link on the PR.
+- Tests must not call `app.clearState()` on the QA simulator; it holds sample data.
