@@ -1,16 +1,17 @@
-# Proof on every PR.
+# Proof on every PR, on several cloud iPhones at once.
 #
-# For every pull request: reuse a matching iOS simulator build or make one, start an
-# EAS Simulator session with that build installed, run the e2e suite on it through
-# agent-device (`eas simulator:exec` routes agent-device at the remote daemon), then
-# post the run summary and the session replay link as a pull request comment.
+# For every pull request: reuse a matching iOS simulator build or make one, then run the
+# e2e suite with the EAS Simulator device provider (tests/e2e/eas-simulator-provider.ts).
+# The provider leases one EAS Simulator session per worker, each with the build installed,
+# and e2e spreads the test files across them. The run summary and every session replay
+# link are posted as a pull request comment, and the sessions are stopped when the run ends.
 #
 # The tests live in tests/e2e/*.e2e.ts and the runner config in e2e.config.ts.
 # Deterministic tests need no model; agent steps use the model in e2e.config.ts.
 #
 # Required EAS environment variables (production environment):
-#   EXPO_TOKEN            - auths eas-cli for the simulator session (already set)
-#   GITHUB_TOKEN          - fine-grained PAT with pull request write (already set)
+#   EXPO_TOKEN            - auths eas-cli for the simulator sessions (already set)
+#   GITHUB_TOKEN          - fine-grained PAT with pull request write on this repo
 #   E2E_OAUTH_CREDENTIALS - the ChatGPT login json (~/.config/e2e/oauth.json) for the
 #                           agent steps; the default model in e2e.config.ts. Refreshed
 #                           tokens are not written back, so paste a fresh copy when a
@@ -24,8 +25,7 @@ name: e2e on EAS Simulator (proof on every PR)
 on:
   pull_request:
     branches: [main]
-  # manual runs: `eas workflow:run .eas/workflows/e2e-pr.yml -F pr_number=2 -F grep=opens`
-  # pr_number posts the comment on that pull request; grep narrows the tests by title.
+  # manual runs: `eas workflow:run .eas/workflows/e2e-pr.yml -F pr_number=2 -F workers=3`
   workflow_dispatch:
     inputs:
       pr_number:
@@ -33,6 +33,9 @@ on:
         required: false
       grep:
         description: 'Only run tests whose title matches this pattern (optional)'
+        required: false
+      workers:
+        description: 'How many cloud iPhones to lease at once (default 2)'
         required: false
 
 jobs:
@@ -63,7 +66,7 @@ jobs:
       profile: sim
 
   e2e:
-    name: Run e2e on an EAS Simulator
+    name: Run e2e on EAS Simulators
     after: [get_build, build]
     if: ${{ after.get_build.outputs.build_id || after.build.outputs.build_id }}
     environment: production
@@ -71,6 +74,7 @@ jobs:
       BUILD_ID: ${{ after.get_build.outputs.build_id || after.build.outputs.build_id }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '' }}
       E2E_GREP: ${{ inputs.grep || '' }}
+      E2E_WORKERS: ${{ inputs.workers || '2' }}
       REPO: rami-maalouf/habit-system
       CI: '1'
       E2E_TELEMETRY_DISABLED: '1'
@@ -78,44 +82,32 @@ jobs:
       - uses: eas/checkout
       - uses: eas/install_node_modules
 
-      - name: Start the simulator session with the build installed
-        id: session
+      - name: Install EAS CLI for the device provider
         run: |
-          printf '# managed by eas-cli\n' > .env.eas-simulator
-          npx --yes eas-cli@latest simulator:start \
-            --platform ios \
-            --type agent-device \
-            --build-id "$BUILD_ID" \
-            --name "e2e PR #${PR_NUMBER:-manual}" \
-            --max-duration-minutes 30 \
-            --max-idle-time-minutes 10 \
-            --json > .e2e-session.json
-          SESSION_URL="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(".e2e-session.json","utf8")).deviceRunSessionUrl ?? "")')"
-          # the json carries the controller credentials; the dotenv already has them.
-          rm -f .e2e-session.json
-          echo "session: $SESSION_URL"
-          mkdir -p .e2e
-          printf '%s' "$SESSION_URL" > .e2e/session-url.txt
+          npm install -g eas-cli@latest
+          eas --version
 
-      - name: Run the e2e suite on the session
+      - name: Run the e2e suite on leased EAS Simulators
         id: e2e_run
         run: |
-          # the mobile engine drives whatever agent-device sees; simulator:exec loads
-          # AGENT_DEVICE_DAEMON_BASE_URL and AGENT_DEVICE_DAEMON_AUTH_TOKEN for it.
           # the runner is invoked through its node bin so node, not bun, executes it.
+          # E2E_EAS_SIMULATOR=1 makes e2e.config.ts lease one session per worker with
+          # BUILD_ID installed, so nothing here starts or stops sessions by hand.
           mkdir -p .e2e
-          echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version)"
+          : > .e2e/session-urls.txt
+          : > .e2e/session-ids.txt
+          echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version), workers $E2E_WORKERS"
           E2E_ARGS="run --reporter list,markdown,junit"
           if [ -n "$E2E_GREP" ]; then E2E_ARGS="$E2E_ARGS --grep $E2E_GREP"; fi
           set +e
           # shellcheck disable=SC2086
-          npx --yes eas-cli@latest simulator:exec ./node_modules/.bin/e2e $E2E_ARGS 2>&1 | tee .e2e/run.log
+          E2E_EAS_SIMULATOR=1 E2E_BUILD_ID="$BUILD_ID" ./node_modules/.bin/e2e $E2E_ARGS 2>&1 | tee .e2e/run.log
           E2E_EXIT=${PIPESTATUS[0]}
           set -e
           echo "e2e exit code: $E2E_EXIT"
           exit "$E2E_EXIT"
 
-      - name: Post the summary and the replay link on the pull request
+      - name: Post the summary and the replay links on the pull request
         if: ${{ always() }}
         run: |
           # gh reads GITHUB_TOKEN from the environment on its own.
@@ -123,7 +115,6 @@ jobs:
             echo "no pull request; skipping the comment"
             exit 0
           fi
-          SESSION_URL="$(cat .e2e/session-url.txt 2>/dev/null || true)"
           {
             if [ -f .e2e/summary.md ]; then
               cat .e2e/summary.md
@@ -137,15 +128,24 @@ jobs:
               fi
             fi
             echo
-            echo "Session replay: ${SESSION_URL:-unavailable}"
+            if [ -s .e2e/session-urls.txt ]; then
+              echo "Session replays (one cloud iPhone per line):"
+              while IFS= read -r url; do [ -n "$url" ] && echo "- $url"; done < .e2e/session-urls.txt
+            else
+              echo "Session replays: unavailable"
+            fi
           } > .e2e-comment.md
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file .e2e-comment.md
 
-      - name: Stop the simulator session
+      - name: Stop any session the run left behind
         if: ${{ always() }}
         run: |
-          npx --yes eas-cli@latest simulator:stop --non-interactive || true
-          printf '# managed by eas-cli\n' > .env.eas-simulator
+          # the provider stops its sessions on every exit path; this is the safety net.
+          if [ -s .e2e/session-ids.txt ]; then
+            while IFS= read -r id; do
+              [ -n "$id" ] && eas simulator:stop --id "$id" --json --non-interactive || true
+            done < .e2e/session-ids.txt
+          fi
 
       - name: Keep the run artifacts
         if: ${{ always() }}

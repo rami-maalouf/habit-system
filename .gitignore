@@ -68,3 +68,5 @@ coverage/
 .e2e/failures/
 .e2e/logs/
 .e2e/videos/
+.e2e/session-urls.txt
+.e2e/session-ids.txt
