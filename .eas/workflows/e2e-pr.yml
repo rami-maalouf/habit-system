@@ -11,9 +11,13 @@
 # Required EAS environment variables (production environment):
 #   EXPO_TOKEN            - auths eas-cli for the simulator session (already set)
 #   GITHUB_TOKEN          - fine-grained PAT with pull request write (already set)
-#   E2E_ANTHROPIC_API_KEY - api key for the agent steps. Named this way on purpose:
-#                           ANTHROPIC_API_KEY would also be picked up by the agent-fix
-#                           workflow and bill the api instead of the subscription.
+#   E2E_OAUTH_CREDENTIALS - the ChatGPT login json (~/.config/e2e/oauth.json) for the
+#                           agent steps; the default model in e2e.config.ts. Refreshed
+#                           tokens are not written back, so paste a fresh copy when a
+#                           run reports LOGIN_REQUIRED.
+#   E2E_ANTHROPIC_API_KEY - alternative: an api key, with E2E_MODEL=anthropic/<id>.
+#                           Named this way on purpose: ANTHROPIC_API_KEY would also be
+#                           picked up by the agent-fix workflow and bill the api.
 
 name: e2e on EAS Simulator (proof on every PR)
 

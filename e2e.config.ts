@@ -1,5 +1,6 @@
 import type { E2EConfig } from 'e2e';
 import { createAgent } from 'e2e/agent';
+import { chatgpt } from 'e2e/oauth/chatgpt';
 import { mobile } from '@e2e-dev/mobile';
 import { mobileTools } from '@e2e-dev/mobile/tools';
 import { createAnthropic } from '@ai-sdk/anthropic';
@@ -15,11 +16,19 @@ const iphone = mobile({
   device: process.env.E2E_DEVICE,
 });
 
-// E2E_ANTHROPIC_API_KEY keeps the e2e key separate from ANTHROPIC_API_KEY, which the
-// agent-fix workflow must not see (it would bill the api instead of the subscription).
-const anthropic = createAnthropic({
-  apiKey: process.env.E2E_ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY,
-});
+// E2E_MODEL picks the model as <provider>/<id>.
+// - chatgpt (default): the ChatGPT subscription login. locally that is
+//   ~/.config/e2e/oauth.json from `e2e login openai`; in ci the same json is
+//   supplied through E2E_OAUTH_CREDENTIALS.
+// - anthropic: an api key in E2E_ANTHROPIC_API_KEY. named this way on purpose so the
+//   agent-fix workflow never sees an ANTHROPIC_API_KEY and keeps billing its subscription.
+const [provider, modelId] = (process.env.E2E_MODEL ?? 'chatgpt/gpt-6-luna').split('/');
+const model =
+  provider === 'anthropic'
+    ? createAnthropic({
+        apiKey: process.env.E2E_ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY,
+      })(modelId)
+    : chatgpt(modelId);
 
 export default {
   targets: [{ name: 'ios', engine: iphone }],
@@ -27,7 +36,7 @@ export default {
   workers: 1,
   agents: {
     default: createAgent({
-      model: anthropic(process.env.E2E_MODEL ?? 'claude-haiku-4-5'),
+      model,
       tools: mobileTools(iphone),
       system:
         'You are a careful QA agent testing a habit tracker for iOS. Do one goal at a time and verify every outcome on screen.',

@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "^4.0.68",
+    "@ai-sdk/openai": "^4.0.82",
     "@e2e-dev/mobile": "^0.8.0-canary-20260928184528",
     "@testing-library/react-native": "^13",
     "@types/jest": "29.5.14",
