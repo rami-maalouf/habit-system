@@ -3825,4 +3825,7 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
     were remediated. ESLint passes. The full plugin gate passes 14 of 15 checks;
     its sole failure is the existing Linux absence of `/usr/bin/plutil`.
     TypeScript did not complete within a bounded five-minute run after the new
-    inherited e2e dependencies landed, so no full typecheck claim is made.
+    inherited e2e dependencies landed, so no full typecheck claim is made. The
+    development variant also uses its own opaque square icon: the familiar
+    droplet wears an orange hard hat in a purple-and-blue palette, while preview
+    and production retain the original green icon.

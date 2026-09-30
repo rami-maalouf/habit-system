@@ -7,6 +7,7 @@ module.exports = ({ config }) => {
   const iosBuild = config.extra.eas.build.experimental.ios;
   return {
     ...config,
+    icon: './assets/images/icon-development.png',
     ios: {
       ...config.ios,
       bundleIdentifier: developmentBundleIdentifier,
