@@ -8,7 +8,12 @@ const xcode = require('xcode');
 const plist = require('@expo/plist').default;
 const withDevLauncher = require('expo-dev-launcher/plugin/build/withDevLauncher').default;
 const { getPngInfo } = require('@expo/image-utils');
-const { configureEntitlements, configureInfoPlist, writeAlternateIcons } = require('../../plugin');
+const {
+  configureEntitlements,
+  configureInfoPlist,
+  resolveSharedIdentifier,
+  writeAlternateIcons,
+} = require('../../plugin');
 const withRipplesApple = require('../../plugin');
 
 const appDelegateFixture = `internal import Expo
@@ -354,4 +359,79 @@ test('app configuration carries the fork identity and never the ripples identity
   assert.equal(app.updates.url, `https://u.expo.dev/${app.extra.eas.projectId}`);
   const serialized = JSON.stringify(app) + JSON.stringify(pkg);
   assert.doesNotMatch(serialized, /habittracker|habit-tracker|1e477943/);
+});
+
+test('only development builds use the side-by-side dev bundle identifiers', async () => {
+  const root = path.resolve(__dirname, '../../../..');
+  const base = require(path.join(root, 'app.json')).expo;
+  const eas = require(path.join(root, 'eas.json'));
+  const configureApp = require(path.join(root, 'app.config.js'));
+  const previousVariant = process.env.APP_VARIANT;
+  try {
+    delete process.env.APP_VARIANT;
+    const preview = configureApp({ config: structuredClone(base) });
+    assert.equal(preview.ios.bundleIdentifier, 'studio.orbitlabs.habitsystem');
+    assert.equal(preview.icon, './assets/images/icon.png');
+    assert.equal(
+      preview.extra.eas.build.experimental.ios.appExtensions[0].bundleIdentifier,
+      'studio.orbitlabs.habitsystem.ExpoWidgetsTarget',
+    );
+
+    process.env.APP_VARIANT = 'development';
+    const development = configureApp({ config: structuredClone(base) });
+    assert.equal(development.ios.bundleIdentifier, 'studio.orbitlabs.habitsystem.dev');
+    assert.equal(development.icon, './assets/images/icon-development.png');
+    const developmentIcon = await getPngInfo(path.join(root, development.icon));
+    assert.equal(developmentIcon.width, developmentIcon.height);
+    assert.ok(developmentIcon.width >= 1024);
+    assert.equal(developmentIcon.bpp, 3);
+    assert.equal(development.extra.ripplesSharedIdentifier, 'studio.orbitlabs.habitsystem');
+    assert.equal(
+      resolveSharedIdentifier(development, development.ios.bundleIdentifier),
+      'studio.orbitlabs.habitsystem',
+    );
+    assert.equal(eas.build.development.env.APP_VARIANT, 'development');
+    assert.equal(eas.build.preview.env?.APP_VARIANT, undefined);
+    assert.equal(eas.build.production.env?.APP_VARIANT, undefined);
+    assert.equal(
+      development.extra.eas.build.experimental.ios.appExtensions[0].bundleIdentifier,
+      'studio.orbitlabs.habitsystem.dev.ExpoWidgetsTarget',
+    );
+    assert.deepEqual(
+      development.extra.eas.build.experimental.ios.appExtensions[0].entitlements[
+        'com.apple.security.application-groups'
+      ],
+      ['group.studio.orbitlabs.habitsystem'],
+    );
+    const widgets = development.plugins.find(
+      (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-widgets',
+    )[1];
+    assert.equal(widgets.groupIdentifier, 'group.studio.orbitlabs.habitsystem');
+
+    const nativeConfig = withRipplesApple(development);
+    const entitlements = await nativeConfig.mods.ios.entitlements({
+      ...nativeConfig,
+      modRequest: { platform: 'ios', modName: 'entitlements' },
+      modResults: {},
+    });
+    assert.deepEqual(entitlements.modResults['com.apple.security.application-groups'], [
+      'group.studio.orbitlabs.habitsystem',
+    ]);
+    assert.deepEqual(entitlements.modResults['com.apple.developer.icloud-container-identifiers'], [
+      'iCloud.studio.orbitlabs.habitsystem',
+    ]);
+    const infoPlist = await nativeConfig.mods.ios.infoPlist({
+      ...nativeConfig,
+      modRequest: { platform: 'ios', modName: 'infoPlist' },
+      modResults: {},
+    });
+    assert.equal(infoPlist.modResults.RipplesAppGroupIdentifier, 'group.studio.orbitlabs.habitsystem');
+    assert.equal(
+      infoPlist.modResults.RipplesCloudKitContainerIdentifier,
+      'iCloud.studio.orbitlabs.habitsystem',
+    );
+  } finally {
+    if (previousVariant === undefined) delete process.env.APP_VARIANT;
+    else process.env.APP_VARIANT = previousVariant;
+  }
 });

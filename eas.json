@@ -9,6 +9,7 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
+        "APP_VARIANT": "development",
         "RIPPLES_CLOUDKIT_ENVIRONMENT": "Development"
       }
     },

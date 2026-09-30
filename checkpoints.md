@@ -3812,3 +3812,20 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
     route test exceeding its five-second timeout on this Linux host. Native gates
     are unavailable here because `/usr/bin/plutil` and Swift are not installed;
     no simulator or physical-widget evidence is claimed for this follow-up.
+17. Development builds now resolve to the side-by-side bundle identifier
+    `studio.orbitlabs.habitsystem.dev`; their widget extension resolves to
+    `studio.orbitlabs.habitsystem.dev.ExpoWidgetsTarget`. Preview and production
+    retain `studio.orbitlabs.habitsystem`. The existing App Group and CloudKit
+    identifiers remain shared so the hardcoded database container and native
+    executor contracts do not drift. A clean SDK 57 development prebuild proves
+    both bundle identifiers, both shared-container entitlements, the CloudKit
+    entitlement and Info.plist lookup keys. The focused profile/plugin test
+    passes and pins EAS profile isolation plus the actual entitlement/Info.plist
+    mod wiring. Independent review found no production defect; its two test gaps
+    were remediated. ESLint passes. The full plugin gate passes 14 of 15 checks;
+    its sole failure is the existing Linux absence of `/usr/bin/plutil`.
+    TypeScript did not complete within a bounded five-minute run after the new
+    inherited e2e dependencies landed, so no full typecheck claim is made. The
+    development variant also uses its own opaque square icon: the familiar
+    droplet wears an orange hard hat in a purple-and-blue palette, while preview
+    and production retain the original green icon.
