@@ -6,6 +6,10 @@
 # and e2e spreads the test files across them. The run summary and every session replay
 # link are posted as a pull request comment, and the sessions are stopped when the run ends.
 #
+# After the suite, the agent explores what the pull request describes: `e2e explore` gets
+# the pull request body as its goal, taps through the app on a fresh cloud iPhone, and
+# reports findings. Findings inform the comment; only the suite decides pass or fail.
+#
 # The tests live in tests/e2e/*.e2e.ts and the runner config in e2e.config.ts.
 # Deterministic tests need no model; agent steps use the model in e2e.config.ts.
 #
@@ -36,6 +40,9 @@ on:
         required: false
       workers:
         description: 'How many cloud iPhones to lease at once (default 2; the account allows two concurrent sessions)'
+        required: false
+      goal:
+        description: 'Exploration goal for a manual run (a pull request run uses the PR body)'
         required: false
 
 jobs:
@@ -75,6 +82,8 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '' }}
       E2E_GREP: ${{ inputs.grep || '' }}
       E2E_WORKERS: ${{ inputs.workers || '2' }}
+      EXPLORE_GOAL: ${{ inputs.goal || github.event.pull_request.body || '' }}
+      EXPLORE_TITLE: ${{ github.event.pull_request.title || '' }}
       REPO: rami-maalouf/habit-system
       CI: '1'
       E2E_TELEMETRY_DISABLED: '1'
@@ -109,6 +118,27 @@ jobs:
           echo "e2e exit code: $E2E_EXIT"
           exit "$E2E_EXIT"
 
+      - name: Explore what the pull request describes
+        if: ${{ always() }}
+        run: |
+          # the agent gets the pull request text as a goal and reports findings.
+          # a found issue exits 1; that informs the comment and does not fail the job.
+          if [ -z "$EXPLORE_GOAL" ]; then
+            echo "no goal (no pull request body or goal input); skipping the exploration"
+            exit 0
+          fi
+          mkdir -p .e2e/explore
+          GOAL="You are testing a pull request to a habit tracker app for iOS. Explore the app as a careful user would, focused on what the pull request describes, and report anything that does not behave as described or looks broken."
+          if [ -n "$EXPLORE_TITLE" ]; then GOAL="$GOAL Pull request title: $EXPLORE_TITLE."; fi
+          GOAL="$GOAL Pull request description: $EXPLORE_GOAL"
+          set +e
+          E2E_EAS_SIMULATOR=1 E2E_BUILD_ID="$BUILD_ID" E2E_WORKERS=1 \
+            ./node_modules/.bin/e2e explore --max-steps 5 --timeout 360000 \
+              --reporter list,markdown --output .e2e/explore "$GOAL" 2>&1 | tee .e2e/explore.log
+          EXPLORE_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "explore exit code: $EXPLORE_EXIT (0 passed, 1 findings, 2 or 3 could not run)"
+
       - name: Post the summary and the replay links on the pull request
         if: ${{ always() }}
         run: |
@@ -130,6 +160,12 @@ jobs:
               fi
             fi
             echo
+            if [ -s .e2e/explore/summary.md ]; then
+              echo "### Exploration of what this pull request describes"
+              echo
+              cat .e2e/explore/summary.md
+              echo
+            fi
             if [ -s .e2e/session-urls.txt ]; then
               echo "Session replays (one cloud iPhone per line):"
               while IFS= read -r url; do [ -n "$url" ] && echo "- $url"; done < .e2e/session-urls.txt
