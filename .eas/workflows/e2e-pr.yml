@@ -20,7 +20,16 @@ name: e2e on EAS Simulator (proof on every PR)
 on:
   pull_request:
     branches: [main]
-  workflow_dispatch: {}
+  # manual runs: `eas workflow:run .eas/workflows/e2e-pr.yml -F pr_number=2 -F grep=opens`
+  # pr_number posts the comment on that pull request; grep narrows the tests by title.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to comment on (optional)'
+        required: false
+      grep:
+        description: 'Only run tests whose title matches this pattern (optional)'
+        required: false
 
 jobs:
   fingerprint:
@@ -56,7 +65,8 @@ jobs:
     environment: production
     env:
       BUILD_ID: ${{ after.get_build.outputs.build_id || after.build.outputs.build_id }}
-      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '' }}
+      E2E_GREP: ${{ inputs.grep || '' }}
       REPO: rami-maalouf/habit-system
       CI: '1'
       E2E_TELEMETRY_DISABLED: '1'
@@ -87,7 +97,11 @@ jobs:
         run: |
           # the mobile engine drives whatever agent-device sees; simulator:exec loads
           # AGENT_DEVICE_DAEMON_BASE_URL and AGENT_DEVICE_DAEMON_AUTH_TOKEN for it.
-          npx --yes eas-cli@latest simulator:exec bunx e2e run --reporter list,markdown,junit
+          if [ -n "$E2E_GREP" ]; then
+            npx --yes eas-cli@latest simulator:exec bunx e2e run --reporter list,markdown,junit --grep "$E2E_GREP"
+          else
+            npx --yes eas-cli@latest simulator:exec bunx e2e run --reporter list,markdown,junit
+          fi
 
       - name: Post the summary and the replay link on the pull request
         if: ${{ always() }}
