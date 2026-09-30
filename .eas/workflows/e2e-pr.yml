@@ -127,7 +127,7 @@ jobs:
             echo "no goal (no pull request body or goal input); skipping the exploration"
             exit 0
           fi
-          [ -f .e2e/summary.md ] && cp -n .e2e/summary.md .e2e/suite-summary.md
+          if [ -f .e2e/summary.md ] && [ ! -f .e2e/suite-summary.md ]; then cp .e2e/summary.md .e2e/suite-summary.md; fi
           rm -f .e2e/summary.md
           GOAL="You are testing a pull request to a habit tracker app for iOS. Explore the app as a careful user would, focused on what the pull request describes, and report anything that does not behave as described or looks broken."
           if [ -n "$EXPLORE_TITLE" ]; then GOAL="$GOAL Pull request title: $EXPLORE_TITLE."; fi
