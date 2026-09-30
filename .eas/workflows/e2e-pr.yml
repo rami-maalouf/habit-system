@@ -26,6 +26,12 @@
 
 name: e2e on EAS Simulator (proof on every PR)
 
+# a new push to the same branch cancels the run still going, so two runs of one pull
+# request never compete for the account's two simulator sessions.
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
 on:
   pull_request:
     branches: [main]
