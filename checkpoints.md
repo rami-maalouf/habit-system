@@ -2,6 +2,18 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Layout Done button spacing (2026-09-29)
+
+1. Added the existing 16-point horizontal spacing token to the layout Done
+   button so its glass capsule has balanced space around the label.
+2. Argent reproduced the tight spacing and verified normal and maximum Dynamic
+   Type after the change. Done dismisses the picker; it remains open in Device
+   Hub for inspection. The overlapping Expo developer gear was disabled for
+   this QA launch only with `-EXDevMenuShowFloatingActionButton NO`.
+3. `bun run validate` passes 209 suites / 3,077 tests with all 105 core files at
+   100 percent; native tests pass 14 plugin and 195 Swift tests. Independent
+   verification found no issues. Evidence: `.artifacts/board-layouts/done-*`.
+
 ### Four board layouts and native glass correction (2026-09-29)
 
 1. Restored the original compact pill proportions and all 14 history bars.
