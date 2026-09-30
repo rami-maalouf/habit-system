@@ -85,16 +85,14 @@ jobs:
       EXPLORE_GOAL: ${{ inputs.goal || github.event.pull_request.body || '' }}
       EXPLORE_TITLE: ${{ github.event.pull_request.title || '' }}
       REPO: rami-maalouf/habit-system
+      # the device provider and the safety step call the eas cli through npx, so no
+      # global install can fail the job (a registry 404 did on 2026-09-30).
+      E2E_EAS_COMMAND: npx --yes eas-cli@latest
       CI: '1'
       E2E_TELEMETRY_DISABLED: '1'
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-
-      - name: Install EAS CLI for the device provider
-        run: |
-          npm install -g eas-cli@latest
-          eas --version
 
       - name: Run the e2e suite on leased EAS Simulators
         id: e2e_run
@@ -189,12 +187,12 @@ jobs:
           # (a lease killed while queued has a session but no id on file).
           if [ -s .e2e/session-ids.txt ]; then
             while IFS= read -r id; do
-              [ -n "$id" ] && eas simulator:stop --id "$id" --json --non-interactive || true
+              [ -n "$id" ] && npx --yes eas-cli@latest simulator:stop --id "$id" --json --non-interactive || true
             done < .e2e/session-ids.txt
           fi
           PREFIX="$(cat .e2e/logs/session-prefix.txt 2>/dev/null || true)"
           if [ -n "$PREFIX" ]; then
-            eas simulator:list --platform ios --status in-progress --json --non-interactive 2>/dev/null \
+            npx --yes eas-cli@latest simulator:list --platform ios --status in-progress --json --non-interactive 2>/dev/null \
               | node -e '
                 let raw = ""; process.stdin.on("data", (c) => (raw += c)).on("end", () => {
                   const start = raw.indexOf("{"); if (start < 0) return;
@@ -204,7 +202,7 @@ jobs:
                   }
                 });' "$PREFIX" \
               | while IFS= read -r id; do
-                  [ -n "$id" ] && eas simulator:stop --id "$id" --json --non-interactive || true
+                  [ -n "$id" ] && npx --yes eas-cli@latest simulator:stop --id "$id" --json --non-interactive || true
                 done
           fi
 
