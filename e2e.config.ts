@@ -4,16 +4,26 @@ import { chatgpt } from 'e2e/oauth/chatgpt';
 import { mobile } from '@e2e-dev/mobile';
 import { mobileTools } from '@e2e-dev/mobile/tools';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { easSimulator } from './tests/e2e/eas-simulator-provider';
 
-// the app under test, driven through agent-device.
-//
-// on an EAS Simulator session the app is installed by `eas simulator:start --build-id`
-// and `eas simulator:exec` points agent-device at the remote daemon, so no appPath is
-// needed. locally, set E2E_DEVICE to a booted simulator that already has the app.
+// where the tests run.
+// - default: a local booted simulator that already has the app. E2E_DEVICE picks one by
+//   name or udid; without it, any booted ios simulator.
+// - E2E_EAS_SIMULATOR=1: lease EAS Simulator sessions instead, one per worker, each with
+//   the build E2E_BUILD_ID installed. E2E_WORKERS sets how many cloud iphones run at
+//   once; test files spread across them.
+const onEas = process.env.E2E_EAS_SIMULATOR === '1';
+
 const iphone = mobile({
   platform: 'ios',
   app: 'studio.orbitlabs.habitsystem',
-  device: process.env.E2E_DEVICE,
+  device: onEas
+    ? easSimulator({
+        buildId: process.env.E2E_BUILD_ID,
+        deviceName: process.env.E2E_EAS_DEVICE,
+        command: process.env.E2E_EAS_COMMAND?.split(' '),
+      })
+    : process.env.E2E_DEVICE,
 });
 
 // E2E_MODEL picks the model as <provider>/<id>.
@@ -32,8 +42,8 @@ const model =
 
 export default {
   targets: [{ name: 'ios', engine: iphone }],
-  // one simulator, one worker. deterministic tests need no model; agent steps do.
-  workers: 1,
+  // on eas, one worker per leased phone. locally one simulator, one worker.
+  workers: onEas ? Number(process.env.E2E_WORKERS ?? '1') : 1,
   agents: {
     default: createAgent({
       model,
