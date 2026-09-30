@@ -11,10 +11,11 @@ type SevenDayStripProps = {
   barHeight?: number;
   barWidth?: number;
   barGap?: number;
+  testID?: string;
 };
 
 // today's outline shares the same rhythm as the preceding history
-export function SevenDayStrip({ strip, colors, barHeight = 30, barWidth = 6, barGap = spacing.xs }: SevenDayStripProps) {
+export function SevenDayStrip({ strip, colors, barHeight = 30, barWidth = 6, barGap = spacing.xs, testID }: SevenDayStripProps) {
   return (
     <View
       style={{ flexDirection: 'row', alignItems: 'center', gap: barGap }}
@@ -24,6 +25,7 @@ export function SevenDayStrip({ strip, colors, barHeight = 30, barWidth = 6, bar
       {strip.map((count, index) => (
         <View
           key={index}
+          testID={testID ? `${testID}-bar-${index}` : undefined}
           style={{
             width: barWidth,
             height: barHeight,

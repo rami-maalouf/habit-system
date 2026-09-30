@@ -1,7 +1,7 @@
 import { Stack, useNavigation } from 'expo-router';
 import { useIsFocused } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, ScrollView, View } from 'react-native';
+import { FlatList, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/foundation/app-text';
@@ -14,6 +14,8 @@ import { triggerActionHaptic } from '@/foundation/haptics';
 import { semanticColor, semanticFallbacks, spacing } from '@/theme';
 
 import { BoardCard } from './board-card';
+import { BoardLayoutPicker } from './board-layout-picker';
+import { useBoardLayout } from './use-board-layout';
 import { confirmDailyUncheck } from './confirm-daily-uncheck';
 import { InlineError, PrimaryButton, ProductPressable, useScheme } from '../ui';
 import { useProduct, useProductQuery } from '../product-store';
@@ -50,6 +52,10 @@ export function BoardsHomeScreen() {
 
   const boards = useProductQuery((c) => getHomeBoardProjection(c), []);
   const [editMode, setEditMode] = useState(false);
+  const [layoutMode, setLayoutMode] = useState(false);
+  const layoutPreference = useBoardLayout();
+  const { fontScale } = useWindowDimensions();
+  const columns = layoutPreference.layout === 'grid' && fontScale < 1.6 ? 2 : 1;
   // pending is a set: concurrent quick check-ins on different boards must
   // not re-enable or clear each other
   const [pendingBoardIds, setPendingBoardIds] = useState<ReadonlySet<BoardId>>(new Set());
@@ -210,7 +216,7 @@ export function BoardsHomeScreen() {
     <View collapsable={false} style={{ flex: 1, backgroundColor: semanticColor('groupedBackground', scheme) }}>
       <Stack.Screen
         options={{
-          title: 'Boards',
+          title: '',
           // native layout must finish before navigation can find the scroll view.
           scrollEdgeEffects: { top: scrollHeaderReady ? 'soft' : 'automatic' },
           headerLeft: () => (
@@ -226,9 +232,20 @@ export function BoardsHomeScreen() {
               <ProductPressable onPress={() => { if (isCurrent()) router.push('/stacks'); }} label="Stacks" hint="Opens habit stacks" testID="open-stacks">
                 <Icon name="stacks" size={22} color={semanticFallbacks.label[scheme]} />
               </ProductPressable>
+              <ProductPressable label="Layout" hint="Choose a layout for all boards" testID="open-board-layout"
+                disabled={!layoutPreference.ready} selected={layoutMode}
+                onPress={() => { if (isCurrent()) { setEditMode(false); setLayoutMode(true); } }}>
+                <Icon name="layoutGrid" size={22} color={semanticFallbacks.label[scheme]} />
+              </ProductPressable>
             </View>
           ),
-          headerRight: () => (
+          headerRight: () => layoutMode ? (
+            <ProductPressable label="Done choosing layout" testID="done-board-layout" disabled={layoutPreference.pending}
+              style={{ paddingHorizontal: spacing.lg }}
+              onPress={() => { if (isCurrent()) setLayoutMode(false); }}>
+              <AppText variant="headline" selectable={false} numberOfLines={1} maxFontSizeMultiplier={1.5}>Done</AppText>
+            </ProductPressable>
+          ) : (
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
               <CoinBalancePill />
               <ProductPressable
@@ -270,28 +287,39 @@ export function BoardsHomeScreen() {
         </View>
       ) : (
         <FlatList
+          key={columns}
+          numColumns={columns}
+          columnWrapperStyle={columns === 2 ? { gap: spacing.lg } : undefined}
           ref={resetScrollHeader}
           onLayout={() => setScrollHeaderReady(true)}
           data={boards.value}
           keyExtractor={(card) => card.board.id}
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
+          contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg,
+            paddingBottom: layoutMode ? insets.bottom + 112 : spacing.lg }}
           renderItem={({ item, index }) => (
-            <BoardCard
-              card={item}
-              testID={`board-card-${index}`}
-              onOpen={() => { if (isCurrent()) router.push(`/boards/${item.board.id}`); }}
-              onQuickCheckIn={() => quickCheckIn(item)}
-              quickPending={pendingBoardIds.has(item.board.id)}
-              editMode={editMode}
-              canMoveUp={!moving && index > 0}
-              canMoveDown={!moving && index < boards.value.length - 1}
-              onMoveUp={() => move(boards.value, index, -1)}
-              onMoveDown={() => move(boards.value, index, 1)}
-            />
+            <View style={{ flex: columns === 2 ? 0.5 : 1, minWidth: 0 }}>
+              <BoardCard
+                card={item}
+                layout={layoutPreference.layout}
+                testID={`board-card-${index}`}
+                onOpen={() => { if (isCurrent()) router.push(`/boards/${item.board.id}`); }}
+                onQuickCheckIn={() => { if (isCurrent()) { setLayoutMode(false); void quickCheckIn(item); } }}
+                quickPending={pendingBoardIds.has(item.board.id)}
+                editMode={editMode}
+                canMoveUp={!moving && index > 0}
+                canMoveDown={!moving && index < boards.value.length - 1}
+                onMoveUp={() => move(boards.value, index, -1)}
+                onMoveDown={() => move(boards.value, index, 1)}
+              />
+            </View>
           )}
         />
       )}
+      {layoutPreference.error ? <View style={{ padding: spacing.lg,
+        paddingBottom: layoutMode ? insets.bottom + 96 : spacing.lg }}>
+        <InlineError message={layoutPreference.error} testID="layout-error" />
+      </View> : null}
       {quickError ? (
         <View style={{ padding: spacing.lg }}>
           <InlineError message={quickError} testID="quick-error" />
@@ -301,7 +329,7 @@ export function BoardsHomeScreen() {
         <View
           style={{
             padding: spacing.lg,
-            paddingBottom: Math.max(insets.bottom, spacing.lg),
+            paddingBottom: layoutMode ? insets.bottom + 96 : Math.max(insets.bottom, spacing.lg),
             backgroundColor: semanticColor('secondaryGroupedBackground', scheme),
             flexDirection: 'row',
             alignItems: 'center',
@@ -317,6 +345,9 @@ export function BoardsHomeScreen() {
           </ProductPressable>
         </View>
       ) : null}
+      {layoutMode ? <BoardLayoutPicker layout={layoutPreference.layout} disabled={layoutPreference.pending}
+        onSelect={value => { if (isCurrent()) void layoutPreference.select(value); }}
+        onClose={() => { if (isCurrent()) setLayoutMode(false); }} /> : null}
     </View>
   );
 }

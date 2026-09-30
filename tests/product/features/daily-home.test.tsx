@@ -61,16 +61,16 @@ describe('Daily Home cards', () => {
     alertSpy.mockClear();
   });
 
-  it('renders fourteen binary cells and accessible state, checks once, and offers precise Undo', async () => {
+  it('renders a compact row with accessible daily state, checks once, and offers precise Undo', async () => {
     const boardId = await seed();
     renderRouter('src/app', { initialUrl: '/' });
     await screen.findByTestId('board-card-0');
     expect(screen.getByRole('checkbox', { name: 'Not checked, double tap to check', checked: false })).toBeOnTheScreen();
-    expect(screen.getAllByTestId(/board-card-0-day-\d+$/)).toHaveLength(14);
-    expect(screen.getByText('0/7 this week')).toBeOnTheScreen();
+    expect(screen.getByTestId('board-card-0')).toHaveStyle({ flexDirection: 'row' });
+    expect(screen.getByTestId('board-card-0-quick').props.accessibilityHint).toContain('0/7 this week');
     await press('board-card-0-quick');
     expect(screen.getByRole('checkbox', { name: 'Checked, double tap to uncheck', checked: true })).toBeOnTheScreen();
-    expect(screen.getByText('1/7 this week')).toBeOnTheScreen();
+    expect(screen.getByTestId('board-card-0-quick').props.accessibilityHint).toContain('1/7 this week');
     expect(await checks(boardId)).toHaveLength(1);
     await press('undo-check-in');
     expect(await checks(boardId)).toHaveLength(0);
@@ -94,7 +94,7 @@ describe('Daily Home cards', () => {
     const before = await checks(boardId);
     renderRouter('src/app', { initialUrl: '/' });
     await screen.findByTestId('board-card-0');
-    expect(screen.getByText('1/7 this week')).toBeOnTheScreen();
+    expect(screen.getByTestId('board-card-0-quick').props.accessibilityHint).toContain('1/7 this week');
     await press('board-card-0-quick');
     expect(alertSpy).toHaveBeenCalledWith('Uncheck reading?', expect.stringMatching(/2026-08-30.*2 check-ins.*2 notes/), expect.any(Array), expect.any(Object));
     answerConfirmation('cancel');
@@ -130,13 +130,13 @@ describe('Daily Home cards', () => {
     expect(screen.queryByTestId('undo-check-in')).toBeNull();
   });
 
-  it('keeps weekly completion visible when streak metrics are disabled', async () => {
+  it('keeps weekly completion accessible when streak metrics are disabled', async () => {
     await seed('a daily habit with a longer title that stays readable', ['complete'], 'daily', false);
     renderRouter('src/app', { initialUrl: '/' });
     await screen.findByTestId('board-card-0');
     expect(screen.getByText('a daily habit with a longer title that stays readable')).toBeOnTheScreen();
-    expect(screen.getByText('1/7 this week')).toBeOnTheScreen();
-    expect(screen.queryByText(/days? streak/)).toBeNull();
+    expect(screen.getByTestId('board-card-0-quick').props.accessibilityHint).toContain('1/7 this week');
+    expect(screen.getByTestId('board-card-0-quick').props.accessibilityHint).not.toMatch(/days? streak/);
     expect(screen.getByRole('checkbox', { checked: true })).toBeOnTheScreen();
   });
 

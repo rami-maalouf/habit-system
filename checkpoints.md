@@ -2,6 +2,74 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Layout Done button spacing (2026-09-29)
+
+1. Added the existing 16-point horizontal spacing token to the layout Done
+   button so its glass capsule has balanced space around the label.
+2. Argent reproduced the tight spacing and verified normal and maximum Dynamic
+   Type after the change. Done dismisses the picker; it remains open in Device
+   Hub for inspection. The overlapping Expo developer gear was disabled for
+   this QA launch only with `-EXDevMenuShowFloatingActionButton NO`.
+3. `bun run validate` passes 209 suites / 3,077 tests with all 105 core files at
+   100 percent; native tests pass 14 plugin and 195 Swift tests. Independent
+   verification found no issues. Evidence: `.artifacts/board-layouts/done-*`.
+
+### Four board layouts and native glass correction (2026-09-29)
+
+1. Restored the original compact pill proportions and all 14 history bars.
+   Restored the taller 14-day summary card as a fourth explicit layout, including
+   Daily weekly/streak details and a Count total. Every layout applies to both
+   kinds and all title lengths. Existing saved choices remain valid; the new
+   summary choice persists through restart and stays isolated in sample sessions.
+2. The iOS layout selector now uses a native SwiftUI segmented Picker inside an
+   interactive capsule-shaped Liquid Glass effect, with four icon choices.
+   Other platforms retain the shared four-option control. Done and close retain
+   the choice; the fixed-height header keeps Done readable at maximum Dynamic Type.
+3. Updated integration tests first failed on the missing 14 bars and fourth
+   option, then passed with real Daily/Count history, check-in/Undo and summary
+   persistence. Full validation passes 209 suites / 3,077 tests, with all 105
+   core files at 100 percent. Native tests pass 14 plugin and 195 Swift tests.
+   Logs and native screenshots are `.artifacts/board-layouts/four-*`.
+4. Argent validated all four choices, summary check-in/Undo with the picker open,
+   cold-start restoration, light/dark material appearance and maximum Dynamic Type.
+   The app remains running in Device Hub on Habit Layout QA, served by Metro 8082.
+5. Independent review found no remaining actionable issues after strengthening
+   the Count test to assert totals of 2, 3, 4 and 3 after Undo. Receipt:
+   `.artifacts/board-layouts/four-review.json`, run
+   `2026-09-30T00-06-24-105Z-four-layouts`. The final header styling change also
+   passes lint, typecheck and 13 focused tests. Spoken VoiceOver and Android
+   device behavior were not manually validated.
+
+### Board layout preferences (2026-09-29)
+
+1. Removed the Boards title and added a third top-left Layout action. Compact
+   rows, two-column history cards and full-width history cards apply uniformly
+   to Daily and Count habits. A floating glass selector previews the choice;
+   Done and the separate close control dismiss it. Long titles truncate without
+   choosing a different card shape. Accessibility text sizes use one readable
+   grid column while preserving the selected preference.
+2. Layout persists in device-local SQLite key-value storage, outside the product
+   schema and sync records. Sample sessions keep an isolated in-memory choice.
+   Failed saves roll back visibly and support retry. Existing check-in, Daily
+   toggle, reorder and Undo behavior is retained, including opening Layout during
+   the Undo window. Expanded cards use real dated check-in history.
+3. Argent validated all three layouts on a fresh iPhone 17 Pro / iOS 26.5
+   simulator with seven synthetic boards: close/Done, check-in/Undo, cold-start
+   persistence, long titles, the odd final grid card, scrolling, light/dark and
+   maximum Dynamic Type. Screenshots and command logs are under
+   `.artifacts/board-layouts/`. The earlier QA database with a migration checksum
+   mismatch was preserved. No Android device validation was performed.
+4. Independent review found and verified the fix for opening Layout clearing an
+   active Undo action. Regression tests cover real history cells, uniform card
+   shapes, persistence, sample isolation, failed writes, suspended sessions,
+   accessibility sizing and Undo preservation. No actionable findings remain.
+5. Final `bun run validate` exits 0: 209 suites / 3,077 tests, with all 105 core
+   files at 100 percent. Native validation passes 14 plugin and 195 Swift tests.
+   Final logs are `validate-shipping.log`, `native.log` and `simulator-final.log`
+   in the evidence directory. The independent review receipt is `review.json`,
+   run `20260929-board-layouts-7162ecc8`. Owned QA simulators and the port-8082
+   Metro server are stopped; simulator data is retained.
+
 ### T16 - same-day bonus settlement and restoration (2026-09-08)
 
 1. Pure TS and Swift replay award one net bonus for an exact structural-root/date
