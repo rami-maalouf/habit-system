@@ -1,6 +1,6 @@
 ---
 name: e2e
-description: Set up and write agentic end-to-end tests with e2e, the e2e runner. Covers scaffolding e2e.config.ts, choosing the Playwright browser engine or the agent-device mobile engine, starting the app under test from the config, writing tests that drive flows with agent.act and judge them with agent.assert, agent.waitFor, and agent.extract, pinning exact values and outcomes with screen, app, web, and expect, shaping the agent for the app (context, system prompt, tools, personas), the trace cache that replays passing steps, running with the e2e CLI, and reading .e2e/report.json when a run fails. Use when a project depends on e2e, when asked to add end-to-end, browser, mobile, or agentic UI tests, or when an e2e run fails.
+description: Set up and write agentic end-to-end tests with e2e, the e2e runner. Covers scaffolding e2e.config.ts, choosing the Playwright browser engine or the agent-device mobile engine, starting the app under test from the config, writing tests that drive flows with agent.act and judge them with agent.assert, agent.waitFor, and agent.extract, pinning exact values and outcomes with screen, app, web, and expect, shaping the agent for the app (context, system prompt, tools, personas), the replay cache that reruns passing steps, running with the e2e CLI, and reading .e2e/report.json when a run fails, and bug bashes (parallel explore runs whose findings are proven with repro tests). Use when a project depends on e2e, when asked to add end-to-end, browser, mobile, or agentic UI tests, when asked to bug bash or hunt for bugs in an app, or when an e2e run fails.
 ---
 
 # e2e: agentic end-to-end tests in TypeScript
@@ -8,7 +8,7 @@ description: Set up and write agentic end-to-end tests with e2e, the e2e runner.
 e2e runs UI tests with agent goals and exact assertions. `agent.act` drives
 one goal; `agent.assert`, `agent.waitFor`, and `agent.extract` judge the
 screen. Use `screen`, `app`, `web`, and `expect` for exact interactions and
-checks. The trace cache can replay verified actions and check their recorded
+checks. The replay cache can rerun verified actions and check their recorded
 end state without a model call. Agent judgments still run live.
 UI targets use `@e2e-dev/web` for browsers or
 `@e2e-dev/mobile` for iOS simulators and Android emulators. A test that
@@ -22,7 +22,6 @@ an API key, or a local model. `e2e init` offers these choices. See
 ```ts
 // e2e.config.ts
 import type { E2EConfig } from 'e2e';
-import { createAgent } from 'e2e/agent';
 import { web } from '@e2e-dev/web';
 import { gateway } from 'ai';
 
@@ -37,10 +36,10 @@ export default {
   ],
   // The model behind every agent.* step: an AI SDK instance; gateway() from 'ai' reads AI_GATEWAY_API_KEY or a Vercel OIDC token.
   agents: {
-    default: createAgent({
+    default: {
       model: gateway('openai/gpt-6-luna-fast'),
       system: 'You are a thorough QA agent. Verify every outcome on screen.',
-    }),
+    },
   },
 } satisfies E2EConfig;
 ```
@@ -68,11 +67,12 @@ one. Without them, the installed CLI prints the same text:
 | --- | --- | --- |
 | `setup` | [references/setup.md](references/setup.md) | Adding e2e to a project, writing `e2e.config.ts`, starting the app from the config, mobile targets |
 | `writing-tests` | [references/writing-tests.md](references/writing-tests.md) | Writing or fixing tests: fixtures, locators, actions, matchers, sign-in sessions, the `web` fixture |
-| `agent` | [references/agent.md](references/agent.md) | Adding `agent.*` steps, picking a model, cost and budgets, the trace cache |
+| `agent` | [references/agent.md](references/agent.md) | Adding `agent.*` steps, picking a model, cost and budgets, the replay cache |
 | `running` | [references/running.md](references/running.md) | CLI flags, reporters, `.e2e/report.json`, exit codes, CI |
 | `explore` | [references/explore.md](references/explore.md) | Exploring an app toward a goal without a test file: `e2e explore`, its budgets, verdict, and `run.explore` |
 | `debugging` | [references/debugging.md](references/debugging.md) | A run failed: error codes and their fixes, `--headed`, `--debug`, `--ai-trace` |
 | `mcp` | [references/mcp.md](references/mcp.md) | Driving the live app from a coding agent over MCP: `e2e mcp`, its tools, and the explore-then-write loop |
+| `bug-bash` | [references/bug-bash.md](references/bug-bash.md) | Asked to bug bash, QA, or hunt for bugs across an app or a branch: parallel `e2e explore` charters, merging findings, proving each with a repro test |
 
 ## Workflow
 
@@ -130,9 +130,10 @@ one. Without them, the installed CLI prints the same text:
   can be cached and replayed without model calls. If replay fails, the
   runner can return to the live agent.
 - Shape the agent for this app and keep iterating on it: `context` for
-  vocabulary the screens use, `system` on `createAgent` for how it works,
+  vocabulary the screens use, `system` on the agent for how it works,
   tools for a test API, and named personas under `agents`. When a step
   fails, tighten the goal first, then the context, then the agent. Topic
   `agent` has the loop.
-- `.e2e/` is output (`report.json`, `artifacts/`, `cache/`, `logs/`). Read it,
-  never edit it.
+- `.e2e/` is output (`report.json`, `artifacts/`, `cache/`, `logs/`; the
+  config's `output` moves the report and artifacts, never `cache/` or the
+  app's log). Read it, never edit it.

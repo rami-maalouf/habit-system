@@ -67,3 +67,4 @@ coverage/
 .e2e/summary.md
 .e2e/failures/
 .e2e/logs/
+.e2e/videos/

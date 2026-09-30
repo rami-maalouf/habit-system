@@ -11,6 +11,7 @@ npx e2e explore   # goal: "Explore the app and find bugs"
 npx e2e explore 'Explore checkout like a first-time buyer and report anything off'
 npx e2e explore --target web --max-steps 4 --headed
 npx e2e explore 'Hunt for broken forms' --video
+npx e2e explore --session admin 'Explore the admin settings'
 ```
 
 ## What a run does
@@ -33,6 +34,26 @@ neither. Configured `credentials`
 reach the explorer as step secrets: the planner knows the account names and
 usernames, and the agent fills passwords with `type_secret` by name.
 
+## Start signed in
+
+`--session <name>` starts from a session a setup test saves
+(`test.setup('...', { sessions: ['admin'] }, ...)` and `session.save('admin')`,
+see `e2e guide writing-tests`). The run collects the config's test files, runs exactly
+the setup that declares the session, then restores it into the exploration
+and, on a target with a URL, opens the app, as a test with
+`{ session: 'admin' }` does. No other test runs. The setup runs as it does
+for `e2e run`, with the configured agents, cache, and retries; only the
+exploration runs as the explorer. The planner and the agent are told they
+start signed in, so no charter is spent signing in again. A name no setup declares fails before any app
+process starts with `COLLECTION_ERROR`, naming the declared sessions.
+
+Screenshots follow the setup: once a secret is filled, pixels stay withheld,
+and a restored session carries that taint. A setup that filled a password
+leaves every finding without a screenshot. One that signed in without filling
+a secret (setting a session cookie with `web.setCookies`, say) carries no
+taint, so findings keep their screenshots when the engine captures pixels. A value the setup used that is not
+a configured secret is not redacted either.
+
 ## Flags
 
 | Flag | Default | Effect |
@@ -40,13 +61,14 @@ usernames, and the agent fills passwords with `type_secret` by name.
 | `[goal]` | `Explore the app and find bugs` | One quoted sentence: the area and the posture. |
 | `--target <id>` | first configured target | The one target to explore. |
 | `--agent <name>` | `default` | Build the explorer from another configured agent (`agents.<name>`). |
+| `--session <name>` | none | Run the setup that saves this session, then explore with it restored. |
 | `--max-steps <n>` | 8 (1 to 12) | Exploration steps at most. |
 | `--timeout <ms>` | 600000 (180000 to 900000) | Wall clock; the last minute is for the assessment. |
-| `--headed`, `--reporter`, `--artifacts`, `--debug`, `--ai-trace`, `--video` | as `run` | Same meaning as for `e2e run`. |
+| `--headed`, `--reporter`, `--output`, `--debug`, `--ai-trace`, `--trace [mode]`, `--video [mode]` | as `run` | Same meaning as for `e2e run`. One attempt, so a retry mode (`on-first-retry`, `on-all-retries`, the CI trace default) records nothing; put the goal before a bare `--trace` or `--video`. |
 
 Per-step action and model-call budgets default to 40 each; `agent.maxSteps`
-and `agent.maxModelCalls` in the config override them. The trace cache is off
-and retries are zero for the run.
+and `agent.maxModelCalls` in the config override them. The replay cache is off
+and retries are zero for the exploration.
 
 ## Reading the result
 
@@ -81,15 +103,25 @@ high 4, medium 3, low 2, trivial 1. `.e2e/report.json` has the record under
 ```
 
 `artifactId` names the evidence screenshot among the attempt's `artifacts` in
-`run.results[0]`, where its path, size, and digest are.
+the result whose `file` is `explore`, where its path, size, and digest are.
+With `--session`, `run.results` also holds the setup's result and the
+project's other tests as skipped (`filtered`). The exploration's attempt
+directory is `<target>/explore-<slug of the goal's first words>-<digest of
+the goal>/<agent>/attempt-0/`. The slug is lowercase ASCII with accents
+stripped and a leading `explore` dropped, so the default goal maps to
+`explore-the-app-and-find-bugs-<digest>`; a goal with no ASCII words maps
+to `explore-<digest>`. For example,
+`web/explore-check-the-cart-totals-1a2b3c4d5e6f7a8b/default/attempt-0/finding-1.png`
+under `.e2e/artifacts/`: the same goal always maps to the same directory,
+and the digest keeps different goals apart.
 
 Turn a finding into a test: its `reproduction` steps are the `agent.act()`
 instructions or `screen.*` actions, and `expected` is the assertion.
 
 ## When it does not fit
 
-An agent built with `createAgent({ tools, system })` in the config lends its
-tools and guidance to the explorer; a hand-rolled `StepExecutor` is replaced by
+The agents entry's `tools` and `system` carry over to the explorer; a
+hand-rolled `StepExecutor` under `executor` is replaced by
 the built-in agent for the run, with a notice on stderr. Findings are the
 model's claims plus evidence, not verified reproductions: read `actual` against
 the screenshot before filing a bug.

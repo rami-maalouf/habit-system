@@ -28,9 +28,11 @@ jq '.run.results[] | select(.status != "passed") | .attempts[-1]
    a failed agent step has `turns`.
 4. Artifacts named there live under `.e2e/artifacts/`: `failure/screen.txt`
    and the engine's failure screenshot per failed attempt, a Playwright
-   `trace.zip` per attempt (`npx playwright show-trace <file>`), downloads,
-   with `--video` a `video/video.webm` per attempt, and with `--debug` the
-   full transcript of every agent step.
+   `trace.zip` per traced attempt (every attempt locally, the first retry in
+   CI; `npx playwright show-trace <file>`), downloads,
+   with `--video` the attempt's recording (`video/video.webm` in a local
+   browser, `video/video.mp4` on a device, a provider's own file or link),
+   and with `--debug` the full transcript of every agent step.
 
 ## Error codes and what to do
 
@@ -52,7 +54,7 @@ jq '.run.results[] | select(.status != "passed") | .attempts[-1]
 | `ACTION_FAILED` | Element not actionable (covered, disabled, detached) or an operation timed out | Wait on the right condition with `expect` first; close overlays; check `actionTimeout` |
 | `TEST_TIMEOUT` | The attempt exceeded `timeout` (120 s) | Split the test, or raise `timeout` for slow flows and agent steps |
 | `STEP_NOT_AWAITED` | The body returned while a step was still running: a step call without `await` | Put `await` in front of the call the code frame names; every `app`, `agent`, `screen`, and `expect` call is awaited |
-| `MODEL_UNAVAILABLE` | No model: neither `createAgent({ model })` nor `agent.model` holds an AI SDK instance. Reported once for the run under `run.errors`; the run stops | Construct one in the config, e.g. `gateway('openai/gpt-6-luna-fast')` from `ai`, and export the key its provider reads (`AI_GATEWAY_API_KEY`) |
+| `MODEL_UNAVAILABLE` | No model: the built-in agent's `agents.<name>.model` holds no AI SDK instance. Reported once for the run under `run.errors` when a test first acquires `agent`; the run stops. A custom executor without a model runs `act` and `assert`; its `waitFor` or `extract` fails with this code | Construct one in the config, e.g. `gateway('openai/gpt-6-luna-fast')` from `ai`, and export the key its provider reads (`AI_GATEWAY_API_KEY`) |
 | `MODEL_PROVIDER_FAILED` | Network, 5xx, rate limit, or no credits after the transport retries | Check the credential (the key, or the Vercel CLI login and `.vercel/project.json` for `gateway()` without one) and the quota; retry; exit code 3 |
 | `REPLAY_STALE` | `--strict-cache` and a committed recording no longer replays: the UI changed, the app started on another screen, or the entry is unreadable; `step.cache.reason` says which | Run the test without the flag in read-write mode and commit the changed `.e2e/cache` entry |
 | `STEP_TIMEOUT`, `STEP_BUDGET_EXHAUSTED` | The goal was too big or ambiguous, or the provider slow | Split the goal, use on-screen wording, add `context`, raise `timeout` and `actionTimeout`, `--debug` to read the transcript |
@@ -63,7 +65,7 @@ jq '.run.results[] | select(.status != "passed") | .attempts[-1]
 | `ONLY_IN_CI` | `test.only` reached CI | Remove it |
 | `BROWSER_INSTALL_FAILED`, `LAUNCH_TIMEOUT` | Browser download or launch failed | `npx playwright install chromium --with-deps`; raise `launchTimeout` on slow machines |
 | `AUTH_CREDENTIAL_UNAVAILABLE` | `credentials.user('x')` for an undeclared name | Add it to `config.credentials` |
-| `SECRET_UNAVAILABLE` | `secrets.get('x')` for an undeclared name | Add it to `config.secrets` or set `E2E_SECRET_X` |
+| `SECRET_UNAVAILABLE` | `secrets.get('x')` in a test for an undeclared name | Add it to `config.secrets` (an `E2E_SECRET_X` variable only overrides a declared one) |
 
 ## Tools
 
@@ -74,7 +76,7 @@ jq '.run.results[] | select(.status != "passed") | .attempts[-1]
 | `--no-cache` | Rule out a stale `agent.act` replay |
 | `--debug` | Read each agent step's duration, model calls, cost, and transcript |
 | `--ai-trace`, then `npx unbox-ai runs .e2e/ai-trace.json` | See exactly what the model was shown and called |
-| `--video` | Watch the failed attempt; `step.startedAt` minus the video artifact's `startedAt` is the step's offset into it |
+| `--video`, `--video=retain-on-failure` | Watch the failed attempt; `step.startedAt` minus the video artifact's `startedAt` is the step's offset into it. `test('x', { video: 'on' }, ...)` records one test; `video: 'on-first-retry'` in the config records flaky retries in CI |
 | `command.log: '.e2e/logs/app.log'` | Read the app's own output when it never becomes ready or errors mid-test |
 | `await app.screenshot('before-submit')` | Attach evidence before any secret is filled; later calls fail with `POLICY_DENIED` |
 | `CI=1 npx e2e run` | Reproduce CI-only behaviour: `ONLY_IN_CI`, read-only cache, `reuseExisting` ignored |

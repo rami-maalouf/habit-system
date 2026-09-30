@@ -13,13 +13,12 @@ token:
 
 ```ts
 import type { E2EConfig } from 'e2e';
-import { createAgent } from 'e2e/agent';
 import { web } from '@e2e-dev/web';
 import { gateway } from 'ai';
 
 export default {
   targets: [{ engine: web({ url: 'http://localhost:3000' }) }],
-  agents: { default: createAgent({ model: gateway('openai/gpt-6-luna-fast') }) },
+  agents: { default: { model: gateway('openai/gpt-6-luna-fast') } },
 } satisfies E2EConfig;
 ```
 
@@ -28,21 +27,25 @@ Agent steps can also use a saved subscription login or a local model. See
 Keep `ai@^7` installed when using agent steps with any provider.
 
 - Pass a model instance, not a string. A string produces `INVALID_CONFIG`.
+- An agents entry is one plain object: `model`, `judge`, `system`,
+  `context`, `tools`, `maxSteps`, `maxModelCalls`, `judgmentTimeout`,
+  `maxObservationBytes`, `maxInputTokens`, `providerOptions`, or `executor`
+  for a custom brain. Agents never inherit from each other: an entry left
+  without `model` or `context` gets none from `default`.
 - The `model` drives `agent.act`. Judgments use `judge` when configured,
-  otherwise `model`. Conflicting values between `createAgent` and the
-  surrounding agent options produce `INVALID_CONFIG`.
+  otherwise `model`.
 - A missing model for the built-in agent raises one run-level
   `MODEL_UNAVAILABLE` when the first test acquires `agent`, then stops the
   run with exit 2. Authentication failures occur on the first model call
   and raise `MODEL_PROVIDER_FAILED`.
 - `context` is what the app calls things, told to every model call, judges
   included; `system` is how the acting agent works and only the act loop
-  reads it. Pass `context` to `createAgent` next to `model` and `system`, or
-  set it on the agent's options object; `agentContext` on a test or group
-  adds more for that test. Set it in one place: differing values on
-  `createAgent` and the surrounding options
-  produce `INVALID_CONFIG`. `{ executor: createAgent({ model, system,
-  context }) }` is a complete agent and needs no second `model` key.
+  reads it. Set both on the agents entry, next to `model`; `agentContext` on
+  a test or group adds more for that test.
+- `createAgent()` is gone: write its options as the entry itself. A bare
+  `StepExecutor` as an entry is `INVALID_CONFIG` (write `{ executor }`), as are `timeout` (now
+  `judgmentTimeout`), `maxTurns` (now `maxModelCalls`), and the top-level
+  `limits` (`maxModelTokensPerCall` is now the agent's `maxInputTokens`).
 
 ### Choose an agent
 
@@ -77,7 +80,7 @@ await agent.act('sign in with the given credentials', {
 
 `act(instruction, options?)` plans and performs a multi-action flow and ends
 in a verdict. Passed resolves with what the step did: `summary`, `modelCalls`,
-`actions`, and `cache` (how the trace cache took part). Failed or blocked
+`actions`, and `cache` (how the replay cache took part). Failed or blocked
 throws an `AgentError` whose `code` says why: `ACTION_FAILED` for a plain
 failure, `STEP_BUDGET_EXHAUSTED` or `STEP_TIMEOUT` when the budget or the
 clock ran out, and a blocked code (`AUTH_CREDENTIAL_UNAVAILABLE`,
@@ -87,7 +90,7 @@ verdict.
 
 Options: `params` (the values the instruction refers to; a `Secret` is filled
 by the runner; a run-unique value such as `unique(\`E2E ${Date.now()}\`)` keeps
-the trace cache replaying across runs), `timeout` (default the test timeout), `maxSteps` (default 25
+the replay cache working across runs), `timeout` (default the test timeout), `maxSteps` (default 25
 actions), `maxModelCalls` (default 25). Per-call budgets can only lower the
 configured limits. `act` takes no `schema`: structured output is
 `extract({ schema })`. By default pixels reach an `act` step through the
@@ -182,7 +185,7 @@ receives the image and warning on every such observation; judgments require
 `vision: true` or `'only'`. No fallback is allowed after a secret fill. Do not
 infer that a control is absent from an unavailable tree, or reuse old node ids.
 When the tree recovers, its next presentation includes the whole tree.
-Such a step cannot record or finish from a trace cache entry, even after
+Such a step cannot record or finish from a replay cache entry, even after
 recovery. A completed cache capture may supply the executor's first look
 once, provided no action or later capture intervened. The Playwright
 engine supports timeout recovery; the device engine fails closed because its
@@ -210,7 +213,7 @@ await expect(screen.getByRole('status')).toHaveText('Created "Atlas" on the Pro 
 ```
 
 The check makes the test model-portable (the path may differ between models,
-the end state may not), and it is what lets the trace cache record the step.
+the end state may not), and it is what lets the replay cache record the step.
 
 State the step writes off screen (a database row, an API read) can land after
 `act` returns; poll the read instead of sleeping:
@@ -251,7 +254,7 @@ tool call before it executes.
 - `--debug` prints a per-step table (duration, model calls, tokens, cost)
   after the run and saves each step's transcript as an artifact.
 
-## The trace cache
+## The replay cache
 
 A passing `agent.act` can save its actions after a later check verifies the
 outcome. The next run replays them without model calls. If the app or final
@@ -319,32 +322,32 @@ the one that knows its screens, and that comes from iterating on it:
    transcript with `--debug` to see what the model saw and tried.
 2. **`context`.** Vocabulary every step needs: what the plans are called,
    what a "workspace" is, which tab holds billing. Set it once on the agent
-   (`createAgent({ model, system, context })` or `agents.<name>.context`)
+   (`agents.<name>.context`)
    or per test with `agentContext`, not in every instruction.
-3. **`system` on `createAgent`.** How the agent works: how carefully it
+3. **`system` on the agent.** How the agent works: how carefully it
    verifies, what it never does, how it treats a modal. A UX reviewer, a
    cautious QA persona, and a fast smoke agent are three `system` prompts on
    the same model.
 4. **Tools.** A test API the agent may call mid-flow (seed a cart, mint a
-   coupon) via `createAgent({ tools })`; see below.
+   coupon) via the agent's `tools`; see below.
 5. **The model and its options.** `providerOptions` for reasoning effort,
    or a different model for one persona. `npx e2e run --agent <name>` runs
    the suite as any configured agent, so two candidates can be compared on
    the same tests; every result records which agent ran it.
 
 Personas are agents by name under `agents`, pinned with `{ agent }` on a
-test or block, or swept with `--agent buyer,admin`. The trace cache records
+test or block, or swept with `--agent buyer,admin`. The replay cache records
 per agent step, so a specialised agent gets the same replay benefit.
 
 ## Beyond the built-in agent
 
-- `createAgent({ tools: { seedCart } })` adds AI SDK tools wrapped with
+- `tools: { seedCart }` on an agents entry adds AI SDK tools wrapped with
   `defineTool(tool({ ... }), { mutates: true })` from `e2e/agent`, so
   a flow can call a test API mid-step.
 - `createToolLoopExecutor` keeps the loop and replaces the prompt and the
   tool vocabulary.
 - Any object implementing `StepExecutor` (`{ name, version, cache, runStep(ctx) }`)
-  can be the `agent`; the runner still owns observations, actions, budgets,
+  goes under `executor` in an agents entry; the runner still owns observations, actions, budgets,
   and the report.
 
 Full reference: https://e2e.tester.army/docs/agents

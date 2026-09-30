@@ -8,8 +8,7 @@
       ]
     },
     "e2e": {
-      "type": "stdio",
-      "command": "bunx",
+      "command": "npx",
       "args": [
         "e2e",
         "mcp"

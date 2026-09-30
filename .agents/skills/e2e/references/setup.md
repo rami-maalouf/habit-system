@@ -3,9 +3,10 @@
 ## Requirements
 
 - Node.js 22.12 or newer.
-- ES modules. e2e loads `.ts` config, tests, and helpers as ES modules
-  whatever the nearest `package.json` `type` says, so a CommonJS package (a
-  Next.js app, for instance) needs no change. Write them with `import`, never
+- ES modules. e2e loads `.ts` config, tests, and helpers, workspace packages
+  that export `.ts` source included, as ES modules whatever the nearest
+  `package.json` `type` says, so a CommonJS package (a Next.js app, for
+  instance) needs no change. Write them with `import`, never
   `require` or `module.exports`.
 - For browser tests, `@e2e-dev/web` plus `playwright` (`>=1.63.0 <2`),
   a peer dependency the engine does not install itself: an app that already
@@ -79,7 +80,6 @@ unknown keys are `INVALID_CONFIG`.
 
 ```ts
 import type { E2EConfig } from 'e2e';
-import { createAgent } from 'e2e/agent';
 import { web } from '@e2e-dev/web';
 import { gateway } from 'ai';
 
@@ -95,10 +95,10 @@ export default {
   ],
   // The model behind every agent.* step: an AI SDK instance; gateway() from 'ai' reads AI_GATEWAY_API_KEY or a Vercel OIDC token.
   agents: {
-    default: createAgent({
+    default: {
       model: gateway('openai/gpt-6-luna-fast'),
       system: 'You are a thorough QA agent. Verify every outcome on screen.',
-    }),
+    },
   },
   credentials: {
     admin: { username: 'admin@example.test', password: process.env.ADMIN_PASSWORD ?? '' },
@@ -109,18 +109,21 @@ export default {
 | Key | Default | Notes |
 | --- | --- | --- |
 | `targets` | required | Non-empty. UI targets set `engine`; `platform` defaults to the engine's platform and `name` defaults to that platform. Tools-only targets may omit `engine` and must set `platform`. Use `name` with `--target`. |
-| `tests` | `'tests/**/*.e2e.ts'` | A glob or an array of globs relative to the project root: `*`, `?`, and a whole `**` segment, `/` separators; a leading `./` is fine. Braces, character classes, extglobs, `..`, and absolute paths are `INVALID_GLOB`. Discovery enters only the directories a glob can match beneath and does not follow symlinks. |
+| `tests` | `'tests/**/*.e2e.ts'` | A glob or an array of globs relative to the project root: `*`, `?`, and a whole `**` segment, `/` separators; a leading `./` is fine. An entry starting with `!` excludes (`['tests/**/*.e2e.ts', '!tests/wip/**']`), in any order; only exclusions is `INVALID_CONFIG`. Braces, character classes, extglobs, `..`, and absolute paths are `INVALID_GLOB`. Discovery enters only the directories a glob can match beneath and does not follow symlinks. |
 | `timeout` | `120000` | Per test attempt, in ms. Also the default `agent.act` deadline. |
 | `actionTimeout` | `30000` | Every locator action and engine operation, including each observation inside an agent step. Raise it for slow UI operations. |
 | `assertionTimeout` | `5000` | `expect` polling window. |
 | `retries` | `0`, `1` in CI | 0 to 10. |
 | `workers` | half the cores, `1` in CI | Test files run in parallel across workers, at most the `workers` the engine declares per target (a device target: one per device). |
 | `reporters` | `['list']` | `list`, `json`, `junit`, `markdown`, and reporter objects (`{ name, onEvent?, onRunFinished? }`) that receive the finished run. `json` excludes `list`; `--reporter` keeps the objects. |
-| `cache` | `'read-write'`, `'read-only'` in CI | The trace cache for `agent.act`; `'off'` disables it. |
-| `agents` | `{ default: built-in }` | Agents by name. `default` is what tests run with; `e2e run --agent <name>` runs with another. Each entry is `createAgent(...)`, an options block `{ model, judge, context, maxSteps, maxModelCalls, providerOptions }`, or a custom `StepExecutor`. The built-in agent requires `model` as an AI SDK instance. Custom executors can implement `act` and `assert` without a model; `waitFor` and `extract` still need one. |
+| `cache` | `'read-write'`, `'read-only'` in CI | The replay cache for `agent.act`; `'off'` disables it. |
+| `agents` | `{ default: built-in }` | Agents by name. `default` is what tests run with; `e2e run --agent <name>` runs with another. Each entry is one plain object: `{ model, judge, system, context, tools, maxSteps, maxModelCalls, judgmentTimeout, maxObservationBytes, maxInputTokens, providerOptions }` for the built-in agent, or `{ executor, model, ... }` for a custom `StepExecutor` (no `system` or `tools` there). Entries never inherit from `default`. The built-in agent requires `model` as an AI SDK instance. Custom executors can implement `act` and `assert` without a model; `waitFor` and `extract` still need one. |
 | `credentials` | `{}` | Named `{ username, password }` entries; `password` is a string of at least 6 characters (code points) or a function returning the value. |
 | `secrets` | `{}` | Named values the model never sees (API keys, tokens): a string of at least 6 characters (code points) or a function returning the value. A name cannot also be a credential. |
-| `artifacts` | `['screenshot', 'trace']` | Kinds to keep (`screenshot`, `trace`, and the opt-in `video`), or `{ kinds, store, video }`; `video: { retain: 'on-failure' }` keeps only the recordings of attempts that did not pass. |
+| `output` | `'.e2e'` | Results directory: `report.json`, reporter files, `ai-trace.json`, `artifacts/` (cleared when a run starts), `sessions/`, MCP `videos/`. Inside the project root, not the root, not holding a tests glob's directory, never the cache dir; `cache.dir` stays `.e2e/cache` independently. `--output <dir>` for one run. |
+| `artifacts` | none | `{ store }` hands each artifact to a host store; its optional `putLink(link)` gets provider-hosted video links (never a passed `retain-on-failure` attempt's). It no longer chooses what is recorded: a kinds list, `artifacts.kinds`, `artifacts.trace`, and `artifacts.video` are `INVALID_CONFIG` naming `trace` / `video`. Failure screenshots are always captured when the engine can. |
+| `trace` | `'on'`, `'on-first-retry'` in CI | Which attempts record a Playwright trace: `'off'`, `'on'`, `'retain-on-failure'`, `'on-first-retry'`, `'on-all-retries'` (a trace on every attempt is a large share of a run's CPU). Same precedence and capability rule as `video`. With a retry mode and `retries: 0` the run prints a notice that no traces will be recorded. |
+| `video` | `'off'` | Which attempts record a video, the same modes as `trace`: `'retain-on-failure'` records all and keeps the ones that did not pass, `'on-first-retry'` is the cheap CI mode. Also per target (`{ engine, video }`), over the config; `--video [mode]` beats both; a test's own `video` beats all. The config's and the flag's mode skip targets whose engine cannot record (one notice); a target's or a test's mode is required there (`UNSUPPORTED_ARTIFACT`). Neither `trace` nor `video` invalidates the replay cache. |
 | `projectId` | the package name | Report and cache identity. |
 
 ## The app under test
@@ -136,11 +139,12 @@ identity for cache and session keys. `web()` accepts:
 | `services` | Dependency processes started before `command`, in order. |
 | `environment` | `'test'`, `'staging'`, `'production'`. Inferred from the host; a label for the report and the cache key. |
 | `identity` | Stable app identity for cache and session keys when the origin changes per deploy (preview URLs). |
-| `browser` | `'chromium'` (default), `'firefox'`, `'webkit'`, or a `BrowserProvider` object that leases hosted browsers over CDP: one per worker slot for the run (`scope: 'worker'`, the default, acquired at `prepare` and released at `finish`) or a fresh one per attempt (`scope: 'attempt'`, released at `endAttempt`, the same limits as `reconnectEndpoint`). A provider implies chromium and excludes `connect`. |
-| `viewport` | `{ width, height }`, default 1280x720; `null` follows the browser window (a hosted browser's live view, a headed run). |
+| `browser` | `'chromium'` (default), `'firefox'`, `'webkit'`, or a `BrowserProvider` object that leases hosted browsers over CDP (`kernel()` from `@e2e-dev/integrations/kernel` for Kernel, or your own): one per worker slot for the run (`scope: 'worker'`, the default, acquired at `prepare` and released at `finish`) or a fresh one per attempt (`scope: 'attempt'`, released at `endAttempt`, the same limits as `reconnectEndpoint`). A provider implies chromium and excludes `connect`. |
+| `viewport` | `{ width, height }`, default 1280x720; `null` follows the browser window (a hosted browser's live view, a headed run). On a headed hosted browser such as Kernel's, use `null` and size the service's screen: there, a fixed size gets a smaller, unmaximized window. |
 | `connect` | `{ cdpEndpoint }` attaches to a remote Chromium over CDP. Adding `reconnectEndpoint` uses a dedicated persistent default context, provisions a fresh browser per attempt, and reconnects only to the original browser and page. |
 | `headers` | Request headers sent to the app's site only (a Vercel `x-vercel-protection-bypass`, ngrok's `ngrok-skip-browser-warning`). Reaches every path onto the page, `agent.act` included; turns the browser HTTP cache off and blocks service workers. |
-| `basicAuth` | `{ username, password }` answering a `401` challenge. |
+| `basicAuth` | `{ username, password }` answering a `401` challenge. `password` may be `secrets.get('name')` for a `secrets` entry: resolved per attempt and redacted like any secret; an undeclared name is `INVALID_CONFIG` at load. |
+| `userAgent` | The `User-Agent` every attempt sends and `navigator.userAgent` reports, for an app that enters a test mode on a marker in it. |
 
 CDP recovery never repeats a dispatched operation. Endpoint resolution, attachment,
 and dispatch spend one operation budget. Exhaustion raises `OPERATION_TIMEOUT`;
@@ -154,7 +158,7 @@ Observation-derived `tapAt` calls, observation-root swipes, and focused engine
 keyboard input need a fresh engine observation after reconnect. Deterministic
 `web.mouse` and `web.keyboard` calls use test-supplied input without an agent
 observation; test code can read current geometry and focus with `web.evaluate`.
-Persistent recovery does not support `headers`, `basicAuth`, context reset,
+Persistent recovery does not support `headers`, `basicAuth`, `userAgent`, context reset,
 or session state capture and restore. Without `reconnectEndpoint`, contexts
 remain isolated and a dropped connection is reacquired only at the next attempt
 start.
@@ -234,7 +238,9 @@ How it behaves:
 To test an app started elsewhere, point `url` at it and start it yourself,
 or read the address from the environment:
 `url: process.env.APP_URL ?? 'http://localhost:3000'`. The runner reads no
-`APP_URL` itself; the config does.
+`APP_URL` itself; the config does. It loads no `.env` file either: put
+`process.loadEnvFile('.env')` at the top of `e2e.config.ts` (workers re-import
+the config, so they see the variables too).
 
 ## Environment variables the runner reads
 
@@ -255,7 +261,6 @@ with a simulator runtime, or the Android SDK with an emulator; run
 
 ```ts
 import type { E2EConfig } from 'e2e';
-import { createAgent } from 'e2e/agent';
 import { mobile } from '@e2e-dev/mobile';
 import { mobileTools } from '@e2e-dev/mobile/tools';
 import { gateway } from 'ai';
@@ -266,10 +271,10 @@ export default {
   targets: [{ engine: iphone }],
   workers: 1,
   agents: {
-    default: createAgent({
+    default: {
       model: gateway('openai/gpt-6-luna-fast'),
       tools: mobileTools(iphone),
-    }),
+    },
   },
 } satisfies E2EConfig;
 ```
@@ -307,8 +312,9 @@ export default {
   Both can fill a `Secret`; screenshots are withheld afterward.
 - A deterministic check that names a platform label runs on one platform
   only: `test('...', { platforms: ['ios'] }, ...)`.
-- `selectOption`, `setInputFiles`, `scrollIntoView`, and `secondaryTap` are
-  `UNSUPPORTED_CAPABILITY` on a device.
+- `selectOption`, `setInputFiles`, `scrollIntoView`, `secondaryTap`, and
+  `modifiers` on `tap` or `doubleTap` are `UNSUPPORTED_CAPABILITY` on a
+  device.
 - React Native on iOS: a view with `accessibilityRole="checkbox"` or
   `"radio"` answers `getByRole`, `check()`, and `toBeChecked` (the role and
   state are read off the accessibility value); a `tab` is `other` with

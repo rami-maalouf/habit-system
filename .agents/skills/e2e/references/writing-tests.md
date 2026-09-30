@@ -31,7 +31,7 @@ test.describe('todos', { tags: ['todos'] }, () => {
 ```
 
 The agent does the flow; `expect` pins what must be true after each goal,
-and that check is what lets the trace cache replay the step on later runs.
+and that check is what lets the replay cache rerun the step on later runs.
 `screen` actions are for exact interactions and values, like the empty
 submit above or a sign-in form. Files match the config `tests` glob, default
 `tests/**/*.e2e.ts`. Every test starts from clean state: a fresh browser
@@ -73,7 +73,8 @@ wsTest('uses the workspace', async ({ ws }) => {}); // code after use() is teard
 | `session` | unset | Restore state saved by a setup test. |
 | `agentContext` | unset | Extra context for `agent.*` calls in this test or group. |
 | `agent` | the run's agent | Pin the test or group to a configured agent (`agents.<name>`). Innermost wins; `agent.act(..., { agent })` can name another for one call. |
-| `serial` | `false` | Groups only. Members share one app state, run in order on one worker, and retry as a whole. Inside, per-member `retries`, `session`, `platforms`, `requires`, and `skip` are errors. |
+| `trace`, `video` | the target's | `'off'`, `'on'`, `'retain-on-failure'`, `'on-first-retry'`, or `'on-all-retries'`. Innermost wins, over `--trace` / `--video`, the target, and the config. On a serial group the group's value applies. A mode that records on an engine that cannot fails the run with `UNSUPPORTED_ARTIFACT`. |
+| `serial` | `false` | Groups only. Members share one app state, run in order on one worker, and retry as a whole. Inside, per-member `retries`, `trace`, `video`, `session`, `platforms`, `requires`, `skip`, and `only` are errors. |
 
 Hook order follows nesting, not position: outer `beforeEach` first, inner
 `afterEach` first. `beforeAll` runs again for every retry and every serial
@@ -81,7 +82,7 @@ group, because each is a fresh module realm.
 
 ## Fixtures
 
-Fixtures are lazy; destructure them in the callback.
+The built-in fixtures are lazy; destructure them in the callback. Your own `test.extend` fixtures set up for every test registered through that `test`, named or not, so a fixture that changes app state belongs on its own `test`.
 
 | Fixture | Type | Available |
 | --- | --- | --- |
@@ -116,7 +117,7 @@ subtree.
 | `getByPlaceholder(text)` | Inputs by placeholder. |
 | `getByText(text, { exact?, visible? })` | Visible text. |
 | `getByDisplayValue(value)` | Inputs by current value. |
-| `getByTestId(id, { visible? })` | `data-testid` on the web (or `web({ testIdAttribute })`), the accessibility identifier or resource id on a device. Last resort. |
+| `getByTestId(id, { visible? })` | `data-testid` on the web (or `web({ testIdAttribute })`), the accessibility identifier or resource id on a device; a string matches the whole id, a RegExp tests it. Last resort. |
 
 Roles: `button`, `link`, `textbox`, `searchbox`, `combobox`, `listbox`,
 `option`, `checkbox`, `radio`, `radiogroup`, `switch`, `slider`, `spinbutton`,
@@ -176,7 +177,9 @@ await screen.scrollUntilVisible(screen.getByRole('button', { name: 'Accept' }));
 Each action resolves one node, waits for it to be actionable within
 `config.actionTimeout` (30 s, or `{ timeout }`), and performs one operation.
 
-`tap()` (alias `click()`), `doubleTap()`, `longPress({ duration? })`,
+`tap()` (alias `click()`), `doubleTap()`, `secondaryTap()` (each takes
+`{ modifiers: ['Shift'] }` for the keys held; web only, `UNSUPPORTED_CAPABILITY`
+on a device), `longPress({ duration? })`,
 `fill(value | Secret)`, `pressSequentially(text, { delay? })`, `clear()`,
 `press(key)`, `check()`, `uncheck()`,
 `selectOption(label | { label } | { value } | { index })` (one option; an
@@ -314,6 +317,10 @@ test('the dashboard opens directly', { session: 'admin' }, async ({ app, screen 
 - A session holds cookies, local storage, and IndexedDB, for one run only.
   The files are encrypted and deleted at cleanup. Server state is not part of
   it.
+- A restored session keeps its setup's secret protection: when the setup
+  filled a secret, screenshots stay withheld in every test that restores it.
+  A setup that signs in without filling one (setting a session cookie with
+  `web.setCookies`, say) leaves them available.
 - Credentials live in the config; values come from the environment:
 
 ```ts
