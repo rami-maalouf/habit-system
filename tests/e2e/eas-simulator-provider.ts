@@ -38,7 +38,11 @@ export interface EasSimulatorOptions {
    * cap and release() are the safety net.
    */
   readonly maxIdleMinutes?: number | undefined;
-  /** how long a lease may take before the run fails with a clear message. default 5. */
+  /**
+   * how long a lease may take before the run fails with a clear message. default 10:
+   * a lease queued behind another run's sessions took 6.4 minutes on 2026-09-30, and with
+   * no idle cap the phones already leased wait without harm.
+   */
   readonly acquireTimeoutMinutes?: number | undefined;
   /** file that collects one session page url per line, for the pr comment. */
   readonly sessionUrlsFile?: string | undefined;
@@ -173,7 +177,7 @@ export function easSimulator(options: EasSimulatorOptions = {}): DeviceProvider 
   const idsFile = options.sessionIdsFile ?? '.e2e/session-ids.txt';
   const prefixFile = options.sessionPrefixFile ?? '.e2e/logs/session-prefix.txt';
   const maxDuration = options.maxDurationMinutes ?? 30;
-  const acquireTimeoutMs = (options.acquireTimeoutMinutes ?? 5) * 60_000;
+  const acquireTimeoutMs = (options.acquireTimeoutMinutes ?? 10) * 60_000;
 
   return {
     name: 'eas-simulator',
@@ -210,7 +214,7 @@ export function easSimulator(options: EasSimulatorOptions = {}): DeviceProvider 
       if (result.timedOut) {
         await stopSessionsNamed(command, name, request.env, request.signal, request.log);
         throw new Error(
-          `eas simulator ${name} was not ready after ${options.acquireTimeoutMinutes ?? 5} minutes. ` +
+          `eas simulator ${name} was not ready after ${options.acquireTimeoutMinutes ?? 10} minutes. ` +
             'the account may be at its concurrent session limit; lower E2E_WORKERS.',
         );
       }
