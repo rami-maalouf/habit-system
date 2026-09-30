@@ -116,6 +116,8 @@ jobs:
           E2E_EXIT=${PIPESTATUS[0]}
           set -e
           echo "e2e exit code: $E2E_EXIT"
+          # explore writes its own .e2e/summary.md later; keep the suite's copy apart.
+          [ -f .e2e/summary.md ] && cp .e2e/summary.md .e2e/suite-summary.md
           exit "$E2E_EXIT"
 
       - name: Explore what the pull request describes
@@ -127,16 +129,18 @@ jobs:
             echo "no goal (no pull request body or goal input); skipping the exploration"
             exit 0
           fi
-          mkdir -p .e2e/explore
+          [ -f .e2e/summary.md ] && cp -n .e2e/summary.md .e2e/suite-summary.md
+          rm -f .e2e/summary.md
           GOAL="You are testing a pull request to a habit tracker app for iOS. Explore the app as a careful user would, focused on what the pull request describes, and report anything that does not behave as described or looks broken."
           if [ -n "$EXPLORE_TITLE" ]; then GOAL="$GOAL Pull request title: $EXPLORE_TITLE."; fi
           GOAL="$GOAL Pull request description: $EXPLORE_GOAL"
           set +e
           E2E_EAS_SIMULATOR=1 E2E_BUILD_ID="$BUILD_ID" E2E_WORKERS=1 \
             ./node_modules/.bin/e2e explore --max-steps 5 --timeout 360000 \
-              --reporter list,markdown --output .e2e/explore "$GOAL" 2>&1 | tee .e2e/explore.log
+              --reporter list,markdown "$GOAL" 2>&1 | tee .e2e/explore.log
           EXPLORE_EXIT=${PIPESTATUS[0]}
           set -e
+          [ -f .e2e/summary.md ] && mv .e2e/summary.md .e2e/explore-summary.md
           echo "explore exit code: $EXPLORE_EXIT (0 passed, 1 findings, 2 or 3 could not run)"
 
       - name: Post the summary and the replay links on the pull request
@@ -148,7 +152,9 @@ jobs:
             exit 0
           fi
           {
-            if [ -f .e2e/summary.md ]; then
+            if [ -f .e2e/suite-summary.md ]; then
+              cat .e2e/suite-summary.md
+            elif [ -f .e2e/summary.md ]; then
               cat .e2e/summary.md
             else
               echo "### e2e: the run did not produce a summary"
@@ -160,10 +166,10 @@ jobs:
               fi
             fi
             echo
-            if [ -s .e2e/explore/summary.md ]; then
+            if [ -s .e2e/explore-summary.md ]; then
               echo "### Exploration of what this pull request describes"
               echo
-              cat .e2e/explore/summary.md
+              cat .e2e/explore-summary.md
               echo
             fi
             if [ -s .e2e/session-urls.txt ]; then
