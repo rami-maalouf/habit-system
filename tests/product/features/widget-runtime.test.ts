@@ -12,7 +12,13 @@ type Node = {
   type: string;
   props: {
     children?: Node | Node[];
-    modifiers?: { $type: string; label?: string; value?: number }[];
+    modifiers?: {
+      $type: string;
+      container?: string;
+      label?: string;
+      style?: { color: string; type: string };
+      value?: number;
+    }[];
     destination?: string;
     systemName?: string;
     text?: string;
@@ -64,9 +70,14 @@ const row: WidgetRowProps = {
   strip: [0, 1, 3, 0, 0, 0, 2], checkedToday: true,
 };
 
-function render(rows: WidgetRowProps[], stale = false, widgetFamily = 'systemSmall'): Node[] {
+function render(
+  rows: WidgetRowProps[],
+  stale = false,
+  widgetFamily = 'systemSmall',
+  colorScheme: 'light' | 'dark' = 'light',
+): Node[] {
   const props: RipplesWidgetProps = { rows, stale };
-  const tree = runtime.__expoWidgetRender(props, { widgetFamily }) as Node;
+  const tree = runtime.__expoWidgetRender(props, { colorScheme, widgetFamily }) as Node;
   const flatten = (node: Node): Node[] => [node, ...[node.props.children ?? []].flat().flatMap(flatten)];
   return flatten(tree);
 }
@@ -76,6 +87,37 @@ function label(node: Node) {
 }
 
 describe('serialized widget layout', () => {
+  it.each(['systemSmall', 'systemMedium', 'systemLarge', 'systemExtraLarge'] as const)(
+    'adopts the WidgetKit container background API for %s',
+    (family) => {
+      const root = render([row], false, family)[0];
+      expect(root.props.modifiers).toContainEqual(expect.objectContaining({
+        $type: 'containerBackground',
+        container: 'widget',
+      }));
+    },
+  );
+
+  it('adopts the WidgetKit container background API for the empty state', () => {
+    const root = render([])[0];
+    expect(root.props.modifiers).toContainEqual(expect.objectContaining({
+      $type: 'containerBackground',
+      container: 'widget',
+    }));
+  });
+
+  it.each([['light', '#FFFFFF'], ['dark', '#1C1C1E']] as const)(
+    'uses the %s WidgetKit container background',
+    (colorScheme, color) => {
+      const root = render([row], false, 'systemSmall', colorScheme)[0];
+      expect(root.props.modifiers).toContainEqual(expect.objectContaining({
+        $type: 'containerBackground',
+        container: 'widget',
+        style: { color, type: 'color' },
+      }));
+    },
+  );
+
   it('renders Daily completion as binary and opens an explicit fresh-state action', () => {
     const nodes = render([row]);
     const circles = nodes.filter((node) => node.type === 'CircleView');

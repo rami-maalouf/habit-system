@@ -1,6 +1,7 @@
 import { Circle, HStack, Image, Link, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
   accessibilityLabel,
+  containerBackground,
   foregroundStyle,
   frame,
   lineLimit,
@@ -40,6 +41,10 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
           ? 12
           : 3;
   const rows = (props.rows ?? []).slice(0, limit);
+  const widgetBackground = containerBackground(
+    environment.colorScheme === 'dark' ? '#1C1C1E' : '#FFFFFF',
+    'widget',
+  );
 
   const renderRow = (row: WidgetRowProps) => {
     const daily = row.kind === 'daily';
@@ -97,7 +102,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
 
   if (rows.length === 0) {
     return (
-      <VStack modifiers={[widgetURL('habitsystem://boards/new'), padding({ all: 12 })]}>
+      <VStack modifiers={[widgetURL('habitsystem://boards/new'), padding({ all: 12 }), widgetBackground]}>
         <Text>Open Habit System to create your first board</Text>
       </VStack>
     );
@@ -107,7 +112,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
     // two balanced columns of up to six rows each
     const half = Math.ceil(rows.length / 2);
     return (
-      <HStack modifiers={[padding({ all: 8 })]} spacing={16}>
+      <HStack modifiers={[padding({ all: 8 }), widgetBackground]} spacing={16}>
         <VStack spacing={8}>{rows.slice(0, half).map(renderRow)}</VStack>
         <VStack spacing={8}>{rows.slice(half).map(renderRow)}</VStack>
       </HStack>
@@ -115,7 +120,7 @@ const RipplesBoards = (props: RipplesWidgetProps, environment: WidgetEnvironment
   }
 
   return (
-    <VStack modifiers={[padding({ all: 8 })]} spacing={8}>
+    <VStack modifiers={[padding({ all: 8 }), widgetBackground]} spacing={8}>
       {rows.map(renderRow)}
     </VStack>
   );
