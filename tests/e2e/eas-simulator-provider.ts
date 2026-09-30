@@ -20,7 +20,7 @@ import type { DeviceLease, DeviceProvider, DeviceReleaseContext, DeviceRequest }
 // concurrency: the account allows a limited number of sessions at once (two, observed on
 // 2026-09-30: a third lease queued for eleven minutes while two ran). a queued lease must
 // fail fast, or the phones that are ready idle out while it waits. hence acquireTimeout,
-// and an idle cap no shorter than the run itself.
+// and no idle cap by default.
 //
 // this file sits under tests/e2e/ on purpose: the repo's .easignore drops /e2e/ from
 // project uploads, and the runner only collects *.e2e.ts, so it is uploaded but not run.
@@ -32,7 +32,11 @@ export interface EasSimulatorOptions {
   readonly deviceName?: string | undefined;
   /** hard cap on the session; the run's cleanup stops it earlier. default 30. */
   readonly maxDurationMinutes?: number | undefined;
-  /** idle cap, in case release never runs. default equals maxDurationMinutes. */
+  /**
+   * idle cap. omitted by default: eas requires it to be smaller than the duration cap,
+   * and a phone that idles while another lease queues must not be cut off. the duration
+   * cap and release() are the safety net.
+   */
   readonly maxIdleMinutes?: number | undefined;
   /** how long a lease may take before the run fails with a clear message. default 5. */
   readonly acquireTimeoutMinutes?: number | undefined;
@@ -169,7 +173,6 @@ export function easSimulator(options: EasSimulatorOptions = {}): DeviceProvider 
   const idsFile = options.sessionIdsFile ?? '.e2e/session-ids.txt';
   const prefixFile = options.sessionPrefixFile ?? '.e2e/logs/session-prefix.txt';
   const maxDuration = options.maxDurationMinutes ?? 30;
-  const maxIdle = options.maxIdleMinutes ?? maxDuration;
   const acquireTimeoutMs = (options.acquireTimeoutMinutes ?? 5) * 60_000;
 
   return {
@@ -189,13 +192,12 @@ export function easSimulator(options: EasSimulatorOptions = {}): DeviceProvider 
         name,
         '--max-duration-minutes',
         String(maxDuration),
-        '--max-idle-time-minutes',
-        String(maxIdle),
         '--out-config-type',
         'env',
         '--json',
         '--non-interactive',
       ];
+      if (options.maxIdleMinutes !== undefined) args.push('--max-idle-time-minutes', String(options.maxIdleMinutes));
       if (options.buildId) args.push('--build-id', options.buildId);
       if (options.deviceName) args.push('--device', options.deviceName);
 
