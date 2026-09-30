@@ -30,6 +30,8 @@ it('applies one layout to daily and count habits and closes the live picker from
   await screen.findByTestId('board-card-1');
   expect(screen.getByTestId('board-card-0')).toHaveStyle({ flexDirection: 'row' });
   expect(screen.getByTestId('board-card-1')).toHaveStyle({ flexDirection: 'row' });
+  expect(screen.getAllByTestId(/board-card-0-bar-\d+$/)).toHaveLength(14);
+  expect(screen.getAllByTestId(/board-card-1-bar-\d+$/)).toHaveLength(14);
   await press('open-board-layout');
   await press('layout-grid');
   expect(screen.getByTestId('board-card-0')).toHaveStyle({ flexDirection: 'column' });
@@ -59,6 +61,24 @@ it('applies one layout to daily and count habits and closes the live picker from
   await press('open-board-layout');
   await press('layout-compact');
   expect(screen.getByTestId('board-card-0')).toHaveStyle({ flexDirection: 'row' });
+  await press('layout-summary');
+  for (const index of [0, 1]) {
+    expect(screen.getByTestId(`board-card-${index}`)).toHaveStyle({ flexDirection: 'column' });
+    expect(screen.getAllByTestId(new RegExp(`board-card-${index}-day-\\d+$`))).toHaveLength(14);
+  }
+  expect(screen.getByText('0/7 this week')).toBeOnTheScreen();
+  expect(screen.getByText('2 check-ins in 14 days')).toBeOnTheScreen();
+  await press('board-card-0-quick');
+  expect(screen.getByText('1/7 this week')).toBeOnTheScreen();
+  expect(screen.getByRole('checkbox', { checked: true })).toBeOnTheScreen();
+  await press('undo-check-in');
+  await press('board-card-1-quick');
+  expect(screen.getByText('3 check-ins in 14 days')).toBeOnTheScreen();
+  await press('board-card-1-quick');
+  expect(screen.getByText('4 check-ins in 14 days')).toBeOnTheScreen();
+  await press('undo-check-in');
+  expect(screen.getByText('3 check-ins in 14 days')).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: 'Check in to a very long habit title that should not choose its own layout' })).toBeEnabled();
 });
 
 it('keeps the grid preference while making cards readable at accessibility text sizes', async () => {
@@ -88,14 +108,14 @@ it('restores the saved choice after remount and leaves navigation actions availa
   await screen.findByTestId('empty-create-board');
   await press('open-board-layout');
   expect(screen.getByRole('button', { name: 'Two-column grid', selected: true })).toBeOnTheScreen();
-  await press('layout-cards');
-  expect(storage.setItem).toHaveBeenCalledWith('boards.layout', 'cards');
-  storage.getItem.mockResolvedValue('cards');
+  await press('layout-summary');
+  expect(storage.setItem).toHaveBeenCalledWith('boards.layout', 'summary');
+  storage.getItem.mockResolvedValue('summary');
   view.unmount();
   renderRouter('src/app', { initialUrl: '/' });
   await screen.findByTestId('empty-create-board');
   await press('open-board-layout');
-  expect(screen.getByRole('button', { name: 'Full-width cards', selected: true })).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '14-day summary', selected: true })).toBeOnTheScreen();
   await press('done-board-layout');
   await press('open-stacks');
   expect(screen).toHavePathname('/stacks');

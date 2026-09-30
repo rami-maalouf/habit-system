@@ -25,7 +25,7 @@ export function useBoardLayout() {
     const read = scope.kind === 'sample' ? Promise.resolve(sampleLayouts.get(core) ?? 'compact') : readBoardLayout();
     void read.then(value => {
       if (cancelled) return;
-      setLayout(value === 'cards' || value === 'grid' ? value : 'compact');
+      setLayout(value === 'cards' || value === 'grid' || value === 'summary' ? value : 'compact');
       setReady(true);
     }, () => {
       if (!cancelled) { setError('Could not load your layout. Choose a layout to try again.'); setReady(true); }

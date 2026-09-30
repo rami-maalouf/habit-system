@@ -8,6 +8,7 @@ export const icons = {
   layoutCards: { sfSymbol: "rectangle.grid.1x2", fallbackGlyph: "▤" },
   layoutGrid: { sfSymbol: "square.grid.2x2", fallbackGlyph: "⊞" },
   layoutCompact: { sfSymbol: "rectangle.grid.1x3", fallbackGlyph: "☰" },
+  layoutSummary: { sfSymbol: 'rectangle.topthird.inset.filled', fallbackGlyph: '▣' },
   add: { sfSymbol: 'plus', fallbackGlyph: '+' },
   settings: { sfSymbol: 'gearshape.fill', fallbackGlyph: '⚙' },
   stacks: { sfSymbol: 'square.stack.3d.up', fallbackGlyph: '▤' },

@@ -2,6 +2,32 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Four board layouts and native glass correction (2026-09-29)
+
+1. Restored the original compact pill proportions and all 14 history bars.
+   Restored the taller 14-day summary card as a fourth explicit layout, including
+   Daily weekly/streak details and a Count total. Every layout applies to both
+   kinds and all title lengths. Existing saved choices remain valid; the new
+   summary choice persists through restart and stays isolated in sample sessions.
+2. The iOS layout selector now uses a native SwiftUI segmented Picker inside an
+   interactive capsule-shaped Liquid Glass effect, with four icon choices.
+   Other platforms retain the shared four-option control. Done and close retain
+   the choice; the fixed-height header keeps Done readable at maximum Dynamic Type.
+3. Updated integration tests first failed on the missing 14 bars and fourth
+   option, then passed with real Daily/Count history, check-in/Undo and summary
+   persistence. Full validation passes 209 suites / 3,077 tests, with all 105
+   core files at 100 percent. Native tests pass 14 plugin and 195 Swift tests.
+   Logs and native screenshots are `.artifacts/board-layouts/four-*`.
+4. Argent validated all four choices, summary check-in/Undo with the picker open,
+   cold-start restoration, light/dark material appearance and maximum Dynamic Type.
+   The app remains running in Device Hub on Habit Layout QA, served by Metro 8082.
+5. Independent review found no remaining actionable issues after strengthening
+   the Count test to assert totals of 2, 3, 4 and 3 after Undo. Receipt:
+   `.artifacts/board-layouts/four-review.json`, run
+   `2026-09-30T00-06-24-105Z-four-layouts`. The final header styling change also
+   passes lint, typecheck and 13 focused tests. Spoken VoiceOver and Android
+   device behavior were not manually validated.
+
 ### Board layout preferences (2026-09-29)
 
 1. Removed the Boards title and added a third top-left Layout action. Compact

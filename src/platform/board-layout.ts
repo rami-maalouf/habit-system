@@ -1,6 +1,6 @@
 import Storage from 'expo-sqlite/kv-store';
 
-export type BoardLayout = 'cards' | 'grid' | 'compact';
+export type BoardLayout = 'cards' | 'grid' | 'compact' | 'summary';
 
 const KEY = 'boards.layout';
 

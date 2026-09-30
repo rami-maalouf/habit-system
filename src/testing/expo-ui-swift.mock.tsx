@@ -11,6 +11,10 @@ export function Text({ children }: AnyProps) {
   return <RNText>{children}</RNText>;
 }
 
+export function Label({ title }: AnyProps & { title?: string }) {
+  return <RNText>{title}</RNText>;
+}
+
 export function HStack({ children, modifiers }: AnyProps & { modifiers?: unknown[] }) {
   // an onTapGesture modifier makes the mocked stack pressable, mirroring
   // the native tap-gesture row
@@ -40,9 +44,19 @@ export function Picker({ label, selection, onSelectionChange, children, testID, 
   label?: string;
   selection?: string | number;
   onSelectionChange?: (value: string | number) => void;
-  modifiers?: { __disabled?: boolean }[];
+  modifiers?: { __disabled?: boolean; __pickerStyle?: string }[];
 }) {
   const isDisabled = modifiers?.some((modifier) => modifier.__disabled === true) ?? false;
+  if (modifiers?.some(modifier => modifier.__pickerStyle === 'segmented')) {
+    return <View testID={testID}>{React.Children.map(children, child => {
+      if (!React.isValidElement<{ title?: string; modifiers?: { __tag?: string | number; __identifier?: string }[] }>(child)) return child;
+      const value = child.props.modifiers?.find(modifier => modifier.__tag !== undefined)?.__tag;
+      const identifier = child.props.modifiers?.find(modifier => modifier.__identifier)?.__identifier;
+      return <Pressable accessibilityRole="button" accessibilityLabel={child.props.title}
+        accessibilityState={{ selected: value === selection, disabled: isDisabled }} testID={identifier}
+        disabled={isDisabled} onPress={() => { if (value !== undefined) onSelectionChange?.(value); }}>{child}</Pressable>;
+    })}</View>;
+  }
   const selected = React.Children.toArray(children).find((child) =>
     React.isValidElement<{ modifiers?: { __tag?: unknown }[] }>(child) &&
     child.props.modifiers?.some((modifier) => modifier.__tag === selection),
@@ -64,7 +78,12 @@ export function Picker({ label, selection, onSelectionChange, children, testID, 
   );
 }
 
-export function pickerStyle() { return {}; }
+export function pickerStyle(style: string) { return { __pickerStyle: style }; }
+export function controlSize() { return {}; }
+export function labelStyle() { return {}; }
+export function padding() { return {}; }
+export function glassEffect() { return {}; }
+export function accessibilityIdentifier(value: string) { return { __identifier: value }; }
 export function frame() { return {}; }
 export function tag(value: string | number) { return { __tag: value }; }
 export function disabled(value: boolean) { return { __disabled: value }; }

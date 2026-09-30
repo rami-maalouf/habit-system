@@ -242,7 +242,7 @@ export function BoardsHomeScreen() {
           headerRight: () => layoutMode ? (
             <ProductPressable label="Done choosing layout" testID="done-board-layout" disabled={layoutPreference.pending}
               onPress={() => { if (isCurrent()) setLayoutMode(false); }}>
-              <AppText variant="headline" selectable={false}>Done</AppText>
+              <AppText variant="headline" selectable={false} numberOfLines={1} maxFontSizeMultiplier={1.5}>Done</AppText>
             </ProductPressable>
           ) : (
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
