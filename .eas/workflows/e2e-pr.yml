@@ -35,7 +35,7 @@ on:
         description: 'Only run tests whose title matches this pattern (optional)'
         required: false
       workers:
-        description: 'How many cloud iPhones to lease at once (default 2)'
+        description: 'How many cloud iPhones to lease at once (default 2; the account allows two concurrent sessions)'
         required: false
 
 jobs:
@@ -96,6 +96,8 @@ jobs:
           mkdir -p .e2e
           : > .e2e/session-urls.txt
           : > .e2e/session-ids.txt
+          mkdir -p .e2e/logs
+          : > .e2e/logs/session-prefix.txt
           echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version), workers $E2E_WORKERS"
           E2E_ARGS="run --reporter list,markdown,junit"
           if [ -n "$E2E_GREP" ]; then E2E_ARGS="$E2E_ARGS --grep $E2E_GREP"; fi
@@ -141,10 +143,27 @@ jobs:
         if: ${{ always() }}
         run: |
           # the provider stops its sessions on every exit path; this is the safety net.
+          # known ids first, then anything still in progress under this run's name prefix
+          # (a lease killed while queued has a session but no id on file).
           if [ -s .e2e/session-ids.txt ]; then
             while IFS= read -r id; do
               [ -n "$id" ] && eas simulator:stop --id "$id" --json --non-interactive || true
             done < .e2e/session-ids.txt
+          fi
+          PREFIX="$(cat .e2e/logs/session-prefix.txt 2>/dev/null || true)"
+          if [ -n "$PREFIX" ]; then
+            eas simulator:list --platform ios --status in-progress --json --non-interactive 2>/dev/null \
+              | node -e '
+                let raw = ""; process.stdin.on("data", (c) => (raw += c)).on("end", () => {
+                  const start = raw.indexOf("{"); if (start < 0) return;
+                  const prefix = process.argv[1];
+                  for (const s of JSON.parse(raw.slice(start)).sessions ?? []) {
+                    if (s.name && s.name.startsWith(prefix)) console.log(s.id);
+                  }
+                });' "$PREFIX" \
+              | while IFS= read -r id; do
+                  [ -n "$id" ] && eas simulator:stop --id "$id" --json --non-interactive || true
+                done
           fi
 
       - name: Keep the run artifacts

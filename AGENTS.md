@@ -91,3 +91,8 @@ End-to-end tests use e2e; read .agents/skills/e2e/SKILL.md before writing or run
 - Every pull request runs the suite on an EAS Simulator through
   `.eas/workflows/e2e-pr.yml` and posts the summary plus the session replay link on the PR.
 - Tests must not call `app.clearState()` on the QA simulator; it holds sample data.
+- EAS Simulator sessions: the account runs two at once. A third `eas simulator:start` waits
+  in a queue (eleven minutes observed on 2026-09-30) while the two ready phones idle out.
+  Keep `E2E_WORKERS` at 2 or below.
+- The fingerprint job hashes `.gitignore`. Editing it changes the iOS fingerprint and forces
+  a full simulator build (about 17 minutes) on the next e2e run.
