@@ -54,6 +54,10 @@ function configureInfoPlist(infoPlist, bundleIdentifier) {
   };
 }
 
+function resolveSharedIdentifier(config, bundleIdentifier) {
+  return config.extra?.ripplesSharedIdentifier ?? bundleIdentifier;
+}
+
 async function writeAlternateIcons(projectRoot, catalogDirectory) {
   for (const name of alternateIcons) {
     const directory = path.join(catalogDirectory, `${name}.appiconset`);
@@ -74,6 +78,7 @@ async function writeAlternateIcons(projectRoot, catalogDirectory) {
 function withRipplesApple(config) {
   const bundleIdentifier = config.ios?.bundleIdentifier;
   if (!bundleIdentifier) throw new Error('ripples-apple requires ios.bundleIdentifier');
+  const sharedIdentifier = resolveSharedIdentifier(config, bundleIdentifier);
 
   config = withPodfileProperties(config, (mod) => {
     // precompiled expo modules cannot load against a source-only react native build.
@@ -88,11 +93,11 @@ function withRipplesApple(config) {
   });
 
   config = withEntitlementsPlist(config, (mod) => {
-    mod.modResults = configureEntitlements(mod.modResults, bundleIdentifier, process.env.RIPPLES_CLOUDKIT_ENVIRONMENT);
+    mod.modResults = configureEntitlements(mod.modResults, sharedIdentifier, process.env.RIPPLES_CLOUDKIT_ENVIRONMENT);
     return mod;
   });
   config = withInfoPlist(config, (mod) => {
-    mod.modResults = configureInfoPlist(mod.modResults, bundleIdentifier);
+    mod.modResults = configureInfoPlist(mod.modResults, sharedIdentifier);
     return mod;
   });
   config = withDangerousMod(config, ['ios', async (mod) => {
@@ -145,4 +150,5 @@ function withRipplesApple(config) {
 module.exports = withRipplesApple;
 module.exports.configureEntitlements = configureEntitlements;
 module.exports.configureInfoPlist = configureInfoPlist;
+module.exports.resolveSharedIdentifier = resolveSharedIdentifier;
 module.exports.writeAlternateIcons = writeAlternateIcons;
