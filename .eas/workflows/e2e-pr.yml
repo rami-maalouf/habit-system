@@ -1,17 +1,21 @@
 # Proof on every PR, on several cloud iPhones at once.
 #
-# For every pull request: reuse a matching iOS simulator build or make one, then run the
-# e2e suite with the EAS Simulator device provider (tests/e2e/eas-simulator-provider.ts).
+# For every pull request that touches the app: find an iOS simulator build with the same
+# native fingerprint and repack the pull request's JavaScript into it (about 3 minutes), or
+# make a new build when the native layer changed (about 17 minutes). Then run the e2e
+# suite with the EAS Simulator device provider (tests/e2e/eas-simulator-provider.ts).
 # The provider leases one EAS Simulator session per worker, each with the build installed,
 # and e2e spreads the test files across them. The run summary and every session replay
 # link are posted as a pull request comment, and the sessions are stopped when the run ends.
 #
 # After the suite, the agent explores what the pull request describes: `e2e explore` gets
-# the pull request body as its goal, taps through the app on a fresh cloud iPhone, and
-# reports findings. Findings inform the comment; only the suite decides pass or fail.
+# the pull request title, body, and changed source files as its goal, taps through the app
+# on a fresh cloud iPhone, and reports findings. Findings inform the comment; only the
+# suite decides pass or fail.
 #
 # The tests live in tests/e2e/*.e2e.ts and the runner config in e2e.config.ts.
-# Deterministic tests need no model; agent steps use the model in e2e.config.ts.
+# Deterministic tests need no model; agent steps use the `default` agent (the strong
+# model) unless the `agent` input picks `fast`.
 #
 # Required EAS environment variables (production environment):
 #   EXPO_TOKEN            - auths eas-cli for the simulator sessions (already set)
@@ -35,6 +39,20 @@ concurrency:
 on:
   pull_request:
     branches: [main]
+    # only pull requests that can change what the phone shows. docs, specs, and the other
+    # workflows do not lease simulators.
+    paths:
+      - src/**
+      - modules/**
+      - assets/**
+      - tests/e2e/**
+      - e2e.config.ts
+      - app.config.js
+      - app.json
+      - eas.json
+      - package.json
+      - bun.lock
+      - .eas/workflows/e2e-pr.yml
   # manual runs: `eas workflow:run .eas/workflows/e2e-pr.yml -F pr_number=2 -F workers=3`
   workflow_dispatch:
     inputs:
@@ -49,6 +67,9 @@ on:
         required: false
       goal:
         description: 'Exploration goal for a manual run (a pull request run uses the PR body)'
+        required: false
+      agent:
+        description: 'Agent from e2e.config.ts for the agent steps: default (strong model) or fast'
         required: false
 
 jobs:
@@ -68,6 +89,18 @@ jobs:
       fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
       wait_for_in_progress: true
 
+  repack:
+    # the native layer did not change: put this pull request's javascript into the
+    # matching build instead of testing it with the old bundle.
+    name: Repack the pull request's JavaScript into the matching build
+    needs: [get_build]
+    if: ${{ needs.get_build.outputs.build_id }}
+    type: repack
+    environment: production
+    params:
+      build_id: ${{ needs.get_build.outputs.build_id }}
+      profile: sim
+
   build:
     name: Build the simulator app
     needs: [get_build]
@@ -80,14 +113,15 @@ jobs:
 
   e2e:
     name: Run e2e on EAS Simulators
-    after: [get_build, build]
-    if: ${{ after.get_build.outputs.build_id || after.build.outputs.build_id }}
+    after: [repack, build]
+    if: ${{ after.repack.outputs.build_id || after.build.outputs.build_id }}
     environment: production
     env:
-      BUILD_ID: ${{ after.get_build.outputs.build_id || after.build.outputs.build_id }}
+      BUILD_ID: ${{ after.repack.outputs.build_id || after.build.outputs.build_id }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '' }}
       E2E_GREP: ${{ inputs.grep || '' }}
       E2E_WORKERS: ${{ inputs.workers || '2' }}
+      E2E_AGENT: ${{ inputs.agent || 'default' }}
       EXPLORE_GOAL: ${{ inputs.goal || github.event.pull_request.body || '' }}
       EXPLORE_TITLE: ${{ github.event.pull_request.title || '' }}
       REPO: rami-maalouf/habit-system
@@ -111,8 +145,8 @@ jobs:
           : > .e2e/session-ids.txt
           mkdir -p .e2e/logs
           : > .e2e/logs/session-prefix.txt
-          echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version), workers $E2E_WORKERS"
-          E2E_ARGS="run --reporter list,markdown,junit"
+          echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version), workers $E2E_WORKERS, agent $E2E_AGENT"
+          E2E_ARGS="run --reporter list,markdown,junit --agent $E2E_AGENT"
           if [ -n "$E2E_GREP" ]; then E2E_ARGS="$E2E_ARGS --grep $E2E_GREP"; fi
           set +e
           # shellcheck disable=SC2086
@@ -138,9 +172,17 @@ jobs:
           GOAL="You are testing a pull request to a habit tracker app for iOS. Explore the app as a careful user would, focused on what the pull request describes, and report anything that does not behave as described or looks broken."
           if [ -n "$EXPLORE_TITLE" ]; then GOAL="$GOAL Pull request title: $EXPLORE_TITLE."; fi
           GOAL="$GOAL Pull request description: $EXPLORE_GOAL"
+          # the changed source files point the agent at the screens the pull request
+          # touched. read through gh so no git history is needed on the worker; a failure
+          # here only leaves the list out.
+          if [ -n "$PR_NUMBER" ]; then
+            CHANGED="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json files \
+              --jq '[.files[].path | select(startswith("src/") or startswith("modules/"))] | .[:25] | join(", ")' 2>/dev/null || true)"
+            if [ -n "$CHANGED" ]; then GOAL="$GOAL Source files changed by the pull request, to locate the screens it touched: $CHANGED"; fi
+          fi
           set +e
           E2E_EAS_SIMULATOR=1 E2E_BUILD_ID="$BUILD_ID" E2E_WORKERS=1 \
-            ./node_modules/.bin/e2e explore --max-steps 5 --timeout 360000 \
+            ./node_modules/.bin/e2e explore --max-steps 5 --timeout 360000 --agent "$E2E_AGENT" \
               --reporter list,markdown "$GOAL" 2>&1 | tee .e2e/explore.log
           EXPLORE_EXIT=${PIPESTATUS[0]}
           set -e
