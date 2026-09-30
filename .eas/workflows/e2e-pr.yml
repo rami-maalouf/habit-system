@@ -90,31 +90,48 @@ jobs:
           # the json carries the controller credentials; the dotenv already has them.
           rm -f .e2e-session.json
           echo "session: $SESSION_URL"
-          set-output session_url "$SESSION_URL"
+          mkdir -p .e2e
+          printf '%s' "$SESSION_URL" > .e2e/session-url.txt
 
       - name: Run the e2e suite on the session
-        id: run
+        id: e2e_run
         run: |
           # the mobile engine drives whatever agent-device sees; simulator:exec loads
           # AGENT_DEVICE_DAEMON_BASE_URL and AGENT_DEVICE_DAEMON_AUTH_TOKEN for it.
-          if [ -n "$E2E_GREP" ]; then
-            npx --yes eas-cli@latest simulator:exec bunx e2e run --reporter list,markdown,junit --grep "$E2E_GREP"
-          else
-            npx --yes eas-cli@latest simulator:exec bunx e2e run --reporter list,markdown,junit
-          fi
+          # the runner is invoked through its node bin so node, not bun, executes it.
+          mkdir -p .e2e
+          echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version)"
+          E2E_ARGS="run --reporter list,markdown,junit"
+          if [ -n "$E2E_GREP" ]; then E2E_ARGS="$E2E_ARGS --grep $E2E_GREP"; fi
+          set +e
+          # shellcheck disable=SC2086
+          npx --yes eas-cli@latest simulator:exec ./node_modules/.bin/e2e $E2E_ARGS 2>&1 | tee .e2e/run.log
+          E2E_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "e2e exit code: $E2E_EXIT"
+          exit "$E2E_EXIT"
 
       - name: Post the summary and the replay link on the pull request
         if: ${{ always() }}
-        env:
-          GH_TOKEN: ${{ env.GITHUB_TOKEN }}
-          SESSION_URL: ${{ steps.session.outputs.session_url }}
         run: |
+          # gh reads GITHUB_TOKEN from the environment on its own.
           if [ -z "$PR_NUMBER" ]; then
             echo "no pull request; skipping the comment"
             exit 0
           fi
+          SESSION_URL="$(cat .e2e/session-url.txt 2>/dev/null || true)"
           {
-            if [ -f .e2e/summary.md ]; then cat .e2e/summary.md; else echo "### e2e: the run did not produce a summary"; fi
+            if [ -f .e2e/summary.md ]; then
+              cat .e2e/summary.md
+            else
+              echo "### e2e: the run did not produce a summary"
+              if [ -f .e2e/run.log ]; then
+                echo
+                echo '```'
+                tail -n 40 .e2e/run.log
+                echo '```'
+              fi
+            fi
             echo
             echo "Session replay: ${SESSION_URL:-unavailable}"
           } > .e2e-comment.md
