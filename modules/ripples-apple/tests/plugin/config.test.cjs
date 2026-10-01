@@ -371,7 +371,11 @@ test('only development builds use the side-by-side dev bundle identifiers', asyn
     delete process.env.APP_VARIANT;
     const preview = configureApp({ config: structuredClone(base) });
     assert.equal(preview.ios.bundleIdentifier, 'studio.orbitlabs.habitsystem');
-    assert.equal(preview.icon, './assets/images/icon.png');
+    assert.equal(preview.icon, './assets/images/icon-production.png');
+    const productionIcon = await getPngInfo(path.join(root, preview.icon));
+    assert.equal(productionIcon.width, productionIcon.height);
+    assert.ok(productionIcon.width >= 1024);
+    assert.equal(productionIcon.bpp, 3);
     assert.equal(
       preview.extra.eas.build.experimental.ios.appExtensions[0].bundleIdentifier,
       'studio.orbitlabs.habitsystem.ExpoWidgetsTarget',

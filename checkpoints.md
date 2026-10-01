@@ -3829,3 +3829,10 @@ convergence remain open. T24 and Checkpoints C/D are not complete.
     development variant also uses its own opaque square icon: the familiar
     droplet wears an orange hard hat in a purple-and-blue palette, while preview
     and production retain the original green icon.
+18. iOS preview and production now use a distinct polished mascot icon with
+    the original mint-and-aqua identity, rosy cheeks and a small two-leaf
+    sprout. Development remains visually separate with its purple droplet and
+    orange hard hat. The profile configuration test pins both icon paths and
+    verifies that each source is an opaque square PNG of at least 1024 pixels.
+    Android adaptive-icon layers remain unchanged because this follow-up is
+    scoped to the requested iPhone build.
