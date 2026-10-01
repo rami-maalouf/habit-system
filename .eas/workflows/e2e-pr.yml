@@ -171,7 +171,9 @@ jobs:
           rm -f .e2e/summary.md
           GOAL="You are testing a pull request to a habit tracker app for iOS. Explore the app as a careful user would, focused on what the pull request describes, and report anything that does not behave as described or looks broken."
           if [ -n "$EXPLORE_TITLE" ]; then GOAL="$GOAL Pull request title: $EXPLORE_TITLE."; fi
-          GOAL="$GOAL Pull request description: $EXPLORE_GOAL"
+          # e2e caps a goal at 2000 characters. keep the first 1200 of the description so the
+          # changed files below still fit; a long description is summary, validation, evidence.
+          GOAL="$GOAL Pull request description: ${EXPLORE_GOAL:0:1200}"
           # the changed source files point the agent at the screens the pull request
           # touched. read through gh so no git history is needed on the worker; a failure
           # here only leaves the list out.
@@ -180,6 +182,8 @@ jobs:
               --jq '[.files[].path | select(startswith("src/") or startswith("modules/"))] | .[:25] | join(", ")' 2>/dev/null || true)"
             if [ -n "$CHANGED" ]; then GOAL="$GOAL Source files changed by the pull request, to locate the screens it touched: $CHANGED"; fi
           fi
+          GOAL="${GOAL:0:1990}"
+          echo "explore goal: ${#GOAL} characters"
           set +e
           E2E_EAS_SIMULATOR=1 E2E_BUILD_ID="$BUILD_ID" E2E_WORKERS=1 \
             ./node_modules/.bin/e2e explore --max-steps 5 --timeout 360000 --agent "$E2E_AGENT" \
