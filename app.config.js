@@ -14,7 +14,7 @@ module.exports = ({ config }) => {
     },
     extra: {
       ...config.extra,
-      ripplesSharedIdentifier: sharedIdentifier,
+      habitSystemSharedIdentifier: sharedIdentifier,
       eas: {
         ...config.extra.eas,
         build: {
