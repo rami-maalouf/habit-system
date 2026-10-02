@@ -92,6 +92,9 @@ End-to-end tests use e2e; read .agents/skills/e2e/SKILL.md before writing or run
 - Two agents in `e2e.config.ts`: `default` (strong model, used unless selected otherwise) and
   `fast` (cheaper model, `E2E_FAST_MODEL`). Both share `system` (how to work) and `context`
   (what the app calls things; read by the judges too). Keep app vocabulary in `context`.
+- On EAS the device is `easSimulators()` from `@e2e-dev/eas` (TesterArmy's official provider,
+  reads `EXPO_TOKEN` and the project id from app.json). `tests/e2e/eas-simulator-provider.ts`
+  is the earlier hand-written provider, kept for reference and not loaded.
 - Every pull request that touches app code runs the suite on two EAS Simulators through
   `.eas/workflows/e2e-pr.yml`: the pull request's JavaScript is repacked into the matching
   build (native change: full build), then the agent explores the PR title, body, and changed

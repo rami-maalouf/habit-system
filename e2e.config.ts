@@ -1,29 +1,32 @@
 import type { E2EConfig } from 'e2e';
-import { createAgent } from 'e2e/agent';
 import { chatgpt } from 'e2e/oauth/chatgpt';
 import { mobile } from '@e2e-dev/mobile';
 import { mobileTools } from '@e2e-dev/mobile/tools';
+import { easSimulators } from '@e2e-dev/eas';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { easSimulator } from './tests/e2e/eas-simulator-provider';
 
 // where the tests run.
 // - default: a local booted simulator that already has the app. E2E_DEVICE picks one by
 //   name or udid; without it, any booted ios simulator.
-// - E2E_EAS_SIMULATOR=1: lease EAS Simulator sessions instead, one per worker, each with
-//   the build E2E_BUILD_ID installed. E2E_WORKERS sets how many cloud iphones run at
-//   once; test files spread across them.
+// - E2E_EAS_SIMULATOR=1: lease EAS Simulator sessions through @e2e-dev/eas, one per
+//   worker, each with the build E2E_BUILD_ID installed. the provider reads EXPO_TOKEN (or
+//   the eas login on this machine) and the project id from app.json. E2E_WORKERS sets how
+//   many cloud iphones run at once; test files spread across them.
+//   tests/e2e/eas-simulator-provider.ts is the hand-written provider this replaced; it is
+//   kept for reference and not loaded.
 const onEas = process.env.E2E_EAS_SIMULATOR === '1';
 
 const iphone = mobile({
   platform: 'ios',
-  app: 'studio.orbitlabs.habitsystem',
   device: onEas
-    ? easSimulator({
+    ? easSimulators({
         buildId: process.env.E2E_BUILD_ID,
-        deviceName: process.env.E2E_EAS_DEVICE,
-        command: process.env.E2E_EAS_COMMAND?.split(' '),
+        device: process.env.E2E_EAS_DEVICE,
+        maxDurationMinutes: 30,
       })
     : process.env.E2E_DEVICE,
+  // drawing touches into a recording on an eas simulator outlasts the attempt's cleanup.
+  videoTouches: !onEas,
 });
 
 // a model spec is <provider>/<id>.
@@ -57,8 +60,10 @@ const context = [
 const system =
   'You are a careful QA agent testing a habit tracker for iOS. Do one goal at a time and verify every outcome on screen before finishing a step. Do not delete boards or check-ins you did not create.';
 
+const tools = mobileTools(iphone);
+
 export default {
-  targets: [{ name: 'ios', engine: iphone }],
+  targets: [{ name: 'ios', engine: iphone, app: { bundleId: 'studio.orbitlabs.habitsystem' } }],
   // on eas, one worker per leased phone. locally one simulator, one worker.
   workers: onEas ? Number(process.env.E2E_WORKERS ?? '1') : 1,
   // two agents, same instructions, different models. `default` is the strong model and
@@ -66,18 +71,8 @@ export default {
   // `fast` is for cheap scripted steps; set E2E_FAST_MODEL to change its model.
   // agents do not inherit from each other, so both get the full context.
   agents: {
-    default: createAgent({
-      model: modelFrom(process.env.E2E_MODEL ?? 'chatgpt/gpt-6-luna'),
-      tools: mobileTools(iphone),
-      system,
-      context,
-    }),
-    fast: createAgent({
-      model: modelFrom(process.env.E2E_FAST_MODEL ?? 'chatgpt/gpt-5.6-luna'),
-      tools: mobileTools(iphone),
-      system,
-      context,
-    }),
+    default: { model: modelFrom(process.env.E2E_MODEL ?? 'chatgpt/gpt-6-luna'), tools, system, context },
+    fast: { model: modelFrom(process.env.E2E_FAST_MODEL ?? 'chatgpt/gpt-5.6-luna'), tools, system, context },
   },
   // markdown writes .e2e/summary.md, which the pr workflow posts as the comment.
   reporters: ['list', 'markdown', 'junit'],

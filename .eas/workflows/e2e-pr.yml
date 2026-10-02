@@ -3,9 +3,10 @@
 # For every pull request that touches the app: find an iOS simulator build with the same
 # native fingerprint and repack the pull request's JavaScript into it (about 3 minutes), or
 # make a new build when the native layer changed (about 17 minutes). Then run the e2e
-# suite with the EAS Simulator device provider (tests/e2e/eas-simulator-provider.ts).
-# The provider leases one EAS Simulator session per worker, each with the build installed,
-# and e2e spreads the test files across them. The run summary and every session replay
+# suite with TesterArmy's EAS Simulator device provider (@e2e-dev/eas, `easSimulators()`
+# in e2e.config.ts). The provider leases one EAS Simulator session per worker through
+# Expo's API with EXPO_TOKEN, each with the build installed, and e2e spreads the test
+# files across them. The run summary and every session replay
 # link are posted as a pull request comment, and the sessions are stopped when the run ends.
 #
 # After the suite, the agent explores what the pull request describes: `e2e explore` gets
@@ -125,9 +126,6 @@ jobs:
       EXPLORE_GOAL: ${{ inputs.goal || github.event.pull_request.body || '' }}
       EXPLORE_TITLE: ${{ github.event.pull_request.title || '' }}
       REPO: rami-maalouf/habit-system
-      # the device provider and the safety step call the eas cli through npx, so no
-      # global install can fail the job (a registry 404 did on 2026-09-30).
-      E2E_EAS_COMMAND: npx --yes eas-cli@latest
       CI: '1'
       E2E_TELEMETRY_DISABLED: '1'
     steps:
@@ -139,12 +137,10 @@ jobs:
         run: |
           # the runner is invoked through its node bin so node, not bun, executes it.
           # E2E_EAS_SIMULATOR=1 makes e2e.config.ts lease one session per worker with
-          # BUILD_ID installed, so nothing here starts or stops sessions by hand.
+          # BUILD_ID installed, so nothing here starts or stops sessions by hand. the
+          # provider logs each session as "simulator session <id>, <url>"; the comment
+          # and the safety step read those lines back from the logs.
           mkdir -p .e2e
-          : > .e2e/session-urls.txt
-          : > .e2e/session-ids.txt
-          mkdir -p .e2e/logs
-          : > .e2e/logs/session-prefix.txt
           echo "node $(node --version), e2e $(./node_modules/.bin/e2e --version), workers $E2E_WORKERS, agent $E2E_AGENT"
           E2E_ARGS="run --reporter list,markdown,junit --agent $E2E_AGENT"
           if [ -n "$E2E_GREP" ]; then E2E_ARGS="$E2E_ARGS --grep $E2E_GREP"; fi
@@ -222,9 +218,10 @@ jobs:
               cat .e2e/explore-summary.md
               echo
             fi
-            if [ -s .e2e/session-urls.txt ]; then
+            URLS="$(cat .e2e/run.log .e2e/explore.log 2>/dev/null | grep -oE 'simulator session [0-9a-f-]+, https://[^[:space:]]+' | sed -E 's/.*, //' | sort -u)"
+            if [ -n "$URLS" ]; then
               echo "Session replays (one cloud iPhone per line):"
-              while IFS= read -r url; do [ -n "$url" ] && echo "- $url"; done < .e2e/session-urls.txt
+              echo "$URLS" | while IFS= read -r url; do [ -n "$url" ] && echo "- $url"; done
             else
               echo "Session replays: unavailable"
             fi
@@ -234,29 +231,14 @@ jobs:
       - name: Stop any session the run left behind
         if: ${{ always() }}
         run: |
-          # the provider stops its sessions on every exit path; this is the safety net.
-          # known ids first, then anything still in progress under this run's name prefix
-          # (a lease killed while queued has a session but no id on file).
-          if [ -s .e2e/session-ids.txt ]; then
-            while IFS= read -r id; do
-              [ -n "$id" ] && npx --yes eas-cli@latest simulator:stop --id "$id" --json --non-interactive || true
-            done < .e2e/session-ids.txt
-          fi
-          PREFIX="$(cat .e2e/logs/session-prefix.txt 2>/dev/null || true)"
-          if [ -n "$PREFIX" ]; then
-            npx --yes eas-cli@latest simulator:list --platform ios --status in-progress --json --non-interactive 2>/dev/null \
-              | node -e '
-                let raw = ""; process.stdin.on("data", (c) => (raw += c)).on("end", () => {
-                  const start = raw.indexOf("{"); if (start < 0) return;
-                  const prefix = process.argv[1];
-                  for (const s of JSON.parse(raw.slice(start)).sessions ?? []) {
-                    if (s.name && s.name.startsWith(prefix)) console.log(s.id);
-                  }
-                });' "$PREFIX" \
-              | while IFS= read -r id; do
-                  [ -n "$id" ] && npx --yes eas-cli@latest simulator:stop --id "$id" --json --non-interactive || true
-                done
-          fi
+          # the provider stops its sessions on every exit path; this is the safety net:
+          # every session id the logs mention gets a stop, which is a no-op when it is
+          # already stopped.
+          cat .e2e/run.log .e2e/explore.log 2>/dev/null \
+            | grep -oE 'simulator session [0-9a-f-]+' | awk '{print $3}' | sort -u \
+            | while IFS= read -r id; do
+                [ -n "$id" ] && npx --yes eas-cli@latest simulator:stop --id "$id" --json --non-interactive || true
+              done
 
       - name: Keep the run artifacts
         if: ${{ always() }}
