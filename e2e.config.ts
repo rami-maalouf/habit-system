@@ -7,16 +7,19 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { easSimulator } from './tests/e2e/eas-simulator-provider';
 
 // where the tests run.
-// - default: a local booted simulator that already has the app. E2E_DEVICE picks one by
-//   name or udid; without it, any booted ios simulator.
+// - default: the development app on a local device. E2E_DEVICE picks one by name or udid.
 // - E2E_EAS_SIMULATOR=1: lease EAS Simulator sessions instead, one per worker, each with
 //   the build E2E_BUILD_ID installed. E2E_WORKERS sets how many cloud iphones run at
 //   once; test files spread across them.
 const onEas = process.env.E2E_EAS_SIMULATOR === '1';
+// the eas sim profile uses the base id; local development builds use the .dev id.
+// override when testing a build with a different identity.
+const appId = process.env.E2E_APP_ID ||
+  (onEas ? 'studio.orbitlabs.habitsystem' : 'studio.orbitlabs.habitsystem.dev');
 
 const iphone = mobile({
   platform: 'ios',
-  app: 'studio.orbitlabs.habitsystem',
+  app: appId,
   device: onEas
     ? easSimulator({
         buildId: process.env.E2E_BUILD_ID,

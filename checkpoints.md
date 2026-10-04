@@ -2,6 +2,21 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Local e2e development app selection (2026-10-04)
+
+1. Reproduced the wrong launch identity by loading the actual e2e config: local
+   runs selected `studio.orbitlabs.habitsystem` despite the development build
+   using `studio.orbitlabs.habitsystem.dev`.
+2. Local runs now select the development app. EAS runs retain the base id matching
+   their existing `sim` build profile. `E2E_APP_ID` overrides either default.
+3. Config integration tests failed before the fix and pass afterward. Full
+   `bun run validate` passes 210 suites / 3,088 tests and the core coverage gate;
+   `bun run test:native` passes. Independent non-author review approved the change.
+4. Live device automation was not rerun: the latest user run reached `app.open`
+   but failed snapshot setup because its iOS automation runner lacked a valid
+   provisioning profile. The launch identity is verified through the real engine
+   config; this change does not claim to resolve that separate signing failure.
+
 ### Layout Done button spacing (2026-09-29)
 
 1. Added the existing 16-point horizontal spacing token to the layout Done
