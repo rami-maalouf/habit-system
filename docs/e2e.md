@@ -14,7 +14,21 @@ bun run test:e2e:device
 
 Both commands launch `studio.orbitlabs.habitsystem.dev`. Install the development
 build appropriate for the target first: an iPhone `.ipa` cannot run on a simulator.
-Connect the development app to this checkout's Metro on port 8082.
+Build the simulator development client once, then install the resulting build
+on `Habit System QA` (replace `<build-id>` with the ID from the build output):
+
+```sh
+bunx eas-cli build --platform ios --profile development-simulator
+bunx eas-cli build:run --id <build-id> --simulator "Habit System QA"
+```
+
+Connect the development app to this checkout's Metro. Use an available port
+(normally 8082); check that an existing server belongs to this checkout before
+reusing it. For example, if 8082 belongs to another checkout:
+
+```sh
+APP_VARIANT=development bun run start -- --port 8084
+```
 
 The simulator command selects `Habit System QA` and boots it if needed. The device
 command selects the single connected iPhone. It fails if none or several are

@@ -2,6 +2,23 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Installed simulator development client (2026-10-04)
+
+1. Reproduced the missing `studio.orbitlabs.habitsystem.dev` launch on Habit
+   System QA. Added `development-simulator`, extending the existing development
+   profile with `ios.simulator: true`; physical and preview profiles are unchanged.
+2. EAS build `d9fc36a8-2fc2-4c80-a0fb-67b78f83914d` finished successfully.
+   Verified its app plist carries the `.dev` identity and installed it on
+   `62014A57-2B4A-4083-8A4D-452D4E5F764B`. The base app was not replaced.
+3. Port 8082 belongs to the first-completion checkout. Started this checkout's
+   development Metro on 8084 and opened the bundle-specific dev-client URL.
+   Argent confirmed the `.dev` app, QA simulator, and correct project root.
+4. The actual simulator runner passed `the app opens on the boards home`,
+   verifying `create-board` and `open-settings`. Evidence is under
+   `.artifacts/development-simulator/e2e/`. Full validation passes 211 suites /
+   3,099 tests and the core coverage gate; native checks pass. Independent review
+   approved profile inheritance. `docs/e2e.md` includes build/install commands.
+
 ### Local simulator and physical-device selection (2026-10-04)
 
 1. Added `test:e2e:simulator` and `test:e2e:device`. Local runs default to the
