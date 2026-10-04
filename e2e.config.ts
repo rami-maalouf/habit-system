@@ -4,9 +4,11 @@ import { mobile } from '@e2e-dev/mobile';
 import { mobileTools } from '@e2e-dev/mobile/tools';
 import { easSimulators } from '@e2e-dev/eas';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { localIosDevice } from './tests/e2e/local-ios-device';
 
 // where the tests run.
-// - default: the development app on a local device. E2E_DEVICE picks one by name or udid.
+// - default: the development app on Habit System QA. E2E_TARGET=device selects a
+//   connected physical iphone. E2E_DEVICE picks a device of that kind by name or udid.
 // - E2E_EAS_SIMULATOR=1: lease EAS Simulator sessions through @e2e-dev/eas, one per
 //   worker, each with the build E2E_BUILD_ID installed. the provider reads EXPO_TOKEN (or
 //   the eas login on this machine) and the project id from app.json. E2E_WORKERS sets how
@@ -27,7 +29,7 @@ const iphone = mobile({
         device: process.env.E2E_EAS_DEVICE,
         maxDurationMinutes: 30,
       })
-    : process.env.E2E_DEVICE,
+    : localIosDevice(process.env.E2E_TARGET, process.env.E2E_DEVICE),
   // drawing touches into a recording on an eas simulator outlasts the attempt's cleanup.
   videoTouches: !onEas,
 });

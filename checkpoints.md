@@ -26,6 +26,40 @@
    `.artifacts/activation/review`, run `activation-review`. Simplification removed
    a redundant sort and grouped the first-period lookup once per board.
 
+### Installed simulator development client (2026-10-04)
+
+1. Reproduced the missing `studio.orbitlabs.habitsystem.dev` launch on Habit
+   System QA. Added `development-simulator`, extending the existing development
+   profile with `ios.simulator: true`; physical and preview profiles are unchanged.
+2. EAS build `d9fc36a8-2fc2-4c80-a0fb-67b78f83914d` finished successfully.
+   Verified its app plist carries the `.dev` identity and installed it on
+   `62014A57-2B4A-4083-8A4D-452D4E5F764B`. The base app was not replaced.
+3. Port 8082 belongs to the first-completion checkout. Started this checkout's
+   development Metro on 8084 and opened the bundle-specific dev-client URL.
+   Argent confirmed the `.dev` app, QA simulator, and correct project root.
+4. The actual simulator runner passed `the app opens on the boards home`,
+   verifying `create-board` and `open-settings`. Evidence is under
+   `.artifacts/development-simulator/e2e/`. Full validation passes 211 suites /
+   3,099 tests and the core coverage gate; native checks pass. Independent review
+   approved profile inheritance. `docs/e2e.md` includes build/install commands.
+
+### Local simulator and physical-device selection (2026-10-04)
+
+1. Added `test:e2e:simulator` and `test:e2e:device`. Local runs default to the
+   dedicated Habit System QA simulator; `E2E_TARGET=device` selects a connected
+   physical iPhone. `E2E_DEVICE` selects a name or UDID within the requested kind.
+2. The local provider filters iOS mobile inventory by device kind and refuses
+   missing or ambiguous selections. It never falls back from simulator to phone.
+   Both modes use the development bundle; EAS provider behavior is unchanged.
+3. Added selector tests for mixed inventory, missing/disconnected devices,
+   ambiguity, explicit selections, invalid modes, and other platforms/TVs.
+   Full validation passes 211 suites / 3,099 tests and the core coverage gate;
+   native tests pass. Independent non-author review approved SDK mapping and
+   provider lifecycle. Both command entry points pass their CLI smoke checks.
+4. `docs/e2e.md` documents commands and prerequisites. Live device tests were
+   not run: the simulator needs its own development build, and physical automation
+   requires runner signing. No app data was cleared or device session started.
+
 ### Main worktree reconciliation (2026-10-04)
 
 1. Integrated the local e2e development-app selection commit with main's merged
