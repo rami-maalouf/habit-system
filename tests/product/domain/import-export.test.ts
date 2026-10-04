@@ -162,7 +162,7 @@ describe('ripples csv import', () => {
     expect(dates).toContain('2026-08-22');
     expect(dates).toContain('2026-05-04');
 
-    // eligibility starts at the board's ORIGINAL creation date, so the
+    // eligibility starts at the earliest imported completion, so the
     // summary sees months of eligible days, not an import-day period
     const summary = await getBoardSummary(harness.deps, plain!.id);
     if (!summary.ok || summary.value === null) {
@@ -948,6 +948,15 @@ describe('import hardening', () => {
       throw new Error(result.error.message);
     }
     expect(result.value.boardsCreated).toBe(7);
+
+    // these period-union assertions need completed habits; empty habits have no metric days.
+    for (const suffix of ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7']) {
+      expect(await createCheckIn(harness.deps, {
+        commandId: harness.ids.nextCommandId(),
+        boardId: `00000000-0000-4000-8000-0000000000${suffix}` as BoardId,
+        logicalDate: '2026-08-01' as LogicalDate, source: 'app',
+      })).toMatchObject({ ok: true });
+    }
 
     // the coherent list replays exactly: aug 1-5 and aug 10-today are
     // eligible, the gap is not

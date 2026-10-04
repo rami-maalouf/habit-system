@@ -216,14 +216,21 @@ export async function eligibleDailyCompletionsForActiveBoards(
   throughDate: LogicalDate,
 ): Promise<Map<string, Set<string>>> {
   const rows = await tx.getAllAsync<{ board_id: string; logical_date: string }>(
-    `SELECT c.board_id, c.logical_date FROM check_ins c
+    `WITH first_periods AS (
+       SELECT board_id, MIN(start_date) AS start_date FROM board_activity_periods
+       WHERE deleted_at IS NULL AND (end_date IS NULL OR start_date <= end_date)
+       GROUP BY board_id
+     )
+     SELECT c.board_id, c.logical_date FROM check_ins c
      INNER JOIN boards b ON b.id = c.board_id
+     INNER JOIN first_periods first ON first.board_id = c.board_id
      WHERE b.kind = 'daily' AND b.archived_at IS NULL AND b.deleted_at IS NULL
        AND c.deleted_at IS NULL AND c.state_suppressed = 0 AND c.logical_date <= ?
        AND EXISTS (
          SELECT 1 FROM board_activity_periods p
          WHERE p.board_id = c.board_id AND p.deleted_at IS NULL
-           AND c.logical_date >= p.start_date
+           AND (p.end_date IS NULL OR p.start_date <= p.end_date)
+           AND (c.logical_date >= p.start_date OR p.start_date = first.start_date)
            AND (p.end_date IS NULL OR c.logical_date <= p.end_date)
        )
      GROUP BY c.board_id, c.logical_date ORDER BY c.board_id, c.logical_date`,

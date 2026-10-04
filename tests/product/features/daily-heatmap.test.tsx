@@ -119,12 +119,15 @@ describe('Daily heatmap states', () => {
     mockClock.utcMs = Date.UTC(2025, 7, 1, 16);
     const boardId = await seedBoard('daily');
     mockClock.utcMs = Date.UTC(2026, 7, 25, 16);
+    await addCheck(boardId, '2025-08-27', 'first completion');
     await addCheck(boardId, '2026-08-25', 'today');
     renderRouter('src/app', { initialUrl: `/boards/${boardId}` });
     await screen.findByTestId('board-heatmap');
 
     expect(screen.getByLabelText('2025-08-25, unavailable')).toHaveStyle({ backgroundColor: colors.unavailableCell });
-    expect(screen.getByLabelText('2025-08-26, not checked')).toHaveStyle({ backgroundColor: colors.inactiveBar });
+    expect(screen.getByLabelText('2025-08-26, unavailable')).toHaveStyle({ backgroundColor: colors.unavailableCell });
+    expect(screen.getByLabelText('2025-08-27, checked')).toHaveStyle({ backgroundColor: colors.accent });
+    expect(screen.getByLabelText('2025-08-28, not checked')).toHaveStyle({ backgroundColor: colors.inactiveBar });
     expect(screen.getByLabelText('2026-08-25, checked, today')).toHaveStyle({ borderWidth: 1.5, borderColor: colors.accent });
     expect(screen.getByLabelText('2026-08-26, future date')).toHaveStyle({ backgroundColor: colors.unavailableCell, opacity: 0.25 });
     expect(screen.queryByTestId('heatmap-checked-2026-08-26')).toBeNull();

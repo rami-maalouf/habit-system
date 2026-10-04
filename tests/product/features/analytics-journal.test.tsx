@@ -161,7 +161,8 @@ describe('analytics sheet', () => {
     expect(await screen.findByTestId('weekday-empty')).toBeOnTheScreen();
     expect(screen.getByTestId('consistency-empty')).toBeOnTheScreen();
     expect(screen.getByTestId('analytics-overview')).toBeOnTheScreen();
-    expect(screen.getByText('0%')).toBeOnTheScreen();
+    expect(screen.getByText('-')).toBeOnTheScreen();
+    expect(screen.getByText('0 tracked days')).toBeOnTheScreen();
     expect(screen.getByText('check-ins · 0 active days')).toBeOnTheScreen();
     expect(screen.queryByText(/example boards/i)).toBeNull();
   });
