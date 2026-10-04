@@ -87,9 +87,18 @@ End-to-end tests use e2e; read .agents/skills/e2e/SKILL.md before writing or run
 
 - Tests live in `tests/e2e/*.e2e.ts`, config in `e2e.config.ts`. Run locally with
   `E2E_DEVICE="Habit System QA" bun run test:e2e`; deterministic tests need no model,
-  agent steps read `E2E_ANTHROPIC_API_KEY`.
-- Every pull request runs the suite on an EAS Simulator through
-  `.eas/workflows/e2e-pr.yml` and posts the summary plus the session replay link on the PR.
+  agent steps use the ChatGPT login from `e2e login openai` (or `E2E_MODEL=anthropic/<id>`
+  with `E2E_ANTHROPIC_API_KEY`).
+- Two agents in `e2e.config.ts`: `default` (strong model, used unless selected otherwise) and
+  `fast` (cheaper model, `E2E_FAST_MODEL`). Both share `system` (how to work) and `context`
+  (what the app calls things; read by the judges too). Keep app vocabulary in `context`.
+- On EAS the device is `easSimulators()` from `@e2e-dev/eas` (TesterArmy's official provider,
+  reads `EXPO_TOKEN` and the project id from app.json). `tests/e2e/eas-simulator-provider.ts`
+  is the earlier hand-written provider, kept for reference and not loaded.
+- Every pull request that touches app code runs the suite on two EAS Simulators through
+  `.eas/workflows/e2e-pr.yml`: the pull request's JavaScript is repacked into the matching
+  build (native change: full build), then the agent explores the PR title, body, and changed
+  files, and the summary plus one replay link per phone is posted on the PR.
 - Tests must not call `app.clearState()` on the QA simulator; it holds sample data.
 - EAS Simulator sessions: the account runs two at once. A third `eas simulator:start` waits
   in a queue (eleven minutes observed on 2026-09-30) while the two ready phones idle out.

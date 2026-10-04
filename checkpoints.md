@@ -2,6 +2,20 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Main worktree reconciliation (2026-10-04)
+
+1. Integrated the local e2e development-app selection commit with main's merged
+   EAS provider and stable e2e upgrades. The app id now lives at
+   `targets[0].app.bundleId`, matching the installed e2e 0.15.2 contract.
+2. Updated the config integration test to that contract. It reproduced three
+   failures against main's fixed base id, then passed with local/EAS defaults
+   and the explicit override restored.
+3. `bun run validate` passes all 210 suites / 3,088 tests and the core coverage
+   gate. `bun run test:native` passes. Independent non-author review confirmed
+   the installed library contract and found no defect in the adaptation.
+4. No device run was performed for this merge; the prior checkpoint's live
+   automation signing limitation remains unverified.
+
 ### Local e2e development app selection (2026-10-04)
 
 1. Reproduced the wrong launch identity by loading the actual e2e config: local
