@@ -125,6 +125,7 @@ describe('final branch coverage', () => {
   it('covers summary with a closed earlier period and consistency null months', async () => {
     const harness = await createTestHarness();
     const boardId = await createBoardForTest(harness);
+    await createCheckIn(harness.deps, { commandId: harness.ids.nextCommandId(), boardId, source: 'app' });
     await archiveBoard(harness.deps, { commandId: harness.ids.nextCommandId(), boardId });
     harness.clock.advanceDays(10);
     await restoreBoard(harness.deps, { commandId: harness.ids.nextCommandId(), boardId });
@@ -135,7 +136,7 @@ describe('final branch coverage', () => {
     // one closed single-day period plus the reopened period today
     expect(summary.value.eligibleDayCount).toBe(2);
     expect(summary.value.metricsReady).toBe(false);
-    expect(summary.value.consistencyBand).toBe('low');
+    expect(summary.value.consistencyBand).toBe('average');
     // below the seven-eligible-day threshold the analysis is unavailable
     const months = await getConsistencyAnalytics(harness.deps, boardId);
     expect(months.ok && months.value).toBeNull();

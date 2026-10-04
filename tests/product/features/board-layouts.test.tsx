@@ -40,7 +40,7 @@ it('applies one layout to daily and count habits and closes the live picker from
   for (const index of [0, 1]) {
     fireEvent(screen.getByTestId(`board-card-${index}-heatmap`), 'layout', { nativeEvent: { layout: { width: 150 } } });
   }
-  expect(screen.getByLabelText('2026-08-30, not checked, today')).toBeOnTheScreen();
+  expect(screen.getByLabelText('2026-08-30, unavailable, today')).toBeOnTheScreen();
   expect(screen.getByLabelText('2026-08-30, 2 check-ins, today')).toBeOnTheScreen();
   await press('close-board-layout');
   expect(screen.queryByTestId('board-layout-picker')).toBeNull();

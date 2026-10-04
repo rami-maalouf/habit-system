@@ -90,8 +90,18 @@ function boardToday(board: Board, now: number, timeZoneId: string): LogicalDate 
   return currentLogicalDate(now, timeZoneId, board.startOfDayMinute);
 }
 
-function toPeriodRanges(periods: { startDate: LogicalDate; endDate: LogicalDate | null }[]): ActivityPeriodRange[] {
-  return periods.map((period) => ({ startDate: period.startDate, endDate: period.endDate }));
+// metric history starts at the earliest effective completion, independently of
+// creation metadata. lifecycle periods still preserve archive gaps and sync state.
+async function metricPeriods(tx: SqlExecutor, boardId: BoardId): Promise<ActivityPeriodRange[]> {
+  const firstCompletion = await earliestCheckInDate(tx, boardId) as LogicalDate | null;
+  if (firstCompletion === null) return [];
+  const periods = (await listBoardPeriods(tx, boardId))
+    .filter((period) => period.endDate === null || period.startDate <= period.endDate);
+  return periods.map((period, index) => ({
+    // backdated history may precede creation; only the initial range extends back.
+    startDate: index === 0 || period.startDate < firstCompletion ? firstCompletion : period.startDate,
+    endDate: period.endDate,
+  })).filter((period) => period.endDate === null || period.startDate <= period.endDate);
 }
 
 // closed activity periods break streaks: only eligible completed days count
@@ -306,7 +316,7 @@ export function getBoardHeatmap(
     const rawStart = addDays(end, -(windowDays - 1));
     const start = startOfIsoWeek(rawStart);
     const counts = await dailyCounts(tx, board.id, start, end);
-    const periods = toPeriodRanges(await listBoardPeriods(tx, board.id));
+    const periods = await metricPeriods(tx, board.id);
     const weeks: HeatmapWeek[] = [];
     let cursor = start;
     while (compareLogicalDates(cursor, end) <= 0) {
@@ -483,7 +493,7 @@ export function getBoardSummary(
     }
     const today = boardToday(board, now, timeZoneId);
     const counts = await allDailyCounts(tx, board.id);
-    const periods = toPeriodRanges(await listBoardPeriods(tx, board.id));
+    const periods = await metricPeriods(tx, board.id);
     const completed = eligibleCompletedDays(counts, periods, today);
     const eligibleDayCount = eligibleDaysElapsed(periods, today);
     const rolling = consistencyPercent(completed, periods, addDays(today, -29), today, today);
@@ -547,7 +557,7 @@ export function getWeekdayAnalytics(
       return null;
     }
     const today = boardToday(board, now, timeZoneId);
-    const periods = toPeriodRanges(await listBoardPeriods(tx, board.id));
+    const periods = await metricPeriods(tx, board.id);
     // weekday analysis requires seven elapsed eligible days
     if (eligibleDaysElapsed(periods, today) < 7) {
       return null;
@@ -591,7 +601,7 @@ export function getConsistencyAnalytics(
     }
     const today = boardToday(board, now, timeZoneId);
     const counts = await allDailyCounts(tx, board.id);
-    const periods = toPeriodRanges(await listBoardPeriods(tx, board.id));
+    const periods = await metricPeriods(tx, board.id);
     // consistency analysis requires seven elapsed eligible days
     if (eligibleDaysElapsed(periods, today) < 7) {
       return null;
@@ -629,7 +639,7 @@ export function getStreakAnalytics(
     }
     const today = boardToday(board, now, timeZoneId);
     const counts = await allDailyCounts(tx, board.id);
-    const periods = toPeriodRanges(await listBoardPeriods(tx, board.id));
+    const periods = await metricPeriods(tx, board.id);
     const completed = eligibleCompletedDays(counts, periods, today);
     const windowStart = addDays(today, -364);
     return {

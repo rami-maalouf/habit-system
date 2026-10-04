@@ -2,6 +2,30 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### First-completion metric activation (2026-10-04)
+
+1. Daily and Count habit metrics now start at their earliest effective completion's
+   logical date. Empty habits have zero tracked days and null consistency. Backdated
+   history before creation is included; edits, removals, and sync suppression
+   recalculate activation. Archive gaps and reversed periods remain unavailable.
+2. Summary, heatmap, analysis readiness, consistency, and streak queries share the
+   derived metric periods. Home Daily streaks use equivalent eligibility. Stored
+   creation dates, lifecycle periods, stack requirements, and economic rules are
+   unchanged; no migration is needed.
+3. Six new real-database regressions failed before implementation. Final
+   `bun run validate` passes 211 suites / 3,094 tests with all core coverage at
+   100 percent. `bun run test:native` passes 15 plugin and 195 Swift tests.
+4. Public-command-assisted native QA reproduced 11 tracked days and 9% consistency
+   for creation on September 24 and first completion on September 29, with October 4
+   as today. The same screen now shows 6 tracked days and 17%. First-check deletion
+   moves activation forward; deleting every completion returns zero/null.
+   Evidence: `.artifacts/activation/README.md`. This was not a fully tap-driven
+   date-entry test. Port 8081 and the existing renamed database were untouched.
+5. Independent review, including a Claude peer and 3,000 randomized two-board SQLite
+   cases for the final query, found no actionable defects. Receipt:
+   `.artifacts/activation/review`, run `activation-review`. Simplification removed
+   a redundant sort and grouped the first-period lookup once per board.
+
 ### Installed simulator development client (2026-10-04)
 
 1. Reproduced the missing `studio.orbitlabs.habitsystem.dev` launch on Habit

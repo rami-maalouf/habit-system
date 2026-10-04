@@ -167,7 +167,7 @@ describe('analytics queries over the real store', () => {
     const harness = await createTestHarness();
     const boardId = await createBoardForTest(harness);
     // metrics require seven elapsed eligible days
-    harness.clock.advanceDays(7); // today becomes sunday 2026-09-06
+    harness.clock.advanceDays(8); // sep 7 is seven days since the first check on sep 1
     for (const [date, times] of [
       ['2026-09-01', 2],
       ['2026-09-04', 1],
@@ -191,8 +191,8 @@ describe('analytics queries over the real store', () => {
     expect(summary.value.currentStreak).toBe(3);
     expect(summary.value.longestStreak).toBe(3);
     expect(summary.value.currentMonthCount).toBe(5);
-    // iso week of monday aug 31 contains all five seeded check-ins
-    expect(summary.value.currentWeekCount).toBe(5);
+    // the new iso week begins sep 7 and has no check-ins yet
+    expect(summary.value.currentWeekCount).toBe(0);
     const weekdays = await getWeekdayAnalytics(harness.deps, boardId);
     // saturday sep 5 plus sunday sep 6
     expect(weekdays.ok && weekdays.value?.weekendCount).toBe(2);
