@@ -2,6 +2,23 @@
 
 ## Habit System (SPEC-habit-system.md) - task checkpoints
 
+### Local simulator and physical-device selection (2026-10-04)
+
+1. Added `test:e2e:simulator` and `test:e2e:device`. Local runs default to the
+   dedicated Habit System QA simulator; `E2E_TARGET=device` selects a connected
+   physical iPhone. `E2E_DEVICE` selects a name or UDID within the requested kind.
+2. The local provider filters iOS mobile inventory by device kind and refuses
+   missing or ambiguous selections. It never falls back from simulator to phone.
+   Both modes use the development bundle; EAS provider behavior is unchanged.
+3. Added selector tests for mixed inventory, missing/disconnected devices,
+   ambiguity, explicit selections, invalid modes, and other platforms/TVs.
+   Full validation passes 211 suites / 3,099 tests and the core coverage gate;
+   native tests pass. Independent non-author review approved SDK mapping and
+   provider lifecycle. Both command entry points pass their CLI smoke checks.
+4. `docs/e2e.md` documents commands and prerequisites. Live device tests were
+   not run: the simulator needs its own development build, and physical automation
+   requires runner signing. No app data was cleared or device session started.
+
 ### Main worktree reconciliation (2026-10-04)
 
 1. Integrated the local e2e development-app selection commit with main's merged

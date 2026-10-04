@@ -4,6 +4,8 @@ function launchIdentity(overrides: Record<string, string> = {}) {
   const env = { ...process.env };
   delete env.E2E_EAS_SIMULATOR;
   delete env.E2E_APP_ID;
+  delete env.E2E_TARGET;
+  delete env.E2E_DEVICE;
   return execFileSync('bun', ['-e',
     'import config from "./e2e.config.ts"; console.log(config.targets[0].app.bundleId)',
   ], { cwd: process.cwd(), env: { ...env, ...overrides }, encoding: 'utf8' }).trim();

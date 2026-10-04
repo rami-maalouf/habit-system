@@ -42,6 +42,7 @@
     "@testing-library/react-native": "^13",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
+    "agent-device": "0.21.18",
     "ai": "^7.0.122",
     "ajv": "^6.14.0",
     "e2e": "0.15.2",
@@ -70,7 +71,9 @@
     "test:native:linkage": "sh modules/ripples-apple/tests/native/verify-sqlite-linkage.sh",
     "test:native": "bun run test:native:config && swift test --package-path modules/ripples-apple",
     "validate": "bun run lint && bun run typecheck && bun run test:coverage",
-    "test:e2e": "e2e run"
+    "test:e2e": "e2e run",
+    "test:e2e:simulator": "E2E_EAS_SIMULATOR=0 E2E_TARGET=simulator e2e run",
+    "test:e2e:device": "E2E_EAS_SIMULATOR=0 E2E_TARGET=device e2e run"
   },
   "private": true
 }
